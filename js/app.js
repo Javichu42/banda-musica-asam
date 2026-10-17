@@ -687,8 +687,16 @@ PAGES.direccion = function () {
       })) : emptyBox("Todavía no hay directores añadidos.", "directores"))),
     h("section", { class: "block alt" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Junta Directiva" }), h("p", { class: "muted", text: "Trabajo voluntario y altruista" })), adminLink("directiva", "Editar directiva")),
-      junta.length ? h("div", { class: "junta" }, junta.map(function (m) {
-        var lead = /presiden/i.test(m.cargo || "") && !/vice/i.test(m.cargo || "");
+      (function () {
+        var isPres = function (m) { return /presiden/i.test(m.cargo || "") && !/vice/i.test(m.cargo || ""); };
+        var pres = junta.filter(isPres)[0];
+        return pres ? h("div", { class: "pres-card" },
+          pres.foto ? h("img", { class: "pres-photo", src: blobUrl(pres.foto), alt: "Foto de " + pres.nombre }) : h("div", { class: "pres-photo pres-ph", text: initials(pres.nombre) }),
+          h("div", { class: "pres-text" }, h("span", { class: "eyebrow", text: pres.cargo }), h("h3", { text: pres.nombre }),
+            pres.bio ? h("p", { text: pres.bio }) : null)) : null;
+      })(),
+      junta.length ? h("div", { class: "junta" }, junta.filter(function (m) { return !(/presiden/i.test(m.cargo || "") && !/vice/i.test(m.cargo || "")); }).map(function (m) {
+        var lead = false;
         return h("div", { class: "member" + (lead ? " lead-m" : "") + (m.foto ? " has-photo" : "") },
           m.foto ? h("img", { class: "mphoto", src: blobUrl(m.foto), alt: "Foto de " + m.nombre, loading: "lazy" }) : null,
           h("div", { class: "mtext" }, h("span", { class: "cargo", text: m.cargo }), h("b", { text: m.nombre })));
