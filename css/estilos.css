@@ -350,7 +350,7 @@ footer { --foot-bg: #12223b; --foot-fg: #e6edf8; --foot-line: rgba(230, 237, 248
 .btn.soc { border: 0; }
 .btn.soc:hover { filter: brightness(1.08); }
 .soc-facebook { background: #1877f2; }
-.soc-instagram { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
+.soc-instagram { background: #a8507a; }
 .soc-youtube { background: #ff0000; }
 .soc-whatsapp { background: #25d366; }
 .soc-tiktok { background: #010101; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
@@ -744,3 +744,49 @@ button.mus-av { cursor: zoom-in; }
 .staff-divider .staff-lines { bottom: 18px; }
 .act-news #noticias-sec { scroll-margin-top: 80px; }
 #proximas { scroll-margin-top: 80px; }
+
+/* Cabeceras con foto: título dentro de un recuadro semitransparente */
+.head-box { justify-self: start; max-width: 760px; display: grid; gap: 14px; padding: 28px 32px; border-radius: 22px;
+  background: rgba(10, 18, 30, .55); border: 1px solid rgba(255, 255, 255, .18); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow: 0 18px 50px rgba(0, 0, 0, .25); }
+.head-box .lead { margin: 0; }
+.page-head.head-photo::after { background: linear-gradient(0deg, rgba(10, 18, 30, .55) 0%, rgba(10, 18, 30, .1) 45%, rgba(10, 18, 30, .15) 100%); }
+@media (max-width: 700px) { .head-box { padding: 20px 20px; border-radius: 18px; } }
+
+/* Escuela: sedes debajo de la foto */
+.sedes-wide { margin-bottom: 34px; }
+.sedes-wide .sedes-card { width: auto; box-shadow: none; padding: 18px 22px; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px 28px; }
+.sedes-wide .sedes-card h2 { margin: 0; font-size: 1.15rem; }
+.sedes-wide .sedes-ul { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 22px; }
+@media (max-width: 960px) { .sedes-wide .sedes-card { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .sedes-wide .sedes-ul { grid-template-columns: 1fr; } }
+
+/* Historia: sendero con los años a un lado y a otro */
+.trail { position: relative; max-width: 1040px; margin: 0 auto; }
+.trail-item { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr); align-items: center; min-height: 190px; }
+.trail-svg { position: absolute; left: 50%; top: 0; width: 120px; height: 100%; margin-left: -60px; overflow: visible; pointer-events: none; }
+.trail-road { fill: none; stroke: color-mix(in srgb, var(--azul) 16%, var(--surface)); stroke-width: 20; stroke-linecap: round; }
+.trail-dash { fill: none; stroke: var(--surface); stroke-width: 3; stroke-dasharray: 3 10; stroke-linecap: round; }
+.trail-dot { grid-column: 2; grid-row: 1; justify-self: center; position: relative; z-index: 1; width: 26px; height: 19px; border-radius: 50%; background: var(--c); transform: rotate(-20deg); box-shadow: 0 0 0 6px var(--bg), 0 0 0 8px color-mix(in srgb, var(--c) 35%, transparent); }
+.trail-item.left .trail-dot { translate: -34px 0; }
+.trail-item.right .trail-dot { translate: 34px 0; }
+.trail-year { grid-row: 1; display: grid; gap: 2px; }
+.trail-year b { font-family: var(--f-display); font-weight: 800; font-size: clamp(2rem, 4vw, 3rem); line-height: 1; color: var(--c, var(--fg)); letter-spacing: -0.02em; }
+.trail-year small { color: var(--muted); font-weight: 600; font-size: .9rem; }
+.trail-card { grid-row: 1; background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--c); border-radius: 18px; padding: 18px 22px; box-shadow: var(--shadow); margin-block: 14px; }
+.trail-card h3 { font-size: 1.22rem; margin-bottom: 6px; }
+.trail-card p { color: var(--muted); }
+.trail-item.left .trail-year { grid-column: 1; text-align: right; justify-items: end; padding-right: 8px; }
+.trail-item.left .trail-card { grid-column: 3; }
+.trail-item.right .trail-year { grid-column: 3; text-align: left; justify-items: start; padding-left: 8px; }
+.trail-item.right .trail-card { grid-column: 1; }
+.trail-item.reveal .trail-card, .trail-item.reveal .trail-year { opacity: 0; transform: translateY(18px); transition: opacity .5s ease, transform .5s ease; }
+.trail-item.reveal.in .trail-card, .trail-item.reveal.in .trail-year { opacity: 1; transform: none; }
+@media (max-width: 760px) {
+  .trail-item, .trail-item.left, .trail-item.right { grid-template-columns: 56px minmax(0, 1fr); min-height: 0; align-items: start; }
+  .trail-svg { left: 0; margin-left: 0; width: 56px; }
+  .trail-item .trail-dot, .trail-item.left .trail-dot, .trail-item.right .trail-dot { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
+  .trail-item.left .trail-dot { translate: -16px 0; }
+  .trail-item.right .trail-dot { translate: 16px 0; }
+  .trail-item .trail-year, .trail-item.left .trail-year, .trail-item.right .trail-year { grid-column: 2; grid-row: 1; text-align: left; justify-items: start; padding: 14px 0 0; }
+  .trail-item .trail-card, .trail-item.left .trail-card, .trail-item.right .trail-card { grid-column: 2; grid-row: 2; margin-top: 8px; }
+}

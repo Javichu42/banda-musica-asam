@@ -187,6 +187,12 @@ function adminLink(tab, label) { return IS_ADMIN ? h("a", { class: "admin-hint",
 function headSize(el, c) {
   el.classList.add(c);
   if (c === "head-photo") {
+    var wrap = el.querySelector(":scope > .wrap");
+    if (wrap) {
+      var box = h("div", { class: "head-box" });
+      Array.prototype.slice.call(wrap.children).forEach(function (ch) { if (ch.matches(".eyebrow, h1, .lead")) box.appendChild(ch); });
+      wrap.insertBefore(box, wrap.firstChild);
+    }
     el.appendChild(h("button", { type: "button", class: "scroll-cue", "aria-label": "Más información abajo",
       onclick: function () { var nx = el.nextElementSibling; if (nx) nx.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }); } },
       h("span", { "aria-hidden": "true" })));
@@ -535,20 +541,41 @@ PAGES.quienes = function () {
 
 PAGES.historia = function () {
   var items = DATA.historia.slice().sort(function (x, y) { return (Number(x.orden) || 999) - (Number(y.orden) || 999); });
+  var NS = "http://www.w3.org/2000/svg";
+  function trailSvg(side, first, last) {
+    // Tramo del sendero: baja serpenteando hacia el lado del año
+    var x = side === "left" ? 22 : 78;
+    var d = (first ? "M" + x + " 50" : "M50 0 C50 22 " + x + " 26 " + x + " 50") + (last ? "" : " C" + x + " 74 50 78 50 100");
+    var svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 100 100"); svg.setAttribute("preserveAspectRatio", "none"); svg.setAttribute("class", "trail-svg"); svg.setAttribute("aria-hidden", "true");
+    ["trail-road", "trail-dash"].forEach(function (c) {
+      var p = document.createElementNS(NS, "path"); p.setAttribute("d", d); p.setAttribute("class", c); p.setAttribute("vector-effect", "non-scaling-stroke"); svg.appendChild(p);
+    });
+    return svg;
+  }
+  var list = items.map(function (it, i) {
+    var side = i % 2 ? "right" : "left";
+    var fotos = Array.isArray(it.fotos) ? it.fotos.filter(Boolean) : [];
+    return h("div", { class: "trail-item " + side, style: "--c:" + colorVar(it.color) },
+      trailSvg(side, i === 0, i === items.length - 1),
+      h("div", { class: "trail-year" }, h("b", { text: it.anio || "" }), it.detalle ? h("small", { text: it.detalle }) : null),
+      h("div", { class: "trail-dot", style: "--c:" + colorVar(it.color) }),
+      h("div", { class: "trail-card", style: "--c:" + colorVar(it.color) }, h("h3", { text: it.titulo }), it.texto ? h("p", { text: it.texto }) : null,
+        fotos.length ? h("div", { class: "tl-photos" + (fotos.length === 1 ? " one" : "") }, fotos.map(function (id) {
+          return h("button", { type: "button", "aria-label": "Ver foto: " + (it.titulo || ""), onclick: function () { openLightbox({ asset: id, titulo: (it.anio ? it.anio + " · " : "") + (it.titulo || "") }); } },
+            h("img", { src: blobUrl(id), alt: "", loading: "lazy" }));
+        })) : null));
+  });
+  // Los hitos aparecen al bajar por el sendero
+  if ("IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    var io = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } }); }, { rootMargin: "0px 0px -10% 0px" });
+    list.forEach(function (el) { el.classList.add("reveal"); io.observe(el); });
+  }
   return [
     pageHead("Historia", "Más de cuatro décadas de compases", "Siero tiene una larga tradición bandística. La ASAM tomó el relevo en los años ochenta y desde entonces no ha dejado de sonar.", "negra", staffLettering(yearsSinceFounding() + " años haciendo música", { glyphs: MUSIC_CAPS, colors: { 0: "c-naranja", 3: "c-azul" }, punct: "c-naranja" })),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("historia", "Editar historia")) : null,
-      items.length ? items.map(function (it) {
-        var fotos = Array.isArray(it.fotos) ? it.fotos.filter(Boolean) : [];
-        return h("div", { class: "tl-item" }, h("div", { class: "tl-year" }, it.anio || "", it.detalle ? h("small", { text: it.detalle }) : null),
-          h("div", { class: "tl-dot", style: "background:" + colorVar(it.color) }),
-          h("div", { class: "tl-body" }, h("h3", { text: it.titulo }), it.texto ? h("p", { text: it.texto }) : null,
-            fotos.length ? h("div", { class: "tl-photos" + (fotos.length === 1 ? " one" : "") }, fotos.map(function (id) {
-              return h("button", { type: "button", "aria-label": "Ver foto: " + (it.titulo || ""), onclick: function () { openLightbox({ asset: id, titulo: (it.anio ? it.anio + " · " : "") + (it.titulo || "") }); } },
-                h("img", { src: blobUrl(id), alt: "", loading: "lazy" }));
-            })) : null));
-      }) : emptyBox("Todavía no hay hitos en la historia.", "historia")))
+      items.length ? h("div", { class: "trail" }, list) : emptyBox("Todavía no hay hitos en la historia.", "historia")))
   ];
 };
 
@@ -711,9 +738,10 @@ PAGES.escuela = function () {
   var periodo = E.periodo || "trimestre";
   var sedes = normSedes(E.sedes);
   return [
-    headSize(pageHead("Escuela de música", E.titulo || "Escuela de música", E.intro || null, null, staffLettering("Anímate a tocar con nosotros", { glyphs: MUSIC_CAPS, colors: { 0: "c-naranja", 2: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), sedes.length ? { el: sedesCard(sedes) } : null, "img/fondos/escuela.jpg"), "head-photo"),
+    headSize(pageHead("Escuela de música", E.titulo || "Escuela de música", E.intro || null, null, staffLettering("Anímate a tocar con nosotros", { glyphs: MUSIC_CAPS, colors: { 0: "c-naranja", 2: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), null, "img/fondos/escuela.jpg"), "head-photo"),
     h("section", { class: "block escuela-first" }, h("div", { class: "wrap" },
       IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("escuela", "Editar la escuela")) : null,
+      sedes.length ? h("div", { class: "sedes-wide" }, sedesCard(sedes)) : null,
       h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Clases semanales" })),
         E.edad ? h("span", { class: "age-badge", text: E.edad }) : null),
       h("div", { class: "week" }, semana.map(function (w) {
@@ -762,7 +790,7 @@ PAGES.actuaciones = function (sub) {
   var s = eventsSplit(), n = sortedNews();
   if (sub === "noticias") setTimeout(function () { var t = document.getElementById("noticias-sec"); if (t) t.scrollIntoView({ block: "start" }); }, 0);
   return [
-    headSize(pageHead("Actuaciones y noticias", "Una temporada de conciertos a lo largo del año", "Los conciertos en los auditorios municipales son gratuitos hasta completar aforo.", null, staffLettering("¡Nos vemos en el concierto!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), { el: upcomingCard(s.up) }, "img/fondos/actuaciones.jpg"), "head-photo"),
+    headSize(pageHead("Actuaciones y noticias", "Una temporada de conciertos a lo largo del año", "Los conciertos en los auditorios municipales son gratuitos hasta completar aforo.", null, staffLettering("¡Nos vemos en el concierto!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), null, "img/fondos/actuaciones.jpg"), "head-photo"),
     h("section", { class: "block act-news" }, h("div", { class: "wrap" },
       h("div", { class: "row-head", id: "proximas" }, h("h2", { text: "Próximas actuaciones" }), adminLink("eventos", "Gestionar eventos")),
       s.up.length ? h("div", { class: "events" }, s.up.map(function (e) { return eventRow(e); })) : emptyBox("Pronto anunciaremos las próximas actuaciones.", "eventos")),
@@ -1474,7 +1502,7 @@ function renderFooter() {
   var el = document.getElementById("footer");
   el.replaceChildren(
     h("div", { class: "foot" },
-      h("div", { class: "foot-brand" }, h("span", { class: "foot-logo" }, h("img", { src: "img/logo/logo-asam-mini-claro.svg", alt: "ASAM" })),
+      h("div", { class: "foot-brand" }, h("span", { class: "foot-logo" }, h("img", { src: "img/logo/logo-asam-nota.svg", alt: "ASAM" })),
         p.texto ? h("p", { text: p.texto }) : null, p.apoyos ? h("p", { text: p.apoyos }) : null),
       h("div", null, h("h4", { text: "La web" }), h("ul", null, pages.map(function (x) { return h("li", null, h("a", { href: "#" + x[0], text: x[1] })); }))),
       h("div", null, h("h4", { text: "Síguenos" }),
