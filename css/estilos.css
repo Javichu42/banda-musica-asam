@@ -342,7 +342,7 @@ footer { --foot-bg: #12223b; --foot-fg: #e6edf8; --foot-line: rgba(230, 237, 248
 .btn.soc { border: 0; }
 .btn.soc:hover { filter: brightness(1.08); }
 .soc-facebook { background: #1877f2; }
-.soc-instagram { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285aeb 90%); }
+.soc-instagram { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
 .soc-youtube { background: #ff0000; }
 .soc-whatsapp { background: #25d366; }
 .soc-tiktok { background: #010101; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
