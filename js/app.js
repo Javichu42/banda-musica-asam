@@ -208,7 +208,6 @@ PAGES.inicio = function () {
           h("p", { class: "lead", text: "La Asociación Sierense Amigos de la Música es una entidad sin ánimo de lucro que enseña, toca y comparte música en el concejo. Conciertos gratuitos, pasacalles en las fiestas y clases para todas las edades." }),
           h("div", { class: "actions" }, h("a", { class: "btn primary", href: "#actuaciones", text: "Ver actuaciones" }), h("a", { class: "btn ghost", href: "#contacto", text: "Apúntate a clase" }))),
         latest ? heroNews(latest) : h("div", { class: "logo-card" }, h("img", { src: LOGO_FULL, alt: "Logotipo de la Asociación Sierense Amigos de la Música" }))),
-      h("div", { class: "staff-lines", "aria-hidden": "true" }),
       h("div", { class: "milestone" }, h("div", { class: "wrap ms-grid" },
         h("div", { class: "ms-years" },
           h("b", { text: String(yearsSinceFounding()) }),
