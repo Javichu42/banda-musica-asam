@@ -627,3 +627,8 @@ button.mus-av { cursor: zoom-in; }
   .page-head.with-logo .wrap:has(.sedes-card) { grid-template-columns: 1fr; }
   .page-head.with-logo .sedes-card { grid-column: 1; grid-row: auto; width: 100%; margin-top: 14px; }
 }
+
+/* Foto de fondo en la cabecera de algunas páginas, como en Inicio */
+.head-bg { position: absolute; inset: 0; background: center 40% / cover no-repeat; opacity: .1; pointer-events: none; z-index: 0; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .head-bg { opacity: .14; } }
+:root[data-theme="dark"] .head-bg { opacity: .14; }

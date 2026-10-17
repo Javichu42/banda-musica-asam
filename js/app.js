@@ -143,8 +143,10 @@ function photoSrc(f) { return f.asset ? blobUrl(f.asset) : ""; }
 function adminLink(tab, label) { return IS_ADMIN ? h("a", { class: "admin-hint", href: "#admin-" + tab, text: "✎ " + label }) : null; }
 
 /* ---------- Componentes públicos ---------- */
-function pageHead(eyebrow, title, lead, cls, extra, logo) {
-  return h("div", { class: "page-head" + (logo ? " with-logo" : "") }, h("div", { class: "wrap" },
+function pageHead(eyebrow, title, lead, cls, extra, logo, bg) {
+  return h("div", { class: "page-head" + (logo ? " with-logo" : "") + (bg ? " has-bg" : "") },
+    bg ? h("div", { class: "head-bg", "aria-hidden": "true", style: "background-image:url('" + bg + "')" }) : null,
+    h("div", { class: "wrap" },
     h("span", { class: "eyebrow " + (cls || ""), text: eyebrow }), h("h1", { text: title }), lead ? h("p", { class: "lead", text: lead }) : null,
     logo ? (logo.el ? logo.el : h("div", { class: "head-logo" }, h("img", { src: logo.src, alt: logo.alt }))) : null),
     h("div", { class: "staff-lines", "aria-hidden": "true" }), extra || null);
@@ -183,7 +185,7 @@ var MUSIC_CAPS = (function () {
   function head(cx, cy) { return E("ellipse", { cx: cx, cy: cy, rx: 5.2, ry: 3.8, transform: "rotate(-25 " + cx + " " + cy + ")", "class": "g-fill" }); }
   function p(d, w) { return E("path", { d: d, "class": "g-stroke", style: w ? "stroke-width:" + w : null }); }
   function sk(w, els) { return { w: w, els: [E("g", { transform: "skewX(-12) translate(8 0)", _children: els })] }; }
-  return {
+  var G = {
     " ": { w: 14, els: [] },
     "¡": sk(10, [head(5, 9), p("M5 17 L5 44", 3.6)]),
     "!": sk(10, [p("M5 4 L5 30", 3.6), head(5, 40)]),
@@ -199,6 +201,34 @@ var MUSIC_CAPS = (function () {
     "P": sk(22, [p("M6 6 L6 44", 4.2), p("M6 6 C24 4 24 27 6 26"), head(4, 44)]),
     "M": sk(30, [p("M3 44 L5 6", 3.2), p("M5 6 L15 32", 4.4), p("M15 32 L25 6", 3.2), p("M25 6 L27 44", 4.2), head(27, 43)])
   };
+  // Resto del alfabeto, en el mismo estilo (cabeza de nota al final del trazo)
+  var C = G;
+  function acc(base, x, y) { var g = C[base]; return { w: g.w, els: [E("g", { transform: g.els[0].a.transform, _children: g.els[0].a._children.concat([p("M" + x + " " + y + " L" + (x + 5) + " " + (y - 6), 3)]) })] }; }
+  Object.assign(C, {
+    "C": sk(22, [p("M21 10 C16 3 4 4 4 25 C4 46 17 46 21 39", 3.8), head(21, 40)]),
+    "F": sk(22, [p("M8 6 L8 44", 4.2), p("M8 6 C14 3 19 4 22 8"), p("M8 24 L17 24"), head(22, 10)]),
+    "G": sk(24, [p("M21 10 C16 3 4 4 4 25 C4 46 20 46 21 30 L14 30", 3.8), head(14, 30)]),
+    "H": sk(24, [p("M4 6 L4 44", 4.2), p("M20 6 L20 44", 4.2), p("M4 25 L20 25"), head(20, 44)]),
+    "J": sk(18, [p("M14 6 L14 35 C14 46 3 46 3 38", 4.2), p("M9 6 L18 6"), head(3, 38)]),
+    "K": sk(22, [p("M5 6 L5 44", 4.2), p("M20 6 L6 27 L20 44", 3.4), head(20, 44)]),
+    "Q": sk(26, [E("ellipse", { cx: 12, cy: 25, rx: 10, ry: 19, "class": "g-open", style: "stroke-width:3.8" }), p("M14 34 L24 46", 3.6), head(24, 45)]),
+    "R": sk(22, [p("M6 6 L6 44", 4.2), p("M6 6 C24 4 24 27 6 26 L20 44", 3.4), head(20, 44)]),
+    "S": sk(20, [p("M19 10 C15 3 4 4 4 14 C4 25 19 22 19 34 C19 45 6 46 3 39", 3.8), head(3, 40)]),
+    "T": sk(22, [p("M2 6 C8 3 16 8 22 5"), p("M12 6 L12 44", 4.2), head(12, 44)]),
+    "U": sk(22, [p("M3 6 L3 32 C3 46 19 46 19 32 L19 6", 3.8), head(19, 7)]),
+    "V": sk(24, [p("M2 6 L12 44 L22 6", 3.6), head(22, 7)]),
+    "W": sk(32, [p("M2 6 L9 44 L16 16 L23 44 L30 6", 3.4), head(30, 7)]),
+    "X": sk(22, [p("M3 6 L19 44", 3.8), p("M19 6 L3 44", 3.4), head(19, 44)]),
+    "Y": sk(22, [p("M3 6 L11 24 L19 6", 3.4), p("M11 24 L11 44", 4.2), head(11, 44)]),
+    "Z": sk(22, [p("M3 6 L19 6 L3 44 L19 44", 3.6), head(19, 44)]),
+    "?": sk(16, [p("M3 12 C3 2 15 2 15 12 C15 20 8 20 8 30", 3.4), head(8, 40)]),
+    "¿": sk(16, [head(8, 9), p("M8 18 C8 28 1 28 1 36 C1 46 13 46 13 36", 3.4)]),
+    ",": sk(8, [head(4, 40), p("M6 41 L2 48", 2.6)]),
+    ".": sk(8, [head(4, 42)])
+  });
+  C["Á"] = acc("A", 14, 1); C["É"] = acc("E", 12, 1); C["Ó"] = acc("O", 13, 1); C["Ú"] = acc("U", 11, 1);
+  C["Ñ"] = { w: C.N.w, els: [E("g", { transform: C.N.els[0].a.transform, _children: C.N.els[0].a._children.concat([p("M4 -1 C8 -5 12 1 18 -3", 2.6)]) })] };
+  return C;
 })();
 function staffLettering(text, opts) {
   opts = opts || {};
@@ -394,7 +424,7 @@ PAGES.inicio = function () {
 
 PAGES.quienes = function () {
   return [
-    pageHead("Quiénes somos", "Una asociación hecha por y para la gente de Siero", "Entidad sin ánimo de lucro dedicada a promover y difundir la música en el concejo de Siero desde 1984."),
+    pageHead("Quiénes somos", "Una asociación hecha por y para la gente de Siero", "Entidad sin ánimo de lucro dedicada a promover y difundir la música en el concejo de Siero desde 1984.", null, staffLettering("Música hecha en Siero", { glyphs: MUSIC_CAPS, colors: { 0: "c-azul", 3: "c-verde" }, punct: "c-naranja" })),
     h("section", { class: "block" }, h("div", { class: "wrap" }, h("div", { class: "two" },
       h("div", { class: "prose" },
         h("p", { html: "La <b>Asociación Sierense Amigos de la Música (ASAM)</b> nació en 1984 para promover y difundir la música en el concejo de Siero. Desde entonces organiza conciertos gratuitos, pone música a los pasacalles de las fiestas locales y forma a nuevas generaciones de músicos." }),
@@ -415,7 +445,7 @@ PAGES.quienes = function () {
 PAGES.historia = function () {
   var items = DATA.historia.slice().sort(function (x, y) { return (Number(x.orden) || 999) - (Number(y.orden) || 999); });
   return [
-    pageHead("Historia", "Más de cuatro décadas de compases", "Siero tiene una larga tradición bandística. La ASAM tomó el relevo en los años ochenta y desde entonces no ha dejado de sonar.", "negra"),
+    pageHead("Historia", "Más de cuatro décadas de compases", "Siero tiene una larga tradición bandística. La ASAM tomó el relevo en los años ochenta y desde entonces no ha dejado de sonar.", "negra", staffLettering("Toda una vida de música", { glyphs: MUSIC_CAPS, colors: { 2: "c-naranja", 4: "c-azul" }, punct: "c-naranja" })),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("historia", "Editar historia")) : null,
       items.length ? items.map(function (it) {
@@ -494,7 +524,7 @@ function plantilla(formacion, alt) {
 
 PAGES.banda = function () {
   return [
-    pageHead("Banda de Música de Siero", "La banda que suena en las fiestas y auditorios del concejo", null, null, staffLettering("¡La Banda de Pola mola!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja", center: true, noBar: true }), { src: "img/logo/logo-banda.webp", alt: "Logotipo de la Banda de Música de Siero" }),
+    pageHead("Banda de Música de Siero", "La banda que suena en las fiestas y auditorios del concejo", null, null, staffLettering("¡La Banda de Pola mola!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja", center: true, noBar: true }), { src: "img/logo/logo-banda.webp", alt: "Logotipo de la Banda de Música de Siero" }, "img/fondos/banda.jpg"),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       directorFeature(/banda/i, "azul", "Director de la Banda"),
       h("div", { class: "prose" },
@@ -509,7 +539,7 @@ PAGES.banda = function () {
 
 PAGES.bandin = function () {
   return [
-    pageHead("El Bandín", "La cantera: donde se aprende a tocar en grupo", null, null, staffLettering("¡El Bandín de Pola mola!", { glyphs: MUSIC_CAPS, colors: { 1: "c-naranja", 4: "c-verde" }, punct: "c-azul" })),
+    pageHead("El Bandín", "La cantera: donde se aprende a tocar en grupo", null, null, staffLettering("¡El Bandín de Pola mola!", { glyphs: MUSIC_CAPS, colors: { 1: "c-naranja", 4: "c-verde" }, punct: "c-azul" }), null, "img/fondos/bandin.jpg"),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       directorFeature(/bandín|bandin/i, "naranja", "Director del Bandín"),
       h("div", { class: "prose" },
@@ -527,7 +557,7 @@ PAGES.bandin = function () {
 PAGES.direccion = function () {
   var dirs = DATA.directores.slice().sort(byOrden), junta = DATA.directiva.slice().sort(byOrden);
   return [
-    pageHead("Dirección", "Quién lleva la batuta y quién sostiene la asociación", null, "verde"),
+    pageHead("Dirección", "Quién lleva la batuta y quién sostiene la asociación", null, "verde", staffLettering("Al frente de la música", { glyphs: MUSIC_CAPS, colors: { 1: "c-verde", 4: "c-azul" }, punct: "c-naranja" })),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("h2", { text: "Directores musicales" }), adminLink("directores", "Editar directores")),
       dirs.length ? h("div", { class: "directors" }, dirs.map(function (d) {
@@ -590,7 +620,7 @@ PAGES.escuela = function () {
   var periodo = E.periodo || "trimestre";
   var sedes = normSedes(E.sedes);
   return [
-    pageHead("Escuela de música", E.titulo || "Escuela de música", E.intro || null, null, null, sedes.length ? { el: sedesCard(sedes) } : null),
+    pageHead("Escuela de música", E.titulo || "Escuela de música", E.intro || null, null, staffLettering("Anímate a tocar con nosotros", { glyphs: MUSIC_CAPS, colors: { 0: "c-naranja", 2: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), sedes.length ? { el: sedesCard(sedes) } : null, "img/fondos/escuela.jpg"),
     h("section", { class: "block escuela-first" }, h("div", { class: "wrap" },
       IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("escuela", "Editar la escuela")) : null,
       h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Clases semanales" })),
@@ -622,7 +652,7 @@ PAGES.escuela = function () {
 PAGES.actuaciones = function () {
   var s = eventsSplit();
   return [
-    pageHead("Actuaciones", "Una temporada de conciertos a lo largo del año", "Los conciertos en los auditorios municipales son gratuitos hasta completar aforo."),
+    pageHead("Actuaciones", "Una temporada de conciertos a lo largo del año", "Los conciertos en los auditorios municipales son gratuitos hasta completar aforo.", null, staffLettering("¡Nos vemos en el concierto!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), null, "img/fondos/actuaciones.jpg"),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("h2", { text: "Próximas actuaciones" }), adminLink("eventos", "Gestionar eventos")),
       s.up.length ? h("div", { class: "events" }, s.up.map(function (e) { return eventRow(e); })) : emptyBox("Pronto anunciaremos las próximas actuaciones.", "eventos"))),
@@ -645,7 +675,7 @@ PAGES.actuaciones = function () {
 PAGES.noticias = function () {
   var n = sortedNews();
   return [
-    pageHead("Noticias", "Lo último de la asociación"),
+    pageHead("Noticias", "Lo último de la asociación", null, null, staffLettering("Lo último de la banda", { glyphs: MUSIC_CAPS, colors: { 1: "c-naranja", 4: "c-azul" }, punct: "c-naranja" })),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("noticias", "Gestionar noticias")) : null,
       n.length ? h("div", { class: "news" }, n.map(newsCard)) : emptyBox("Todavía no hay noticias publicadas.", "noticias")))
@@ -657,7 +687,7 @@ PAGES.imagenes = function () {
   var cats = ["todas", "Banda", "Bandín", "Escuela", "Asociación"];
   var visible = fotos.filter(function (f) { return FOTO_FILTER === "todas" || f.categoria === FOTO_FILTER; });
   return [
-    pageHead("Galería", "Momentos de la Banda, el Bandín y la escuela", "En nuestras redes hay muchas más fotos y vídeos."),
+    pageHead("Galería", "Momentos de la Banda, el Bandín y la escuela", "En nuestras redes hay muchas más fotos y vídeos.", null, staffLettering("Momentos para recordar", { glyphs: MUSIC_CAPS, colors: { 0: "c-azul", 2: "c-verde" }, punct: "c-naranja" })),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" },
         h("div", { class: "filters", role: "group", "aria-label": "Filtrar galería" }, cats.map(function (c) {
@@ -682,7 +712,7 @@ PAGES.contacto = function () {
       id ? h("button", { class: "copy", type: "button", onclick: function (ev) { copyText(ev.currentTarget, document.getElementById(id)); }, text: "Copiar" }) : null));
   }
   return [
-    pageHead("Contacto", "Ven a vernos o escríbenos"),
+    pageHead("Contacto", "Ven a vernos o escríbenos", null, null, staffLettering("¡Escríbenos!", { glyphs: MUSIC_CAPS, colors: { 0: "c-azul" }, punct: "c-naranja" })),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("contacto", "Editar datos de contacto")) : null,
       h("div", { class: "contact" },
