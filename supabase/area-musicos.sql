@@ -124,3 +124,10 @@ create policy "Partituras: cambio administradores" on storage.objects
   for update to authenticated using (bucket_id = 'partituras' and public.es_admin());
 create policy "Partituras: borrado administradores" on storage.objects
   for delete to authenticated using (bucket_id = 'partituras' and public.es_admin());
+
+-- 6. Endurecimiento: las comprobaciones de permisos solo para usuarios con sesión
+alter function public.tocar_actualizado() set search_path = public;
+revoke execute on function public.es_admin() from anon, public;
+revoke execute on function public.es_musico() from anon, public;
+grant execute on function public.es_admin() to authenticated;
+grant execute on function public.es_musico() to authenticated;

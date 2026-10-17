@@ -106,6 +106,7 @@ Pulsa **Administración** en el menú de arriba e inicia sesión. Desde ahí se 
 | Galería | Subir, describir y borrar fotos |
 | Contacto | Dirección, teléfono y correo |
 | Pie de página | Textos del pie |
+| Cuentas de músicos | Crear, cambiar la contraseña o borrar cuentas de músico |
 | Administradores | Crear cuentas de administrador y quitar el acceso |
 
 Las fotos grandes del móvil se reducen solas antes de subirse.
@@ -130,3 +131,15 @@ La función ya está desplegada en el proyecto. Si algún día hay que volver a 
 ```bash
 supabase functions deploy administradores --no-verify-jwt
 ```
+
+## Área de músicos
+
+En el menú, **Área de músicos** lleva a la zona privada de la Banda y el Bandín. Cada músico entra con su **usuario** (o su correo) y su contraseña.
+
+- **Cuentas:** las crean los administradores en Administración → **Cuentas de músicos** (nombre, usuario, correo, contraseña, si toca en Banda, Bandín o ambas, instrumento y cargo). Al crearla, el músico aparece solo en la plantilla de su formación.
+- **Calendario y asistencia:** los eventos de Administración → Eventos aparecen aquí para los músicos convocados. Cada músico responde *Asistiré*, *No asistiré* o *Duda* (con motivo). Los administradores ven el recuento por instrumento y pasan lista. Un evento marcado como "Solo en el Área de músicos" (por ejemplo, un ensayo) no sale en la web pública.
+- **Partituras:** los administradores suben PDF, imágenes o audios por obra. Si el archivo se llama como el instrumento ("Clarinete 1.pdf"), se reparte solo. Cada músico ve las de su instrumento y las comunes. Los archivos son privados.
+- **Anuncios:** tablón para todos, solo Banda o solo Bandín, con comentarios.
+- **Mi cuenta:** cada músico puede cambiar su contraseña.
+
+Archivos: `supabase/area-musicos.sql` (tablas y seguridad) y `supabase/functions/musicos/index.ts` (crear cuentas y entrar con usuario).
