@@ -154,14 +154,40 @@ var MUSIC_GLYPHS = (function () {
     "m": { w: 32, els: [stem(4, 22, 46), stem(16, 20, 46), stem(28, 18, 46), beam(4, 28, 14), beam(4, 28, 22)] }
   };
 })();
-function staffLettering(text) {
+/* Segundo estilo, para el Bandín: mayúsculas cursivas con cabezas de nota en los extremos */
+var MUSIC_CAPS = (function () {
+  function E(tag, a) { return { tag: tag, a: a }; }
+  function head(cx, cy) { return E("ellipse", { cx: cx, cy: cy, rx: 5.2, ry: 3.8, transform: "rotate(-25 " + cx + " " + cy + ")", "class": "g-fill" }); }
+  function p(d, w) { return E("path", { d: d, "class": "g-stroke", style: w ? "stroke-width:" + w : null }); }
+  function sk(w, els) { return { w: w, els: [E("g", { transform: "skewX(-12) translate(8 0)", _children: els })] }; }
+  return {
+    " ": { w: 14, els: [] },
+    "¡": sk(10, [head(5, 9), p("M5 17 L5 44", 3.6)]),
+    "!": sk(10, [p("M5 4 L5 30", 3.6), head(5, 40)]),
+    "E": sk(22, [p("M8 6 L8 44", 4.2), p("M8 6 C14 3 19 4 22 8"), p("M8 24 L18 24"), p("M8 44 L19 44 C22 44 23 41 22 38"), head(22, 10)]),
+    "L": sk(20, [p("M8 4 L8 44 L20 44", 4.2), p("M8 4 C4 4 3 8 5 10"), head(20, 41)]),
+    "B": sk(22, [p("M6 6 L6 44", 4.2), p("M6 6 C21 4 22 23 6 24 C24 23 25 45 6 44"), head(4, 44)]),
+    "A": sk(26, [p("M3 44 L13 6 L23 44", 3.6), p("M7.5 30 L19 30"), head(3, 42), p("M13 6 C16 2 19 3 20 6")]),
+    "N": sk(24, [p("M4 44 L4 6", 3.2), p("M4 6 L20 44", 4.4), p("M20 44 L20 6", 3.2), head(4, 42), p("M20 6 C21 2 24 2 25 5")]),
+    "D": sk(26, [p("M6 6 L6 44", 4.2), p("M6 6 C30 4 30 46 6 44"), head(4, 44)]),
+    "I": sk(12, [p("M6 8 L6 44", 4.2), p("M2 8 L10 8"), head(6, 44)]),
+    "Í": sk(12, [p("M6 10 L6 44", 4.2), p("M3 10 L10 10"), p("M7 5 L12 -2", 3), head(6, 44)]),
+    "O": sk(24, [E("ellipse", { cx: 12, cy: 25, rx: 10, ry: 19, "class": "g-open", style: "stroke-width:3.8" }), head(20, 8)]),
+    "P": sk(22, [p("M6 6 L6 44", 4.2), p("M6 6 C24 4 24 27 6 26"), head(4, 44)]),
+    "M": sk(30, [p("M3 44 L5 6", 3.2), p("M5 6 L15 32", 4.4), p("M15 32 L25 6", 3.2), p("M25 6 L27 44", 4.2), head(27, 43)])
+  };
+})();
+function staffLettering(text, opts) {
+  opts = opts || {};
+  var SET = opts.glyphs || MUSIC_GLYPHS;
+  var wordColors = opts.colors || { 1: "c-azul", 4: "c-verde" };
+  var punct = opts.punct || "c-naranja";
   var NS = "http://www.w3.org/2000/svg";
   function el(tag, attrs) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
   var GAP = 4, x = 0, glyphs = [];
   // Colores: "Banda" en azul, "mola" en verde y las exclamaciones en naranja
-  var words = text.split(" "), colorOf = {};
   Array.from(text).forEach(function (ch) {
-    var g = MUSIC_GLYPHS[ch] || MUSIC_GLYPHS[ch.toLowerCase()] || MUSIC_GLYPHS[" "];
+    var g = SET[ch] || SET[ch.toUpperCase()] || SET[ch.toLowerCase()] || SET[" "];
     glyphs.push({ ch: ch, g: g, x: x });
     x += g.w + GAP;
   });
@@ -174,9 +200,16 @@ function staffLettering(text) {
   var word = 0;
   glyphs.forEach(function (it) {
     if (it.ch === " ") { word++; return; }
-    var cls = (it.ch === "¡" || it.ch === "!") ? "c-naranja" : word === 1 ? "c-azul" : word === 4 ? "c-verde" : "";
+    var cls = (it.ch === "¡" || it.ch === "!") ? punct : (wordColors[word] || "");
     var gg = el("g", { transform: "translate(" + it.x + " 0)", "class": cls });
-    it.g.els.forEach(function (e) { gg.appendChild(el(e.tag, e.a)); });
+    (function addAll(parent, list) {
+      list.forEach(function (e) {
+        var attrs = {}; for (var k in e.a) if (k !== "_children" && e.a[k] != null) attrs[k] = e.a[k];
+        var node = el(e.tag, attrs);
+        if (e.a._children) addAll(node, e.a._children);
+        parent.appendChild(node);
+      });
+    })(gg, it.g.els);
     g.appendChild(gg);
   });
   anchor.appendChild(g);
@@ -438,7 +471,7 @@ PAGES.banda = function () {
 
 PAGES.bandin = function () {
   return [
-    pageHead("El Bandín", "La cantera: donde se aprende a tocar en grupo"),
+    pageHead("El Bandín", "La cantera: donde se aprende a tocar en grupo", null, null, staffLettering("¡El Bandín de Pola mola!", { glyphs: MUSIC_CAPS, colors: { 1: "c-naranja", 4: "c-verde" }, punct: "c-azul" })),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       directorFeature(/bandín|bandin/i, "naranja", "Director del Bandín"),
       h("div", { class: "prose" },
