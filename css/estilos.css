@@ -792,14 +792,14 @@ button.mus-av { cursor: zoom-in; }
 }
 
 /* Junta Directiva: presidente destacado con foto grande */
-.pres-card { display: grid; grid-template-columns: minmax(200px, 300px) minmax(0, 1fr); gap: 0; align-items: stretch; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; box-shadow: var(--shadow); margin-bottom: 18px; max-width: 760px; }
-.pres-photo { width: 100%; height: 100%; min-height: 300px; aspect-ratio: 4 / 5; object-fit: cover; object-position: center 18%; display: block; background: var(--surface-2); }
+.pres-card { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 0; align-items: stretch; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; box-shadow: var(--shadow); margin-bottom: 18px; max-width: 500px; }
+.pres-photo { width: 100%; height: 100%; min-height: 260px; aspect-ratio: 4 / 5; object-fit: cover; object-position: center 18%; display: block; background: var(--surface-2); }
 .pres-ph { display: grid; place-items: center; font: 800 4rem var(--f-display); color: #fff; background: var(--azul); }
-.pres-text { padding: 28px 30px; display: grid; align-content: center; gap: 8px; border-left: 6px solid var(--azul); }
-.pres-text h3 { font-size: clamp(1.6rem, 3vw, 2.2rem); }
+.pres-text { padding: 22px 24px; display: grid; align-content: center; gap: 8px; border-left: 6px solid var(--azul); }
+.pres-text h3 { font-size: clamp(1.4rem, 2.4vw, 1.8rem); }
 .pres-text p { color: var(--muted); }
 @media (max-width: 620px) {
-  .pres-card { grid-template-columns: 1fr; }
+  .pres-card { grid-template-columns: 1fr; max-width: 340px; }
   .pres-photo { aspect-ratio: 1 / 1; min-height: 0; max-height: 380px; }
   .pres-text { border-left: 0; border-top: 6px solid var(--azul); padding: 20px 22px; }
 }
