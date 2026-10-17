@@ -572,55 +572,9 @@ function normSedes(v) {
   return String(v || "").split(/\n|;/).map(function (x) { return x.trim(); }).filter(Boolean).map(function (n) { return { nombre: n }; });
 }
 function sedeHref(sd) { return safeUrl(sd.enlace) || ("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(sd.nombre + " " + (sd.lugar || "") + ", Asturias")); }
-var LEAFLET_P = null;
-function loadLeaflet() {
-  if (window.L) return Promise.resolve(window.L);
-  if (LEAFLET_P) return LEAFLET_P;
-  LEAFLET_P = new Promise(function (res, rej) {
-    var css = document.createElement("link"); css.rel = "stylesheet"; css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; document.head.appendChild(css);
-    var js = document.createElement("script"); js.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-    js.onload = function () { res(window.L); }; js.onerror = function () { LEAFLET_P = null; rej(new Error("leaflet")); };
-    document.head.appendChild(js);
-  });
-  return LEAFLET_P;
-}
-var CSS_COLORS = { azul: "#3f7fd6", naranja: "#ee7a10", verde: "#1f8f48", negro: "#151a24" };
 function sedesCard(sedes) {
-  var mapEl = h("div", { class: "sedes-map", role: "img", "aria-label": "Mapa con las sedes de la escuela" });
-  var withCoords = sedes.filter(function (s) { return isFinite(parseFloat(s.lat)) && isFinite(parseFloat(s.lng)); });
-  if (withCoords.length) {
-    setTimeout(function () {
-      if (!mapEl.isConnected) return;
-      loadLeaflet().then(function (L) {
-        if (!mapEl.isConnected || mapEl._map) return;
-        var map = L.map(mapEl, { scrollWheelZoom: false, attributionControl: true, zoomControl: true });
-        mapEl._map = map;
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-          maxZoom: 18, subdomains: "abcd",
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        }).addTo(map);
-        var pts = [];
-        withCoords.forEach(function (sd, i) {
-          var ll = [parseFloat(sd.lat), parseFloat(sd.lng)]; pts.push(ll);
-          var col = CSS_COLORS[sedeColor(sd.color, i)] || CSS_COLORS.azul;
-          var m = L.circleMarker(ll, { radius: 9, color: "#fff", weight: 3, fillColor: col, fillOpacity: 1 }).addTo(map);
-          var pop = document.createElement("div");
-          var b = document.createElement("b"); b.textContent = sd.nombre; pop.appendChild(b);
-          if (sd.lugar) { pop.appendChild(document.createElement("br")); pop.appendChild(document.createTextNode(sd.lugar)); }
-          pop.appendChild(document.createElement("br"));
-          var a = document.createElement("a"); a.href = sedeHref(sd); a.target = "_blank"; a.rel = "noopener"; a.textContent = "Cómo llegar →"; pop.appendChild(a);
-          m.bindPopup(pop);
-          var west = withCoords.every(function (o) { return parseFloat(o.lng) >= ll[1]; }) && withCoords.length > 1;
-          m.bindTooltip(sd.lugar || sd.nombre, { permanent: true, direction: west ? "left" : "right", className: "sede-tip", offset: [west ? -8 : 8, 0] });
-        });
-        // centro de Asturias: se encuadran las sedes con margen para ver Oviedo y Gijón alrededor
-        map.fitBounds(L.latLngBounds(pts).pad(0.9), { maxZoom: 12 });
-      }).catch(function () { mapEl.classList.add("no-map"); });
-    }, 0);
-  }
   return h("aside", { class: "sedes-card" },
     h("h2", { text: "¿Dónde se dan las clases?" }),
-    withCoords.length ? mapEl : null,
     h("ul", { class: "sedes-ul" }, sedes.map(function (sd, i) {
       return h("li", null, h("i", { class: "dot", style: "background:" + colorVar(sedeColor(sd.color, i)) }),
         h("span", { class: "sede-txt" }, h("b", { text: sd.nombre }), sd.lugar ? h("span", { text: sd.lugar }) : null),
@@ -1264,18 +1218,14 @@ function adminEscuela() {
   }
   function sedRow(sd) {
     var k = "d" + (n++);
-    var coords = (isFinite(parseFloat(sd.lat)) && isFinite(parseFloat(sd.lng))) ? sd.lat + ", " + sd.lng : "";
     var r = h("div", { class: "rep-row" },
       field(k + "-n", "Nombre", input(k + "-n", sd.nombre, "Casa de la Música")),
       field(k + "-l", "Localidad", input(k + "-l", sd.lugar, "Pola de Siero")),
       field(k + "-c", "Color", colorSel(k + "-c", sd.color)),
-      field(k + "-g", "Coordenadas", input(k + "-g", coords, "43.39219, -5.65457")),
       h("button", { class: "btn danger small", type: "button", text: "Quitar", onclick: function () { r.remove(); } }),
       h("div", { class: "rep-extra" }, field(k + "-e", "Enlace de Google Maps", input(k + "-e", sd.enlace, "https://maps.app.goo.gl/…"))));
     r._get = function () {
-      var g = r.querySelector("#" + k + "-g").value.split(",").map(function (x) { return parseFloat(x); });
       var o = { nombre: r.querySelector("#" + k + "-n").value.trim(), lugar: r.querySelector("#" + k + "-l").value.trim(), color: r.querySelector("#" + k + "-c").value, enlace: r.querySelector("#" + k + "-e").value.trim() };
-      if (g.length === 2 && isFinite(g[0]) && isFinite(g[1])) { o.lat = g[0]; o.lng = g[1]; }
       return o;
     };
     sedBox.appendChild(r);
@@ -1292,7 +1242,6 @@ function adminEscuela() {
     h("button", { class: "btn ghost small", type: "button", style: "justify-self:start", text: "+ Añadir actividad", onclick: function () { semRow({ color: "azul" }); } }),
     h("h3", { text: "¿Dónde se dan las clases?", style: "margin-top:10px" }), sedBox,
     h("button", { class: "btn ghost small", type: "button", style: "justify-self:start", text: "+ Añadir sede", onclick: function () { sedRow({ color: "azul" }); } }),
-    h("small", { class: "muted", text: "Las coordenadas sirven para colocar el punto en el mapa. En Google Maps, haz clic derecho sobre el sitio y copia los dos números." }),
     h("h3", { text: "Cuotas", style: "margin-top:10px" }),
     field("es-ctit", "Título de las cuotas", cuotasTitulo), field("es-per", "Periodo de los precios", periodo, "Se muestra como «90 € / trimestre»."),
     cuoBox,

@@ -611,23 +611,18 @@ button.mus-av { cursor: zoom-in; }
 .sede b { font-family: var(--f-display); font-size: 1.05rem; }
 .sede-map { font-size: .82rem; font-weight: 600; color: var(--azul-ink); }
 
-/* Escuela: mapa de sedes arriba a la derecha */
+/* Escuela: sedes arriba a la derecha */
 .page-head.with-logo .sedes-card { grid-column: 2; grid-row: 1 / span 3; align-self: start; }
-.sedes-card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 14px; box-shadow: var(--shadow); width: clamp(300px, 34vw, 430px); display: grid; gap: 10px; position: relative; z-index: 2; }
+.sedes-card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 14px; box-shadow: var(--shadow); width: clamp(300px, 32vw, 400px); display: grid; gap: 10px; position: relative; z-index: 2; }
 .sedes-card h2 { font-size: 1.05rem; margin: 2px 4px 0; }
-.sedes-map { height: 190px; border-radius: 14px; overflow: hidden; background: #e8eef5; border: 1px solid var(--line); }
-.sedes-map.no-map { display: none; }
 .sedes-ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .sedes-ul li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: .9rem; }
 .sedes-ul .dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--line); }
 .sedes-ul .sede-txt { display: grid; line-height: 1.25; }
 .sedes-ul .sede-txt span { color: var(--muted); font-size: .82rem; }
 .sedes-ul a { font-weight: 700; font-size: .82rem; color: var(--azul); white-space: nowrap; }
-.sede-tip { font: 700 11px/1.2 inherit; padding: 2px 6px; border-radius: 6px; }
-.sede-tip::before { display: none; }
-.leaflet-container a { color: var(--azul); }
 .block.escuela-first { padding-top: 26px; }
-.page-head .wrap:has(.sedes-card) { padding-block: 30px 74px; grid-template-rows: auto auto 1fr; align-items: start; }
+.page-head .wrap:has(.sedes-card) { padding-block: 30px 96px; grid-template-rows: auto auto 1fr; align-items: start; }
 @media (max-width: 860px) {
   .page-head.with-logo .wrap:has(.sedes-card) { grid-template-columns: 1fr; }
   .page-head.with-logo .sedes-card { grid-column: 1; grid-row: auto; width: 100%; margin-top: 14px; }
