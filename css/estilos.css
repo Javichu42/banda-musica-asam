@@ -587,3 +587,7 @@ button.mus-av { cursor: zoom-in; }
 .rep-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, .7fr) minmax(0, .7fr) minmax(0, 1.6fr) auto; gap: 10px; align-items: end; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
 .rep-row .check { display: inline-flex; gap: 6px; align-items: center; font-weight: 700; font-size: .88rem; padding-bottom: 10px; }
 @media (max-width: 760px) { .rep-row { grid-template-columns: 1fr 1fr; } }
+
+.wk-link { justify-self: start; margin-top: 4px; }
+.rep-extra { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+@media (max-width: 760px) { .rep-extra { grid-template-columns: 1fr; } }

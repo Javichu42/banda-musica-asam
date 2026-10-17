@@ -67,11 +67,11 @@ var DEFAULTS = {
   escuela: {
     titulo: "Aprende a tocar desde los 6 años",
     intro: "Clases de instrumento y de repertorio y, desde el principio, práctica en grupo con el Bandín.",
-    edad: "Abierto a partir de 6 años",
+    edad: "Desde los 6 años · También clases para adultos",
     semana: [
       { nombre: "Clase de instrumento", duracion: "45 min", texto: "Clase individual: cada alumno aprende su instrumento con su profesor.", color: "azul" },
-      { nombre: "Clase de repertorio", duracion: "60 min", texto: "Teoría musical.", color: "verde" },
-      { nombre: "Ensayo del Bandín", duracion: "60 min", texto: "Todo lo aprendido se pone en práctica tocando juntos.", color: "naranja" }
+      { nombre: "Clase de repertorio", duracion: "60 min", texto: "Clase grupal de teoría musical.", color: "verde" },
+      { nombre: "Ensayo del Bandín", duracion: "60 min", texto: "Todo lo aprendido se pone en práctica tocando juntos.", color: "naranja", enlace: "#bandin", boton: "Conoce el Bandín" }
     ],
     cuotasTitulo: "Cuotas de socio promesa",
     periodo: "trimestre",
@@ -562,7 +562,8 @@ PAGES.escuela = function () {
         E.edad ? h("span", { class: "age-badge", text: E.edad }) : null),
       h("div", { class: "week" }, semana.map(function (w) {
         return h("div", { class: "wk" }, h("span", { class: "wk-time", style: "color:" + colorVar(w.color) }, w.duracion || ""),
-          h("h3", null, h("i", { class: "dot", style: "background:" + colorVar(w.color) }), w.nombre || ""), w.texto ? h("p", { text: w.texto }) : null);
+          h("h3", null, h("i", { class: "dot", style: "background:" + colorVar(w.color) }), w.nombre || ""), w.texto ? h("p", { text: w.texto }) : null,
+          (w.enlace && (/^#[a-z]+$/.test(w.enlace) || safeUrl(w.enlace))) ? h("a", { class: "btn ghost small wk-link", href: w.enlace, target: /^#/.test(w.enlace) ? null : "_blank", rel: /^#/.test(w.enlace) ? null : "noopener", text: (w.boton || "Saber más") + " →" }) : null);
       })))),
     cuotas.length ? h("section", { class: "block alt" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("div", null, h("h2", { text: E.cuotasTitulo || "Cuotas" }), h("p", { class: "muted", text: "Precios por " + periodo }))),
@@ -1156,8 +1157,12 @@ function adminEscuela() {
       field(k + "-d", "Duración", input(k + "-d", w.duracion, "45 min")),
       field(k + "-c", "Color", colorSel(k + "-c", w.color)),
       field(k + "-t", "Descripción", input(k + "-t", w.texto)),
-      h("button", { class: "btn danger small", type: "button", text: "Quitar", onclick: function () { r.remove(); } }));
-    r._get = function () { return { nombre: r.querySelector("#" + k + "-n").value.trim(), duracion: r.querySelector("#" + k + "-d").value.trim(), color: r.querySelector("#" + k + "-c").value, texto: r.querySelector("#" + k + "-t").value.trim() }; };
+      h("button", { class: "btn danger small", type: "button", text: "Quitar", onclick: function () { r.remove(); } }),
+      h("div", { class: "rep-extra" },
+        field(k + "-b", "Texto del botón (opcional)", input(k + "-b", w.boton, "Conoce el Bandín")),
+        field(k + "-e", "Enlace del botón", input(k + "-e", w.enlace, "#bandin o https://…"), "Una página de la web (#bandin, #banda…) o una dirección web.")));
+    r._get = function () { return { nombre: r.querySelector("#" + k + "-n").value.trim(), duracion: r.querySelector("#" + k + "-d").value.trim(), color: r.querySelector("#" + k + "-c").value, texto: r.querySelector("#" + k + "-t").value.trim(),
+      boton: r.querySelector("#" + k + "-b").value.trim(), enlace: r.querySelector("#" + k + "-e").value.trim() }; };
     semBox.appendChild(r);
   }
   function cuoRow(c) {
