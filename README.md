@@ -92,7 +92,7 @@ En **Authentication → URL Configuration** pon como **Site URL** la dirección 
 
 ## Uso del panel de administración
 
-Entra en **/#admin** (también hay un enlace en el pie de página) e inicia sesión. Desde ahí se puede editar:
+Pulsa **Administración** en el menú de arriba e inicia sesión. Desde ahí se puede editar:
 
 | Pestaña | Qué se edita |
 |---|---|
@@ -105,6 +105,7 @@ Entra en **/#admin** (también hay un enlace en el pie de página) e inicia sesi
 | Galería | Subir, describir y borrar fotos |
 | Contacto | Dirección, teléfono y correo |
 | Pie de página | Textos del pie |
+| Administradores | Crear cuentas de administrador y quitar el acceso |
 
 Las fotos grandes del móvil se reducen solas antes de subirse.
 
@@ -118,3 +119,13 @@ Las páginas Quiénes somos e Historia y las descripciones de la Banda y el Band
 ## Dominio propio
 
 Cuando queráis usar `bandadesiero.es`, se añade en Vercel → proyecto → **Settings → Domains** y se cambian los registros DNS donde esté contratado el dominio, siguiendo lo que indica Vercel.
+
+## Función de Supabase para crear administradores
+
+Crear cuentas necesita la clave secreta de Supabase, que no puede estar en la web. Por eso la pestaña **Administradores** llama a una función de Supabase (`supabase/functions/administradores/index.ts`) que comprueba que quien la usa es administrador y después crea o borra la cuenta.
+
+La función ya está desplegada en el proyecto. Si algún día hay que volver a desplegarla, se puede hacer con la CLI de Supabase:
+
+```bash
+supabase functions deploy administradores --no-verify-jwt
+```

@@ -460,7 +460,7 @@ var SCHEMAS = {
     filter: { k: "formacion", label: "Formación", options: ["Banda", "Bandín"] },
     group: function (d) { return (d.formacion || "") + " · " + (d.instrumento || "Otros"); } }
 };
-var TABS = [["directiva", "Directiva"], ["directores", "Directores"], ["musicos", "Músicos"], ["eventos", "Eventos"], ["noticias", "Noticias"], ["enlaces", "Enlaces y redes"], ["fotos", "Galería"], ["contacto", "Contacto"], ["pie", "Pie de página"]];
+var TABS = [["directiva", "Directiva"], ["directores", "Directores"], ["musicos", "Músicos"], ["eventos", "Eventos"], ["noticias", "Noticias"], ["enlaces", "Enlaces y redes"], ["fotos", "Galería"], ["contacto", "Contacto"], ["pie", "Pie de página"], ["usuarios", "Administradores"]];
 var LIST_FILTER = {};
 
 PAGES.admin = function (tab) {
@@ -487,6 +487,7 @@ PAGES.admin = function (tab) {
   if (tab === "fotos") body = adminFotos();
   else if (tab === "contacto") body = adminContacto();
   else if (tab === "pie") body = adminPie();
+  else if (tab === "usuarios") body = adminUsuarios();
   else body = adminCrud(tab);
   return [head, h("section", { class: "block" }, h("div", { class: "wrap" },
     h("div", { class: "row-head" }, h("p", { class: "muted", text: "Sesión iniciada como " + ((SESSION.user && SESSION.user.email) || "") }), logout),
@@ -494,6 +495,71 @@ PAGES.admin = function (tab) {
       return h("a", { href: "#admin-" + t[0], "aria-current": t[0] === tab ? "page" : null, text: t[1] });
     })), body))];
 };
+
+/* ---------- Gestión de administradores (función de Supabase "administradores") ---------- */
+var ADMINS = { loaded: false, loading: false, list: [], me: null, error: "" };
+function adminFn(body) {
+  return SB.functions.invoke("administradores", { body: body }).then(function (r) {
+    if (!r.error) return r.data;
+    var ctx = r.error.context;
+    var fallback = "No se ha podido completar. Comprueba la conexión e inténtalo de nuevo.";
+    if (ctx && typeof ctx.json === "function") {
+      return ctx.json().then(function (j) { throw new Error((j && j.error) || fallback); }, function () { throw new Error(fallback); });
+    }
+    throw new Error(fallback);
+  });
+}
+function loadAdmins() {
+  ADMINS.loading = true;
+  return adminFn({ action: "list" }).then(function (d) {
+    ADMINS.list = d.admins || []; ADMINS.me = d.me; ADMINS.error = ""; ADMINS.loaded = true; ADMINS.loading = false;
+  }, function (e) { ADMINS.error = e.message; ADMINS.loaded = true; ADMINS.loading = false; });
+}
+function adminUsuarios() {
+  if (!ADMINS.loaded && !ADMINS.loading) loadAdmins().then(render);
+  var st = statusEl();
+  var email = h("input", { id: "nu-email", type: "email", autocomplete: "off", placeholder: "nombre@correo.com" });
+  var pass = h("input", { id: "nu-pass", type: "text", autocomplete: "new-password", placeholder: "Mínimo 8 caracteres" });
+  var btn = h("button", { class: "btn primary", type: "submit", text: "Crear administrador" });
+  var form = h("form", { class: "aform", novalidate: true }, h("h3", { text: "Nuevo administrador" }),
+    h("p", { class: "muted", text: "Crea la cuenta y dale acceso al panel. Después pásale el correo y la contraseña; podrá entrar desde Administración en el menú." }),
+    h("div", { class: "field" }, h("label", { for: "nu-email", text: "Correo electrónico *" }), email),
+    h("div", { class: "field" }, h("label", { for: "nu-pass", text: "Contraseña *" }), pass,
+      h("small", { text: "Si el correo ya tiene cuenta, se le da acceso y se mantiene su contraseña actual." })),
+    h("div", { class: "form-acts" }, btn), st);
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var e = email.value.trim(), p = pass.value;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) { setStatus(st, "Escribe un correo válido.", false); return; }
+    if (p.length < 8) { setStatus(st, "La contraseña debe tener al menos 8 caracteres.", false); return; }
+    btn.disabled = true; btn.textContent = "Creando…";
+    adminFn({ action: "create", email: e, password: p }).then(function (d) {
+      FLASH = { col: "usuarios", msg: d && d.existed ? "Ese correo ya tenía cuenta: ahora es administrador." : "Administrador creado: " + e };
+      return loadAdmins();
+    }).then(render, function (err) { btn.disabled = false; btn.textContent = "Crear administrador"; setStatus(st, err.message, false); });
+  });
+  if (FLASH && FLASH.col === "usuarios") { setStatus(st, FLASH.msg, true); FLASH = null; }
+
+  var list;
+  if (!ADMINS.loaded) list = h("div", { class: "empty" }, h("p", { text: "Cargando administradores…" }));
+  else if (ADMINS.error) list = h("div", { class: "notice" }, h("h3", { text: "No se ha podido cargar la lista" }), h("p", { class: "muted", text: ADMINS.error }),
+    h("div", { class: "form-acts" }, h("button", { class: "btn ghost small", type: "button", text: "Reintentar", onclick: function () { ADMINS.loaded = false; render(); } })));
+  else list = h("div", { class: "alist" }, ADMINS.list.map(function (a) {
+    var isMe = a.user_id === ADMINS.me;
+    return h("div", { class: "aitem" },
+      h("div", { class: "t", style: "flex:1" }, h("b", { text: (a.email || "(sin correo)") + (isMe ? " (tú)" : "") }),
+        h("span", { text: a.creado ? "Administrador desde el " + fmtLong(String(a.creado).slice(0, 10)) : "" })),
+      isMe ? null : h("div", { class: "acts" }, deleteButton(function (b) {
+        adminFn({ action: "remove", user_id: a.user_id }).then(function () {
+          FLASH = { col: "usuarios", msg: "Se ha quitado el acceso a " + (a.email || "ese usuario") + "." };
+          return loadAdmins();
+        }).then(render, function (err) { b.disabled = false; b.textContent = "Borrar"; alertInline(b, err.message); });
+      })));
+  }));
+  return h("div", { class: "admin-grid" },
+    h("div", null, h("p", { class: "muted", style: "margin-bottom:12px", text: "Personas que pueden editar la web. Al borrar a alguien se elimina su cuenta y deja de poder entrar." }), list),
+    form);
+}
 
 function loginForm() {
   var st = statusEl();
@@ -964,7 +1030,7 @@ var ASSETS_ADAPTER = {
     return SB.storage.from("fotos").remove([id]).then(function (r) { if (r.error) throw r.error; return { deleted: true }; });
   }
 };
-function updateNav() { document.getElementById("nav-admin").hidden = !IS_ADMIN; }
+function updateNav() { var a = document.getElementById("nav-admin"); a.hidden = false; a.textContent = "Administración"; }
 function refreshAdmin() {
   if (!SESSION) { IS_ADMIN = false; ASSETS = null; updateNav(); return Promise.resolve(); }
   return SB.rpc("es_admin").then(function (r) {
@@ -983,6 +1049,7 @@ if (configured() && window.supabase && window.supabase.createClient) {
   SB.auth.onAuthStateChange(function (event, session) {
     if (event === "INITIAL_SESSION") return;
     SESSION = session || null;
+    ADMINS.loaded = false; ADMINS.list = [];
     // Se sale del callback antes de llamar de nuevo a Supabase
     setTimeout(function () { refreshAdmin().then(render); }, 0);
   });
