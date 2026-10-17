@@ -108,11 +108,39 @@ var EDITING = {};          // colección -> id en edición
 var app = document.getElementById("app");
 
 /* ---------- Utilidades ---------- */
+/* ---------- Idioma: castellano (es) o asturiano (ast) ---------- */
+var LANG = "es";
+try { if (localStorage.getItem("asam-lang") === "ast") LANG = "ast"; } catch (e) {}
+var AST = window.ASAM_AST || { exacto: {}, prefijos: [], reglas: [] };
+var TR_ATTRS = { placeholder: 1, "aria-label": 1, title: 1, alt: 1 };
+function tr(s) {
+  if (LANG !== "ast" || typeof s !== "string" || !s) return s;
+  var D = AST.exacto;
+  if (Object.prototype.hasOwnProperty.call(D, s)) return D[s];
+  var t = s.trim();
+  if (t !== s && t && Object.prototype.hasOwnProperty.call(D, t)) return s.replace(t, D[t]);
+  for (var i = 0; i < AST.reglas.length; i++) if (AST.reglas[i][0].test(t)) return s.replace(t, t.replace(AST.reglas[i][0], AST.reglas[i][1]));
+  for (var j = 0; j < AST.prefijos.length; j++) { var pr = AST.prefijos[j]; if (s.indexOf(pr[0]) === 0) return pr[1] + tr(s.slice(pr[0].length)); }
+  // Símbolo o emoji delante ("📍 Auditorio…") o flecha detrás ("Ver más →")
+  var m = /^([^A-Za-zÀ-ÿ¡¿«0-9]+)(.+)$/.exec(s);
+  if (m) { var r1 = tr(m[2]); if (r1 !== m[2]) return m[1] + r1; }
+  m = /^(.+?)(\s*[→↓↗]+)$/.exec(s);
+  if (m) { var r2 = tr(m[1]); if (r2 !== m[1]) return r2 + m[2]; }
+  return s;
+}
+function setLang(l) {
+  LANG = l === "ast" ? "ast" : "es";
+  try { localStorage.setItem("asam-lang", LANG); } catch (e) {}
+  applyLangBasics();
+  render();
+}
+
 function h(tag, attrs) {
   var el = document.createElement(tag);
   if (attrs) for (var k in attrs) {
     var v = attrs[k];
     if (v == null || v === false) continue;
+    if (LANG === "ast" && typeof v === "string" && (k === "text" || k === "html" || TR_ATTRS[k])) v = tr(v);
     if (k === "text") el.textContent = v;
     else if (k === "html") el.innerHTML = v;
     else if (k === "class") el.className = v;
@@ -128,12 +156,17 @@ function add(el) {
 function addOne(el, c) {
   if (c == null || c === false) return;
   if (Array.isArray(c)) { c.forEach(function (x) { addOne(el, x); }); return; }
-  el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+  el.appendChild(typeof c === "string" ? document.createTextNode(tr(c)) : c);
 }
-var MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-var MES_CORTO = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+var MESES_ES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+var MES_CORTO_ES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+var MESES = MESES_ES.slice(), MES_CORTO = MES_CORTO_ES.slice();
 function parseDate(s) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? { y: +m[1], m: +m[2], d: +m[3] } : null; }
-function fmtLong(s) { var p = parseDate(s); return p ? p.d + " de " + MESES[p.m - 1] + " de " + p.y : ""; }
+function fmtLong(s) {
+  var p = parseDate(s); if (!p) return "";
+  var mes = MESES[p.m - 1];
+  return p.d + (LANG === "ast" && /^[aeiou]/.test(mes) ? " d'" : " de ") + mes + " de " + p.y;
+}
 function todayStr() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
 function initials(n) { return (n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0].toUpperCase(); }).join(""); }
 function colorVar(c) { return c === "naranja" ? "var(--naranja)" : c === "verde" ? "var(--verde)" : c === "negro" ? "var(--nota)" : "var(--azul)"; }
@@ -151,7 +184,15 @@ function photoSrc(f) { return f.asset ? blobUrl(f.asset) : ""; }
 function adminLink(tab, label) { return IS_ADMIN ? h("a", { class: "admin-hint", href: "#admin-" + tab, text: "✎ " + label }) : null; }
 
 /* ---------- Componentes públicos ---------- */
-function headSize(el, c) { el.classList.add(c); return el; }
+function headSize(el, c) {
+  el.classList.add(c);
+  if (c === "head-photo") {
+    el.appendChild(h("button", { type: "button", class: "scroll-cue", "aria-label": "Más información abajo",
+      onclick: function () { var nx = el.nextElementSibling; if (nx) nx.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }); } },
+      h("span", { "aria-hidden": "true" })));
+  }
+  return el;
+}
 function pageHead(eyebrow, title, lead, cls, extra, logo, bg) {
   return h("div", { class: "page-head" + (logo ? " with-logo" : "") + (bg ? " has-bg" : "") },
     bg ? h("div", { class: "head-bg", "aria-hidden": "true", style: "background-image:url('" + bg + "')" }) : null,
@@ -251,6 +292,7 @@ var MUSIC_CAPS = (function () {
 })();
 function staffLettering(text, opts) {
   opts = opts || {};
+  text = tr(text);
   var SET = opts.glyphs || MUSIC_GLYPHS;
   var wordColors = opts.colors || { 1: "c-azul", 4: "c-verde" };
   var punct = opts.punct || "c-naranja";
@@ -596,7 +638,7 @@ PAGES.bandin = function () {
         h("p", { text: "Es un ambiente formativo, cercano y con ganas de pasarlo bien. Aquí se prepara el relevo generacional de la Banda de Siero." }),
         h("p", { class: "color-note" }, h("span", { class: "dot", style: "background:var(--naranja)" }), "El naranja de su logotipo representa el amanecer a la música de las jóvenes promesas.")),
       h("div", { class: "join", style: "margin-top:36px" },
-        h("div", null, h("b", { text: "¿Tu hijo o tu hija estudia un instrumento?" }), h("p", { text: "Pregúntanos por las clases y por cómo entrar en el Bandín." })),
+        h("div", null, h("b", { text: "¿Tu hijo/a quiere aprender a tocar un instrumento?" }), h("p", { text: "Pregúntanos por las clases y por cómo entrar en el Bandín." })),
         h("a", { class: "btn", href: "#contacto", text: "Escríbenos" })))),
     plantilla("Bandín", true),
     formationEvents(/bandín|bandin/i)
@@ -606,7 +648,7 @@ PAGES.bandin = function () {
 PAGES.direccion = function () {
   var dirs = DATA.directores.slice().sort(byOrden), junta = DATA.directiva.slice().sort(byOrden);
   return [
-    headSize(pageHead("Dirección", "Quién lleva la batuta y quién sostiene la asociación", null, "verde", staffLettering("Al frente de la música", { glyphs: MUSIC_CAPS, colors: { 1: "c-verde", 4: "c-azul" }, punct: "c-naranja" })), "head-fill"),
+    headSize(pageHead("Dirección", "Quién lleva la batuta y quién sostiene la asociación", null, "verde", staffLettering("Al frente de la música", { glyphs: MUSIC_CAPS, colors: { 1: "c-verde", 4: "c-azul" }, punct: "c-naranja" })), "head-base"),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("h2", { text: "Directores musicales" }), adminLink("directores", "Editar directores")),
       dirs.length ? h("div", { class: "directors" }, dirs.map(function (d) {
@@ -669,7 +711,7 @@ PAGES.escuela = function () {
   var periodo = E.periodo || "trimestre";
   var sedes = normSedes(E.sedes);
   return [
-    headSize(pageHead("Escuela de música", E.titulo || "Escuela de música", E.intro || null, null, staffLettering("Anímate a tocar con nosotros", { glyphs: MUSIC_CAPS, colors: { 0: "c-naranja", 2: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), sedes.length ? { el: sedesCard(sedes) } : null, "img/fondos/escuela.jpg"), "head-fill"),
+    headSize(pageHead("Escuela de música", E.titulo || "Escuela de música", E.intro || null, null, staffLettering("Anímate a tocar con nosotros", { glyphs: MUSIC_CAPS, colors: { 0: "c-naranja", 2: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), sedes.length ? { el: sedesCard(sedes) } : null, "img/fondos/escuela.jpg"), "head-photo"),
     h("section", { class: "block escuela-first" }, h("div", { class: "wrap" },
       IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("escuela", "Editar la escuela")) : null,
       h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Clases semanales" })),
@@ -698,12 +740,25 @@ PAGES.escuela = function () {
   ];
 };
 
+function upcomingCard(up) {
+  var list = up.slice(0, 4);
+  return h("aside", { class: "sedes-card up-card" },
+    h("h2", { text: "Próximos conciertos" }),
+    list.length ? h("ul", { class: "up-list" }, list.map(function (e) {
+      var p = parseDate(e.fecha);
+      return h("li", null,
+        h("span", { class: "up-date" }, h("b", { text: p ? String(p.d) : "—" }), h("span", { text: p ? MES_CORTO[p.m - 1] : "" })),
+        h("span", { class: "up-txt" }, h("b", { text: e.titulo }),
+          h("span", { text: [e.hora, tr(e.lugar)].filter(Boolean).join(" · ") })));
+    })) : h("p", { class: "muted", text: "Pronto anunciaremos nuevos conciertos." }),
+    list.length ? h("a", { class: "up-more", href: "#actuaciones", onclick: function (ev) { ev.preventDefault(); var t = document.getElementById("proximas"); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); }, text: "Ver todos los detalles ↓" }) : null);
+}
 PAGES.actuaciones = function () {
   var s = eventsSplit();
   return [
-    headSize(pageHead("Actuaciones", "Una temporada de conciertos a lo largo del año", "Los conciertos en los auditorios municipales son gratuitos hasta completar aforo.", null, staffLettering("¡Nos vemos en el concierto!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), null, "img/fondos/actuaciones.jpg"), "head-fill"),
+    headSize(pageHead("Actuaciones", "Una temporada de conciertos a lo largo del año", "Los conciertos en los auditorios municipales son gratuitos hasta completar aforo.", null, staffLettering("¡Nos vemos en el concierto!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), { el: upcomingCard(s.up) }, "img/fondos/actuaciones.jpg"), "head-photo"),
     h("section", { class: "block" }, h("div", { class: "wrap" },
-      h("div", { class: "row-head" }, h("h2", { text: "Próximas actuaciones" }), adminLink("eventos", "Gestionar eventos")),
+      h("div", { class: "row-head", id: "proximas" }, h("h2", { text: "Próximas actuaciones" }), adminLink("eventos", "Gestionar eventos")),
       s.up.length ? h("div", { class: "events" }, s.up.map(function (e) { return eventRow(e); })) : emptyBox("Pronto anunciaremos las próximas actuaciones.", "eventos"))),
     h("section", { class: "block alt" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("h2", { text: "Nuestra temporada habitual" })),
@@ -1419,8 +1474,8 @@ function openLightbox(f) {
 }
 function copyText(btn, el) {
   var text = el.textContent.trim();
-  function ok() { btn.textContent = "Copiado"; setTimeout(function () { btn.textContent = "Copiar"; }, 1600); }
-  function fb() { var r = document.createRange(); r.selectNodeContents(el); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = "Seleccionado"; }
+  function ok() { btn.textContent = tr("Copiado"); setTimeout(function () { btn.textContent = tr("Copiar"); }, 1600); }
+  function fb() { var r = document.createRange(); r.selectNodeContents(el); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = tr("Seleccionado"); }
   try { navigator.clipboard.writeText(text).then(ok, fb); } catch (e) { fb(); }
 }
 
@@ -1437,6 +1492,30 @@ function route() {
   if (!PAGES[page]) { page = "inicio"; sub = ""; }
   return { page: page, sub: sub, key: page + "-" + sub };
 }
+function applyLangBasics() {
+  var ast = LANG === "ast";
+  document.documentElement.lang = ast ? "ast" : "es";
+  MESES = ast && AST.meses ? AST.meses.slice() : MESES_ES.slice();
+  MES_CORTO = ast && AST.mesesCorto ? AST.mesesCorto.slice() : MES_CORTO_ES.slice();
+  Array.prototype.forEach.call(document.querySelectorAll("[data-tr]"), function (el) {
+    if (el.dataset.es == null) el.dataset.es = el.textContent;
+    el.textContent = tr(el.dataset.es);
+  });
+  if (navEl) { if (navEl.dataset.es == null) navEl.dataset.es = navEl.getAttribute("aria-label"); navEl.setAttribute("aria-label", tr(navEl.dataset.es)); }
+  var lb = document.getElementById("lang-btn");
+  if (lb) {
+    lb.textContent = ast ? "ES" : "AST";
+    lb.setAttribute("aria-label", ast ? "Ver la web en castellano" : tr("Ver la web en asturiano"));
+    lb.setAttribute("title", ast ? "Ver la web en castellano" : "Ver la web en asturiano");
+    lb.setAttribute("lang", ast ? "es" : "ast");
+  }
+}
+(function () {
+  var lb = document.getElementById("lang-btn");
+  if (lb) lb.addEventListener("click", function () { navEl.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); setLang(LANG === "ast" ? "es" : "ast"); });
+  applyLangBasics();
+})();
+
 function render() {
   var r = route();
   var focusId = document.activeElement && document.activeElement.id;
@@ -2072,7 +2151,7 @@ var ASSETS_ADAPTER = {
     return SB.storage.from("fotos").remove([id]).then(function (r) { if (r.error) throw r.error; return { deleted: true }; });
   }
 };
-function updateNav() { var a = document.getElementById("nav-admin"); a.hidden = false; a.textContent = "Administración"; }
+function updateNav() { var a = document.getElementById("nav-admin"); a.hidden = false; a.textContent = tr("Administración"); }
 function refreshAdmin() {
   if (!SESSION) { IS_ADMIN = false; ASSETS = null; updateNav(); return Promise.resolve(); }
   return SB.rpc("es_admin").then(function (r) {

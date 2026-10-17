@@ -23,21 +23,25 @@
       <span class="brand-mark"><img src="img/logo/logo-asam-mini.svg" alt="Logotipo ASAM"></span>
       <span>Banda de Música de Siero<small>Asociación Sierense Amigos de la Música</small></span>
     </a>
-    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="nav">☰ Menú</button>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="nav" data-tr>☰ Menú</button>
     <nav class="nav" id="nav" aria-label="Páginas">
-      <a href="#inicio" data-p="inicio" class="nav-inicio">Inicio</a>
-      <a href="#quienes" data-p="quienes">Quiénes somos</a>
-      <a href="#historia" data-p="historia">Historia</a>
-      <a href="#banda" data-p="banda" class="nav-banda">Banda</a>
-      <a href="#bandin" data-p="bandin" class="nav-bandin">Bandín</a>
-      <a href="#escuela" data-p="escuela">Escuela</a>
-      <a href="#direccion" data-p="direccion">Dirección</a>
-      <a href="#actuaciones" data-p="actuaciones">Actuaciones</a>
-      <a href="#noticias" data-p="noticias">Noticias</a>
-      <a href="#galeria" data-p="galeria">Galería</a>
-      <a href="#contacto" data-p="contacto">Contacto</a>
-      <a href="#musicos" data-p="musicos" class="area-link">Área de músicos</a>
-      <a href="#admin" data-p="admin" class="admin-link" id="nav-admin">Administración</a>
+      <a href="#inicio" data-p="inicio" class="nav-inicio" data-tr>Inicio</a>
+      <a href="#quienes" data-p="quienes" data-tr>Quiénes somos</a>
+      <a href="#historia" data-p="historia" data-tr>Historia</a>
+      <a href="#banda" data-p="banda" class="nav-banda" data-tr>Banda</a>
+      <a href="#bandin" data-p="bandin" class="nav-bandin" data-tr>Bandín</a>
+      <a href="#escuela" data-p="escuela" data-tr>Escuela</a>
+      <a href="#direccion" data-p="direccion" data-tr>Dirección</a>
+      <a href="#actuaciones" data-p="actuaciones" data-tr>Actuaciones</a>
+      <a href="#noticias" data-p="noticias" data-tr>Noticias</a>
+      <a href="#galeria" data-p="galeria" data-tr>Galería</a>
+      <a href="#contacto" data-p="contacto" data-tr>Contacto</a>
+      <span class="nav-mid">
+        <a href="#socio" data-p="socio" class="socio-link" data-tr>Hazte socio</a>
+        <button type="button" class="lang-btn" id="lang-btn" lang="ast" title="Ver la web en asturiano" aria-label="Ver la web en asturiano">AST</button>
+      </span>
+      <a href="#musicos" data-p="musicos" class="area-link" data-tr>Área de músicos</a>
+      <a href="#admin" data-p="admin" class="admin-link" id="nav-admin" data-tr>Administración</a>
     </nav>
   </div>
 </header>
@@ -51,6 +55,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="js/config.js"></script>
+<script src="js/ast.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
