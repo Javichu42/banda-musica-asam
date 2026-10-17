@@ -1,8 +1,8 @@
 /* Web de la Asociación Sierense Amigos de la Música (ASAM) */
 (function () {
 "use strict";
-var LOGO_FULL = "img/logo.webp";
-var LOGO_MARK = "img/logo-simbolo.webp";
+var LOGO_FULL = "img/logo/logo-asam.svg";
+var LOGO_MARK = "img/logo/logo-asam-simbolo.svg";
 var CFG = window.ASAM_CONFIG || {};
 var SB = null, SESSION = null;
 function configured() { return /^https:\/\//.test(CFG.supabaseUrl || "") && CFG.supabaseAnonKey && !/PEGA_AQUI/.test(CFG.supabaseAnonKey + CFG.supabaseUrl); }
@@ -51,6 +51,9 @@ var DEFAULTS = {
   ],
   fotos: [],
   musicos: [],
+  profesores: [
+    { id: "silvia-ovies", nombre: "Silvia Ovies", especialidad: "Flauta", color: "verde", orden: 10, bio: "Flautista. Tras dirigir el Bandín, se dedica en exclusiva a la docencia en la escuela de la ASAM." }
+  ],
   historia: [
     { id: "h-1984", anio: "1984", detalle: "24 de diciembre", titulo: "Nace la Asociación", color: "azul", orden: 10, fotos: [], texto: "Se firma el acta fundacional de la Asociación Sierense Amigos de la Música, con la banda como proyecto central." },
     { id: "h-1985", anio: "1985", detalle: "Febrero", titulo: "Primera actuación", color: "negro", orden: 20, fotos: [], texto: "La banda debuta en el parque de Pola de Siero con un repertorio de pasodobles. La primera partitura que tocó fue «El abanico»." },
@@ -64,7 +67,7 @@ var DEFAULTS = {
   pie: { texto: "Asociación sin ánimo de lucro que enseña, toca y comparte música en el concejo de Siero desde 1984.", apoyos: "Con el apoyo del Ayuntamiento de Siero y la Fundación Caja Rural de Asturias", copyright: "© Asociación Sierense Amigos de la Música · Pola de Siero, Asturias" }
 };
 
-var COLLECTIONS = ["directiva", "directores", "eventos", "noticias", "enlaces", "fotos", "musicos", "historia"];
+var COLLECTIONS = ["directiva", "directores", "eventos", "noticias", "enlaces", "fotos", "musicos", "historia", "profesores"];
 var MAPA_DEFECTO = "https://maps.app.goo.gl/ekUwwADRScStcLzo6";
 var DATA = JSON.parse(JSON.stringify(DEFAULTS));
 var LIVE = false;          // true cuando la base de datos responde
@@ -239,13 +242,13 @@ PAGES.inicio = function () {
           h("div", null, h("span", { class: "ms-big", text: "años poniendo música a Siero" }), h("span", { class: "ms-small", text: "Fundada el 24 de diciembre de 1984" }))),
         h("a", { class: "ms-item", href: "#banda" }, h("i", { class: "dot", style: "background:var(--azul)" }), h("b", { text: "Banda" }), h("span", { text: "Viento y percusión" })),
         h("a", { class: "ms-item", href: "#bandin" }, h("i", { class: "dot", style: "background:var(--naranja)" }), h("b", { text: "Bandín" }), h("span", { text: "Cantera de jóvenes músicos" })),
-        h("a", { class: "ms-item", href: "#quienes" }, h("i", { class: "dot", style: "background:var(--verde)" }), h("b", { text: "Escuela" }), h("span", { text: "Clases para todas las edades" }))))),
+        h("a", { class: "ms-item", href: "#escuela" }, h("i", { class: "dot", style: "background:var(--verde)" }), h("b", { text: "Escuela" }), h("span", { text: "Clases desde los 6 años" }))))),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("h2", { text: "Tres maneras de vivir la música" })),
       h("div", { class: "doors" },
         h("a", { class: "door", href: "#banda" }, h("h3", null, h("i", { style: "background:var(--azul)" }), "La Banda"), h("p", { text: "Músicos profesionales y aficionados que llenan de música auditorios y fiestas del concejo." }), h("span", { class: "more", text: "Conoce la Banda →" })),
         h("a", { class: "door", href: "#bandin" }, h("h3", null, h("i", { style: "background:var(--naranja)" }), "El Bandín"), h("p", { text: "La cantera: los más jóvenes aprenden a tocar en grupo y preparan el relevo." }), h("span", { class: "more", text: "Conoce el Bandín →" })),
-        h("a", { class: "door", href: "#quienes" }, h("h3", null, h("i", { style: "background:var(--verde)" }), "La Escuela"), h("p", { text: "Instrumento, repertorio y práctica en grupo para principiantes y músicos avanzados." }), h("span", { class: "more", text: "Quiénes somos →" }))))),
+        h("a", { class: "door", href: "#escuela" }, h("h3", null, h("i", { style: "background:var(--verde)" }), "La Escuela"), h("p", { text: "Clases de instrumento y de repertorio y ensayo con el Bandín, desde los 6 años." }), h("span", { class: "more", text: "Conoce la Escuela →" }))))),
     h("section", { class: "block alt" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("h2", { text: "Próximas actuaciones" }), h("a", { class: "btn ghost small", href: "#actuaciones", text: "Ver todas" })),
       ev.length ? h("div", { class: "events" }, ev.map(function (e) { return eventRow(e); })) : emptyBox("Pronto anunciaremos las próximas actuaciones. Síguenos en redes para no perderte nada.", "eventos"))),
@@ -268,7 +271,8 @@ PAGES.quienes = function () {
         h("p", { text: "La asociación se sostiene gracias a sus socios, al apoyo institucional del Ayuntamiento de Siero y la Fundación Caja Rural de Asturias, y a empresas mecenas y amigos que comparten nuestra afición." })),
       h("div", null,
         h("div", { class: "aside-card" }, h("h3", { text: "Escuela de música" }), h("p", { text: "Formación impartida por profesorado con experiencia, desde la teoría hasta la práctica instrumental." }),
-          h("ul", null, h("li", { text: "Repertorio" }), h("li", { text: "Instrumentos de viento madera y metal" }), h("li", { text: "Percusión" }), h("li", { text: "Práctica de conjunto en el Bandín y la Banda" }))),
+          h("ul", null, h("li", { text: "Repertorio" }), h("li", { text: "Instrumentos de viento madera y metal" }), h("li", { text: "Percusión" }), h("li", { text: "Práctica de conjunto en el Bandín y la Banda" })),
+          h("a", { class: "btn small", href: "#escuela", style: "background:#fff;color:#2a63b3;justify-self:start", text: "Horarios y cuotas →" })),
         h("div", { class: "socio" }, h("b", { text: "Hazte socio desde 12 € al año" }), h("p", { text: "Personas, empresas e instituciones pueden colaborar con la divulgación de la música en Siero y la Comarca del Nora haciéndose socio o mecenas." })))))),
     h("section", { class: "block alt" }, h("div", { class: "wrap" }, h("div", { class: "pillars" },
       h("div", { class: "pillar" }, h("h3", null, h("i", { style: "background:var(--azul)" }), "Misión"), h("p", { text: "Promover la cultura musical en Siero y en Asturias a través de la educación, la interpretación y la participación de toda la comunidad." })),
@@ -403,7 +407,65 @@ PAGES.direccion = function () {
         return h("div", { class: "member" + (lead ? " lead-m" : "") + (m.foto ? " has-photo" : "") },
           m.foto ? h("img", { class: "mphoto", src: blobUrl(m.foto), alt: "Foto de " + m.nombre, loading: "lazy" }) : null,
           h("div", { class: "mtext" }, h("span", { class: "cargo", text: m.cargo }), h("b", { text: m.nombre })));
-      })) : emptyBox("Todavía no hay miembros de la directiva añadidos.", "directiva")))
+      })) : emptyBox("Todavía no hay miembros de la directiva añadidos.", "directiva"))),
+    h("section", { class: "block" }, h("div", { class: "wrap" },
+      h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Profesorado" }), h("p", { class: "muted", text: "Las clases de la escuela de música" })), adminLink("profesores", "Editar profesorado")),
+      teacherGrid()))
+  ];
+};
+
+function teacherGrid() {
+  var list = DATA.profesores.slice().sort(byOrden);
+  if (!list.length) return emptyBox("Todavía no hay profesores añadidos.", "profesores");
+  return h("div", { class: "teachers" }, list.map(function (p) {
+    return h("article", { class: "tcard" },
+      h("div", { class: "tphoto" }, p.foto ? h("img", { src: blobUrl(p.foto), alt: "Foto de " + p.nombre, loading: "lazy" })
+        : h("div", { class: "initials", style: "background:" + colorVar(p.color || "verde") }, initials(p.nombre))),
+      h("div", { class: "tbody" },
+        p.especialidad ? h("span", { class: "tspec", text: p.especialidad }) : null,
+        h("h3", { text: p.nombre }),
+        p.bio ? h("p", { text: p.bio }) : null));
+  }));
+}
+
+PAGES.escuela = function () {
+  var semana = [
+    ["azul", "Clase de instrumento", "45 min", "Cada alumno aprende su instrumento con su profesor."],
+    ["verde", "Clase de repertorio", "60 min", "Se trabajan las obras que se van a tocar en grupo."],
+    ["naranja", "Ensayo del Bandín", "60 min", "Todo lo aprendido se pone en práctica tocando juntos."]
+  ];
+  var cuotas = [
+    ["azul", "Clases de repertorio", "90", false],
+    ["verde", "Clases de instrumento", "120", false],
+    ["naranja", "Repertorio + instrumento", "210", true]
+  ];
+  return [
+    pageHead("Escuela de música", "Aprende a tocar desde los 6 años", "Clases de instrumento y de repertorio y, desde el principio, práctica en grupo con el Bandín."),
+    h("section", { class: "block" }, h("div", { class: "wrap" },
+      h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Educación musical semanal" }), h("p", { class: "muted", text: "Lo que hace un alumno cada semana" })),
+        h("span", { class: "age-badge", text: "Abierto a partir de 6 años" })),
+      h("div", { class: "week" }, semana.map(function (w) {
+        return h("div", { class: "wk" }, h("span", { class: "wk-time", style: "color:" + colorVar(w[0]) }, w[2]),
+          h("h3", null, h("i", { class: "dot", style: "background:" + colorVar(w[0]) }), w[1]), h("p", { text: w[3] }));
+      })))),
+    h("section", { class: "block alt" }, h("div", { class: "wrap" },
+      h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Cuotas de socio promesa" }), h("p", { class: "muted", text: "Precios por trimestre" }))),
+      h("div", { class: "prices" }, cuotas.map(function (c) {
+        return h("div", { class: "price" + (c[3] ? " featured" : ""), style: "--c:" + colorVar(c[0]) },
+          c[3] ? h("span", { class: "price-tag", text: "Lo más completo" }) : null,
+          h("h3", { text: c[1] }),
+          h("div", { class: "amount" }, h("b", { text: c[2] + " €" }), h("span", { text: "/ trimestre" })));
+      })),
+      h("div", { class: "pay" },
+        h("b", { text: "Forma de pago" }),
+        h("span", { class: "chip", text: "Cuota mensual" }),
+        h("span", { class: "chip", text: "Domiciliación bancaria" })))),
+    h("section", { class: "block" }, h("div", { class: "wrap" },
+      h("div", { class: "row-head" }, h("h2", { text: "Profesorado" }), adminLink("profesores", "Editar profesorado")),
+      teacherGrid(),
+      h("div", { class: "join", style: "margin-top:36px" },
+        h("div", null, h("b", { text: "¿Quieres apuntarte?" }), h("p", { text: "Escríbenos o llámanos y te contamos los horarios y qué instrumento encaja contigo." })),
+        h("a", { class: "btn", href: "#contacto", text: "Contacta" }))))
   ];
 };
 
@@ -533,7 +595,7 @@ var SCHEMAS = {
     filter: { k: "formacion", label: "Formación", options: ["Banda", "Bandín"] },
     group: function (d) { return (d.formacion || "") + " · " + (d.instrumento || "Otros"); } }
 };
-var TABS = [["directiva", "Directiva"], ["directores", "Directores"], ["historia", "Historia"], ["musicos", "Músicos"], ["eventos", "Eventos"], ["noticias", "Noticias"], ["enlaces", "Enlaces y redes"], ["fotos", "Galería"], ["contacto", "Contacto"], ["pie", "Pie de página"], ["usuarios", "Administradores"]];
+var TABS = [["directiva", "Directiva"], ["directores", "Directores"], ["profesores", "Profesorado"], ["historia", "Historia"], ["musicos", "Músicos"], ["eventos", "Eventos"], ["noticias", "Noticias"], ["enlaces", "Enlaces y redes"], ["fotos", "Galería"], ["contacto", "Contacto"], ["pie", "Pie de página"], ["usuarios", "Administradores"]];
 SCHEMAS.historia = { label: "Historia", singular: "hito", fields: [
     { k: "anio", l: "Año o etiqueta", req: true, ph: "1984" },
     { k: "detalle", l: "Fecha o detalle", ph: "24 de diciembre" },
@@ -545,6 +607,14 @@ SCHEMAS.historia = { label: "Historia", singular: "hito", fields: [
   title: function (d) { return (d.anio ? d.anio + " · " : "") + (d.titulo || ""); },
   sub: function (d) { return [d.detalle, (Array.isArray(d.fotos) && d.fotos.length) ? d.fotos.length + (d.fotos.length === 1 ? " imagen" : " imágenes") : ""].filter(Boolean).join(" · "); },
   sort: function (a, b) { return (Number(a.orden) || 999) - (Number(b.orden) || 999); } };
+SCHEMAS.profesores = { label: "Profesorado", singular: "profesor", fields: [
+    { k: "nombre", l: "Nombre y apellidos", req: true },
+    { k: "especialidad", l: "Especialidad", ph: "Flauta, Clarinete, Lenguaje musical…" },
+    { k: "foto", l: "Foto", type: "images", single: true, help: "Opcional. Mejor una foto vertical." },
+    { k: "bio", l: "Presentación", type: "textarea", help: "Unas líneas sobre su formación o experiencia." },
+    { k: "color", l: "Color (si no hay foto)", type: "select", options: [["verde", "Verde"], ["azul", "Azul"], ["naranja", "Naranja"], ["negro", "Negro"]] },
+    { k: "orden", l: "Orden", type: "number" }],
+  title: function (d) { return d.nombre; }, sub: function (d) { return d.especialidad || ""; }, sort: byOrden };
 var LIST_FILTER = {};
 
 PAGES.admin = function (tab) {
@@ -960,7 +1030,7 @@ function adminPie() {
 function renderFooter() {
   var p = DATA.pie || {}, c = DATA.contacto || {};
   var socials = DATA.enlaces.slice().sort(byOrden).filter(function (l) { return safeUrl(l.url); });
-  var pages = [["inicio", "Inicio"], ["quienes", "Quiénes somos"], ["banda", "Banda"], ["bandin", "Bandín"], ["actuaciones", "Actuaciones"], ["galeria", "Galería"], ["contacto", "Contacto"]];
+  var pages = [["inicio", "Inicio"], ["quienes", "Quiénes somos"], ["banda", "Banda"], ["bandin", "Bandín"], ["escuela", "Escuela"], ["actuaciones", "Actuaciones"], ["galeria", "Galería"], ["contacto", "Contacto"]];
   var el = document.getElementById("footer");
   el.replaceChildren(
     h("div", { class: "foot" },
