@@ -73,6 +73,7 @@ var DEFAULTS = {
       { nombre: "Clase de repertorio", duracion: "60 min", texto: "Clase grupal de teoría musical.", color: "verde" },
       { nombre: "Ensayo del Bandín", duracion: "60 min", texto: "Todo lo aprendido se pone en práctica tocando juntos.", color: "naranja", enlace: "#bandin", boton: "Conoce el Bandín" }
     ],
+    sedes: "Casa de la Música, Pola de Siero\nLa Fresneda\nLugones",
     cuotasTitulo: "Cuotas de socio promesa",
     periodo: "trimestre",
     cuotas: [
@@ -554,6 +555,7 @@ PAGES.escuela = function () {
   var cuotas = Array.isArray(E.cuotas) ? E.cuotas : [];
   var pago = String(E.pago || "").split(",").map(function (x) { return x.trim(); }).filter(Boolean);
   var periodo = E.periodo || "trimestre";
+  var sedes = String(E.sedes || "").split(/\n|;/).map(function (x) { return x.trim(); }).filter(Boolean);
   return [
     pageHead("Escuela de música", E.titulo || "Escuela de música", E.intro || null),
     h("section", { class: "block" }, h("div", { class: "wrap" },
@@ -564,7 +566,14 @@ PAGES.escuela = function () {
         return h("div", { class: "wk" }, h("span", { class: "wk-time", style: "color:" + colorVar(w.color) }, w.duracion || ""),
           h("h3", null, h("i", { class: "dot", style: "background:" + colorVar(w.color) }), w.nombre || ""), w.texto ? h("p", { text: w.texto }) : null,
           (w.enlace && (/^#[a-z]+$/.test(w.enlace) || safeUrl(w.enlace))) ? h("a", { class: "btn ghost small wk-link", href: w.enlace, target: /^#/.test(w.enlace) ? null : "_blank", rel: /^#/.test(w.enlace) ? null : "noopener", text: (w.boton || "Saber más") + " →" }) : null);
-      })))),
+      })),
+      sedes.length ? h("div", { class: "sedes" },
+        h("div", { class: "sedes-head" }, h("h3", { text: "¿Dónde se dan las clases?" }),
+          h("p", { class: "muted", text: sedes.length > 1 ? "En " + sedes.length + " sedes del concejo:" : "" })),
+        h("div", { class: "sedes-list" }, sedes.map(function (sd) {
+          return h("a", { class: "sede", href: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(sd + (/siero|lugones|fresneda/i.test(sd) ? ", Asturias" : ", Siero, Asturias")), target: "_blank", rel: "noopener" },
+            h("span", { class: "sede-pin", "aria-hidden": "true", text: "📍" }), h("b", { text: sd }), h("span", { class: "sede-map", text: "Ver en el mapa →" }));
+        }))) : null)),
     cuotas.length ? h("section", { class: "block alt" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("div", null, h("h2", { text: E.cuotasTitulo || "Cuotas" }), h("p", { class: "muted", text: "Precios por " + periodo }))),
       h("div", { class: "prices" }, cuotas.map(function (c) {
@@ -1147,6 +1156,7 @@ function adminEscuela() {
   var edad = input("es-edad", E.edad, "Abierto a partir de 6 años");
   var cuotasTitulo = input("es-ctit", E.cuotasTitulo), periodo = input("es-per", E.periodo, "trimestre, mes, curso…");
   var pago = input("es-pago", E.pago, "Cuota trimestral, Domiciliación bancaria");
+  var sedesIn = h("textarea", { id: "es-sedes", style: "min-height:90px" }); sedesIn.value = E.sedes || "";
 
   var semBox = h("div", { class: "rep-rows" }), cuoBox = h("div", { class: "rep-rows" });
   var n = 0;
@@ -1186,6 +1196,7 @@ function adminEscuela() {
     field("es-titulo", "Título", titulo), field("es-intro", "Presentación", intro), field("es-edad", "Edad / etiqueta", edad),
     h("h3", { text: "Clases semanales", style: "margin-top:10px" }), semBox,
     h("button", { class: "btn ghost small", type: "button", style: "justify-self:start", text: "+ Añadir actividad", onclick: function () { semRow({ color: "azul" }); } }),
+    field("es-sedes", "¿Dónde se dan las clases?", sedesIn, "Un lugar por línea. Cada uno enlaza a Google Maps."),
     h("h3", { text: "Cuotas", style: "margin-top:10px" }),
     field("es-ctit", "Título de las cuotas", cuotasTitulo), field("es-per", "Periodo de los precios", periodo, "Se muestra como «90 € / trimestre»."),
     cuoBox,
@@ -1198,7 +1209,7 @@ function adminEscuela() {
       semana: Array.prototype.map.call(semBox.children, function (r) { return r._get(); }).filter(function (w) { return w.nombre; }),
       cuotasTitulo: cuotasTitulo.value.trim(), periodo: periodo.value.trim() || "trimestre",
       cuotas: Array.prototype.map.call(cuoBox.children, function (r) { return r._get(); }).filter(function (c) { return c.nombre; }),
-      pago: pago.value.trim() };
+      pago: pago.value.trim(), sedes: sedesIn.value.trim() };
     save.disabled = true; save.textContent = "Guardando…";
     DB.doc("ajustes/escuela").set(obj).then(function () { save.disabled = false; save.textContent = "Guardar la escuela"; setStatus(st, "Escuela guardada.", true); },
       function (e) { save.disabled = false; save.textContent = "Guardar la escuela"; setStatus(st, errMsg(e), false); });
