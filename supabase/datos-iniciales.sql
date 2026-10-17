@@ -1,0 +1,26 @@
+-- Datos iniciales de la web de la ASAM.
+-- Ejecútalo UNA sola vez, después de esquema.sql.
+-- Si lo vuelves a ejecutar no duplica nada: los elementos que ya existen se dejan como están.
+
+insert into public.contenido (coleccion, id, datos) values
+  ('directiva', 'presidente', '{"cargo":"Presidente","nombre":"Carlos Presa","orden":1}'::jsonb),
+  ('directiva', 'jaime-pelaez', '{"cargo":"Vocal","nombre":"Jaime Peláez","orden":5}'::jsonb),
+  ('directores', 'emilio-huerta', '{"nombre":"Emilio Huerta Villanueva","cargo":"Director de la Banda de Música","color":"azul","orden":1,"bio":"Nacido en Traspando (Siero), es flautista de la banda desde su creación en 1984. Dirigió el Bandín entre 2008 y 2012, fue subdirector de la Banda de 2014 a 2021 y desde septiembre de 2021 es su director.","trayectoria":"Profesor de Piano, Profesor Superior de Lenguaje Musical y de Órgano por el Conservatorio Superior Eduardo Martínez Torner de Oviedo.\nMaestro especialista en Educación Musical por la Universidad de Oviedo.\nOrganista titular de la parroquia de San Pedro Apóstol de Pola de Siero.\nCompositor y arreglista para banda, órgano, coro, teatro y música infantil.\nMiembro del dúo Nuberu entre 1991 y 2007."}'::jsonb),
+  ('directores', 'victor-peino', '{"nombre":"Víctor Peinó Ornia","cargo":"Director del Bandín","color":"naranja","orden":2,"bio":"Joven clarinetista formado en la casa. Tomó el relevo de la flautista Silvia Ovies, que se dedica en exclusiva a la docencia en la escuela de la ASAM, y debutó al frente del Bandín con bandas sonoras de cine y una obra de Holst.","trayectoria":""}'::jsonb),
+  ('eventos', 'carnaval-2025', '{"titulo":"Concierto de Carnaval","fecha":"2025-03-14","hora":"20:00","lugar":"Auditorio de Pola de Siero","formacion":"Banda","descripcion":""}'::jsonb),
+  ('eventos', 'primavera-2025', '{"titulo":"Concierto de Primavera","fecha":"2025-04-11","hora":"20:00","lugar":"La Fresneda","formacion":"Banda","descripcion":""}'::jsonb),
+  ('eventos', 'sabadell-2025', '{"titulo":"Intercambio con la banda de Sabadell","fecha":"2025-05-02","hora":"20:00","lugar":"Auditorio de Pola de Siero","formacion":"Banda","descripcion":""}'::jsonb),
+  ('eventos', 'cosmupa-2025', '{"titulo":"Concierto con la COSMUPA","fecha":"2025-05-16","hora":"20:00","lugar":"Auditorio de Pola de Siero","formacion":"Banda","descripcion":""}'::jsonb),
+  ('eventos', 'llanera-2025', '{"titulo":"Concierto en Llanera","fecha":"2025-05-23","hora":"19:00","lugar":"Posada de Llanera","formacion":"Banda","descripcion":""}'::jsonb),
+  ('eventos', 'tardeo-2025', '{"titulo":"Concierto del Tardeo","fecha":"2025-07-04","hora":"20:00","lugar":"El Paraguas, Pola de Siero","formacion":"Banda","descripcion":""}'::jsonb),
+  ('noticias', 'convenio-2025', '{"titulo":"La ASAM y el Ayuntamiento de Siero renuevan su convenio","fecha":"2025-11-03","etiqueta":"Asociación","texto":"El acuerdo mantiene el apoyo municipal a la promoción y difusión de la música en el concejo. Al acto acudieron representantes de la junta directiva, la concejala de Cultura y el alcalde."}'::jsonb),
+  ('noticias', 'mecenas', '{"titulo":"Nuevos apoyos para la música en Siero","fecha":"","etiqueta":"Mecenas","texto":"Voltaje se suma como mecenas de la Banda y el Bandín, y Ornia&Campal Abogados firma un convenio de colaboración."}'::jsonb),
+  ('noticias', 'santa-cecilia-40', '{"titulo":"Santa Cecilia con sabor a reencuentro","fecha":"","etiqueta":"Banda","texto":"Antiguos músicos vuelven a la banda y Alfonso Sánchez Peña, director durante más de treinta años, dirige dos piezas, entre ellas su pasodoble «El mar y la montaña»."}'::jsonb),
+  ('noticias', 'navidad-siero-musical', '{"titulo":"Concierto de Navidad con la Sociedad Siero Musical","fecha":"","etiqueta":"Banda y Bandín","texto":"Más de un centenar de músicos y cantantes en el Auditorio, con la Marcha Radetzky como broche y el público marcando el compás."}'::jsonb),
+  ('noticias', 'nuevo-director-bandin', '{"titulo":"Víctor Peinó Ornia, nuevo director del Bandín","fecha":"","etiqueta":"Bandín","texto":"El joven clarinetista sustituye a Silvia Ovies, que pasa a dedicarse por completo a la docencia en la escuela."}'::jsonb),
+  ('enlaces', 'facebook', '{"nombre":"Facebook","url":"https://www.facebook.com/banda.siero/","orden":1}'::jsonb),
+  ('enlaces', 'instagram', '{"nombre":"Instagram","url":"https://www.instagram.com/banda_asam/","orden":2}'::jsonb),
+  ('enlaces', 'youtube', '{"nombre":"YouTube","url":"https://www.youtube.com/@BandadeM%C3%BAsicadeSiero","orden":3}'::jsonb),
+  ('ajustes', 'contacto', '{"direccion":"Calle Alcalde Parrondo, 32 · 33510 Pola de Siero (Asturias)","telefono":"628 86 31 68","email":"administracion@bandadesiero.es"}'::jsonb),
+  ('ajustes', 'pie', '{"texto":"Asociación sin ánimo de lucro que enseña, toca y comparte música en el concejo de Siero desde 1984.","apoyos":"Con el apoyo del Ayuntamiento de Siero y la Fundación Caja Rural de Asturias","copyright":"© Asociación Sierense Amigos de la Música · Pola de Siero, Asturias"}'::jsonb)
+on conflict (coleccion, id) do nothing;

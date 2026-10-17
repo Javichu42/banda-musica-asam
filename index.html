@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Banda de Música de Siero · ASAM</title>
+<meta name="description" content="Asociación Sierense Amigos de la Música (ASAM): Banda de Música de Siero, Bandín y escuela de música en Pola de Siero desde 1984.">
+<meta name="theme-color" content="#3f7fd6">
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="apple-touch-icon" href="img/favicon.png">
+<meta property="og:title" content="Banda de Música de Siero">
+<meta property="og:description" content="Banda, Bandín y escuela de música en Pola de Siero desde 1984.">
+<meta property="og:image" content="img/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#inicio">
+      <span class="badge"><img src="img/logo-simbolo.webp" alt="Logotipo ASAM"></span>
+      <span>Banda de Música de Siero<small>Asociación Sierense Amigos de la Música</small></span>
+    </a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="nav">☰ Menú</button>
+    <nav class="nav" id="nav" aria-label="Páginas">
+      <a href="#inicio" data-p="inicio">Inicio</a>
+      <a href="#quienes" data-p="quienes">Quiénes somos</a>
+      <a href="#historia" data-p="historia">Historia</a>
+      <a href="#banda" data-p="banda">Banda</a>
+      <a href="#bandin" data-p="bandin">Bandín</a>
+      <a href="#direccion" data-p="direccion">Dirección</a>
+      <a href="#actuaciones" data-p="actuaciones">Actuaciones</a>
+      <a href="#noticias" data-p="noticias">Noticias</a>
+      <a href="#imagenes" data-p="imagenes">Imágenes</a>
+      <a href="#contacto" data-p="contacto">Contacto</a>
+      <a href="#admin" data-p="admin" class="admin-link" id="nav-admin" hidden>Administración</a>
+    </nav>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<footer>
+  <div class="wrap" id="footer"></div>
+</footer>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
