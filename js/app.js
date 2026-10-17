@@ -51,11 +51,21 @@ var DEFAULTS = {
   ],
   fotos: [],
   musicos: [],
-  contacto: { direccion: "Calle Alcalde Parrondo, 32 · 33510 Pola de Siero (Asturias)", telefono: "628 86 31 68", email: "administracion@bandadesiero.es" },
+  historia: [
+    { id: "h-1984", anio: "1984", detalle: "24 de diciembre", titulo: "Nace la Asociación", color: "azul", orden: 10, fotos: [], texto: "Se firma el acta fundacional de la Asociación Sierense Amigos de la Música, con la banda como proyecto central." },
+    { id: "h-1985", anio: "1985", detalle: "Febrero", titulo: "Primera actuación", color: "negro", orden: 20, fotos: [], texto: "La banda debuta en el parque de Pola de Siero con un repertorio de pasodobles. La primera partitura que tocó fue «El abanico»." },
+    { id: "h-sanchez-pena", anio: "+30 años", detalle: "Una larga etapa", titulo: "La etapa de Alfonso Sánchez Peña", color: "verde", orden: 30, fotos: [], texto: "Durante más de tres décadas dirige la banda y le da su sello. Es autor, entre otras obras, del pasodoble «El mar y la montaña»." },
+    { id: "h-2008", anio: "2008", detalle: "Hasta 2012", titulo: "El Bandín coge fuerza", color: "naranja", orden: 40, fotos: [], texto: "Emilio Huerta, flautista de la banda desde su fundación, dirige el Bandín, la cantera de jóvenes músicos." },
+    { id: "h-2021", anio: "2021", detalle: "Septiembre", titulo: "Nueva dirección de la Banda", color: "azul", orden: 50, fotos: [], texto: "Emilio Huerta Villanueva, subdirector desde 2014, asume la dirección de la Banda de Música de Siero." },
+    { id: "h-2024", anio: "2024", detalle: "40 aniversario", titulo: "Cuarenta años y nueva imagen", color: "verde", orden: 60, fotos: [], texto: "La asociación renueva su identidad: el azul representa la tradición, el verde el futuro en Siero y el naranja el amanecer musical de los más jóvenes." },
+    { id: "h-hoy", anio: "Hoy", detalle: "Nueva etapa", titulo: "Relevo en el Bandín", color: "naranja", orden: 70, fotos: [], texto: "El clarinetista Víctor Peinó Ornia toma la batuta del Bandín, una de las pocas formaciones infantojuveniles de Asturias." }
+  ],
+  contacto: { direccion: "Calle Alcalde Parrondo, 32 · 33510 Pola de Siero (Asturias)", telefono: "628 86 31 68", email: "administracion@bandadesiero.es", mapa: "https://maps.app.goo.gl/ekUwwADRScStcLzo6" },
   pie: { texto: "Asociación sin ánimo de lucro que enseña, toca y comparte música en el concejo de Siero desde 1984.", apoyos: "Con el apoyo del Ayuntamiento de Siero y la Fundación Caja Rural de Asturias", copyright: "© Asociación Sierense Amigos de la Música · Pola de Siero, Asturias" }
 };
 
-var COLLECTIONS = ["directiva", "directores", "eventos", "noticias", "enlaces", "fotos", "musicos"];
+var COLLECTIONS = ["directiva", "directores", "eventos", "noticias", "enlaces", "fotos", "musicos", "historia"];
+var MAPA_DEFECTO = "https://maps.app.goo.gl/ekUwwADRScStcLzo6";
 var DATA = JSON.parse(JSON.stringify(DEFAULTS));
 var LIVE = false;          // true cuando la base de datos responde
 var DB = null, ASSETS = null, IS_ADMIN = false;
@@ -142,14 +152,32 @@ function newsCard(n, i) {
       })) : null));
 }
 function emptyBox(msg, tab) { return h("div", { class: "empty" }, h("p", { text: msg }), adminLink(tab, "Añadir desde Administración")); }
+function socialBrand(l) {
+  var t = ((l.url || "") + " " + (l.nombre || "")).toLowerCase();
+  if (/facebook|fb\.com/.test(t)) return "facebook";
+  if (/instagram/.test(t)) return "instagram";
+  if (/youtube|youtu\.be/.test(t)) return "youtube";
+  if (/whatsapp|wa\.me/.test(t)) return "whatsapp";
+  if (/tiktok/.test(t)) return "tiktok";
+  if (/twitter|x\.com|(^|\s)x(\s|$)/.test(t)) return "x";
+  if (/spotify/.test(t)) return "spotify";
+  return "";
+}
 function linksList() {
   return DATA.enlaces.slice().sort(byOrden).filter(function (l) { return safeUrl(l.url); }).map(function (l) {
-    return h("a", { class: "btn ghost", href: l.url, target: "_blank", rel: "noopener", text: l.nombre });
+    var b = socialBrand(l);
+    return h("a", { class: b ? "btn soc soc-" + b : "btn ghost", href: l.url, target: "_blank", rel: "noopener", text: l.nombre });
   });
 }
 
 /* ---------- Páginas ---------- */
 var PAGES = {};
+
+function yearsSinceFounding() {
+  var d = new Date(), y = d.getFullYear() - 1984;
+  if (d.getMonth() < 11 || (d.getMonth() === 11 && d.getDate() < 24)) y--;
+  return y;
+}
 
 PAGES.inicio = function () {
   var ev = eventsSplit().up.slice(0, 3), news = sortedNews().slice(0, 3);
@@ -163,17 +191,19 @@ PAGES.inicio = function () {
           h("div", { class: "actions" }, h("a", { class: "btn primary", href: "#actuaciones", text: "Ver actuaciones" }), h("a", { class: "btn ghost", href: "#contacto", text: "Apúntate a clase" }))),
         h("div", { class: "logo-card" }, h("img", { src: LOGO_FULL, alt: "Logotipo de la Asociación Sierense Amigos de la Música" }))),
       h("div", { class: "staff-lines", "aria-hidden": "true" }),
-      h("div", { class: "facts wrap" },
-        h("div", null, h("b", { text: "1984" }), h("span", { text: "Año de fundación" })),
-        h("div", null, h("b", { text: "Banda" }), h("span", { text: "Viento y percusión" })),
-        h("div", null, h("b", { text: "Bandín" }), h("span", { text: "Cantera de jóvenes músicos" })),
-        h("div", null, h("b", { text: "Escuela" }), h("span", { text: "Clases para todas las edades" })))),
+      h("div", { class: "milestone" }, h("div", { class: "wrap ms-grid" },
+        h("div", { class: "ms-years" },
+          h("b", { text: String(yearsSinceFounding()) }),
+          h("div", null, h("span", { class: "ms-big", text: "años poniendo música a Siero" }), h("span", { class: "ms-small", text: "Fundada el 24 de diciembre de 1984" }))),
+        h("a", { class: "ms-item", href: "#banda" }, h("i", { class: "dot", style: "background:var(--azul)" }), h("b", { text: "Banda" }), h("span", { text: "Viento y percusión" })),
+        h("a", { class: "ms-item", href: "#bandin" }, h("i", { class: "dot", style: "background:var(--naranja)" }), h("b", { text: "Bandín" }), h("span", { text: "Cantera de jóvenes músicos" })),
+        h("a", { class: "ms-item", href: "#quienes" }, h("i", { class: "dot", style: "background:var(--verde)" }), h("b", { text: "Escuela" }), h("span", { text: "Clases para todas las edades" }))))),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("h2", { text: "Tres maneras de vivir la música" })),
       h("div", { class: "doors" },
         h("a", { class: "door", href: "#banda" }, h("h3", null, h("i", { style: "background:var(--azul)" }), "La Banda"), h("p", { text: "Músicos profesionales y aficionados que llenan de música auditorios y fiestas del concejo." }), h("span", { class: "more", text: "Conoce la Banda →" })),
         h("a", { class: "door", href: "#bandin" }, h("h3", null, h("i", { style: "background:var(--naranja)" }), "El Bandín"), h("p", { text: "La cantera: los más jóvenes aprenden a tocar en grupo y preparan el relevo." }), h("span", { class: "more", text: "Conoce el Bandín →" })),
-        h("a", { class: "door", href: "#quienes" }, h("h3", null, h("i", { style: "background:var(--verde)" }), "La Escuela"), h("p", { text: "Lenguaje musical e instrumento para principiantes y músicos avanzados." }), h("span", { class: "more", text: "Quiénes somos →" }))))),
+        h("a", { class: "door", href: "#quienes" }, h("h3", null, h("i", { style: "background:var(--verde)" }), "La Escuela"), h("p", { text: "Instrumento, repertorio y práctica en grupo para principiantes y músicos avanzados." }), h("span", { class: "more", text: "Quiénes somos →" }))))),
     h("section", { class: "block alt" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("h2", { text: "Próximas actuaciones" }), h("a", { class: "btn ghost small", href: "#actuaciones", text: "Ver todas" })),
       ev.length ? h("div", { class: "events" }, ev.map(function (e) { return eventRow(e); })) : emptyBox("Pronto anunciaremos las próximas actuaciones. Síguenos en redes para no perderte nada.", "eventos"))),
@@ -181,7 +211,7 @@ PAGES.inicio = function () {
       h("div", { class: "row-head" }, h("h2", { text: "Últimas noticias" }), h("a", { class: "btn ghost small", href: "#noticias", text: "Todas las noticias" })),
       news.length ? h("div", { class: "news" }, news.map(newsCard)) : emptyBox("Todavía no hay noticias publicadas.", "noticias"),
       h("div", { class: "join", style: "margin-top:40px" },
-        h("div", null, h("b", { text: "¿Quieres tocar con nosotros?" }), h("p", { text: "Clases para todas las edades y sitio en el Bandín y la Banda. Hazte socio desde 1 € al mes." })),
+        h("div", null, h("b", { text: "¿Quieres tocar con nosotros?" }), h("p", { text: "Clases para todas las edades y sitio en el Bandín y la Banda. Hazte socio desde 12 € al año." })),
         h("a", { class: "btn", href: "#contacto", text: "Contacta" }))))
   ];
 };
@@ -196,8 +226,8 @@ PAGES.quienes = function () {
         h("p", { text: "La asociación se sostiene gracias a sus socios, al apoyo institucional del Ayuntamiento de Siero y la Fundación Caja Rural de Asturias, y a empresas mecenas y amigos que comparten nuestra afición." })),
       h("div", null,
         h("div", { class: "aside-card" }, h("h3", { text: "Escuela de música" }), h("p", { text: "Formación impartida por profesorado con experiencia, desde la teoría hasta la práctica instrumental." }),
-          h("ul", null, h("li", { text: "Lenguaje musical" }), h("li", { text: "Instrumentos de viento madera y metal" }), h("li", { text: "Percusión" }), h("li", { text: "Práctica de conjunto en el Bandín y la Banda" }))),
-        h("div", { class: "socio" }, h("b", { text: "Hazte socio desde 1 € al mes" }), h("p", { text: "Personas, empresas e instituciones pueden colaborar con la divulgación de la música en Siero y la Comarca del Nora." })))))),
+          h("ul", null, h("li", { text: "Repertorio" }), h("li", { text: "Instrumentos de viento madera y metal" }), h("li", { text: "Percusión" }), h("li", { text: "Práctica de conjunto en el Bandín y la Banda" }))),
+        h("div", { class: "socio" }, h("b", { text: "Hazte socio desde 12 € al año" }), h("p", { text: "Personas, empresas e instituciones pueden colaborar con la divulgación de la música en Siero y la Comarca del Nora haciéndose socio o mecenas." })))))),
     h("section", { class: "block alt" }, h("div", { class: "wrap" }, h("div", { class: "pillars" },
       h("div", { class: "pillar" }, h("h3", null, h("i", { style: "background:var(--azul)" }), "Misión"), h("p", { text: "Promover la cultura musical en Siero y en Asturias a través de la educación, la interpretación y la participación de toda la comunidad." })),
       h("div", { class: "pillar" }, h("h3", null, h("i", { style: "background:var(--verde)" }), "Visión"), h("p", { text: "Ser un referente cultural del concejo, con un entorno inclusivo donde personas de cualquier edad desarrollen su talento musical." })),
@@ -206,21 +236,21 @@ PAGES.quienes = function () {
 };
 
 PAGES.historia = function () {
-  var items = [
-    ["1984", "24 de diciembre", "var(--azul)", "Nace la Asociación", "Se firma el acta fundacional de la Asociación Sierense Amigos de la Música, con la banda como proyecto central."],
-    ["1985", "Febrero", "var(--nota)", "Primera actuación", "La banda debuta en el parque de Pola de Siero con un repertorio de pasodobles. La primera partitura que tocó fue «El abanico»."],
-    ["+30 años", "Una larga etapa", "var(--verde)", "La etapa de Alfonso Sánchez Peña", "Durante más de tres décadas dirige la banda y le da su sello. Es autor, entre otras obras, del pasodoble «El mar y la montaña»."],
-    ["2008", "Hasta 2012", "var(--naranja)", "El Bandín coge fuerza", "Emilio Huerta, flautista de la banda desde su fundación, dirige el Bandín, la cantera de jóvenes músicos."],
-    ["2021", "Septiembre", "var(--azul)", "Nueva dirección de la Banda", "Emilio Huerta Villanueva, subdirector desde 2014, asume la dirección de la Banda de Música de Siero."],
-    ["2024", "40 aniversario", "var(--verde)", "Cuarenta años y nueva imagen", "La asociación renueva su identidad: el azul representa la tradición, el verde el futuro en Siero y el naranja el amanecer musical de los más jóvenes."],
-    ["Hoy", "Nueva etapa", "var(--naranja)", "Relevo en el Bandín", "El clarinetista Víctor Peinó Ornia toma la batuta del Bandín, una de las pocas formaciones infantojuveniles de Asturias."]
-  ];
+  var items = DATA.historia.slice().sort(function (x, y) { return (Number(x.orden) || 999) - (Number(y.orden) || 999); });
   return [
     pageHead("Historia", "Más de cuatro décadas de compases", "Siero tiene una larga tradición bandística. La ASAM tomó el relevo en los años ochenta y desde entonces no ha dejado de sonar.", "negra"),
-    h("section", { class: "block" }, h("div", { class: "wrap" }, items.map(function (it) {
-      return h("div", { class: "tl-item" }, h("div", { class: "tl-year" }, it[0], h("small", { text: it[1] })), h("div", { class: "tl-dot", style: "background:" + it[2] }),
-        h("div", { class: "tl-body" }, h("h3", { text: it[3] }), h("p", { text: it[4] })));
-    })))
+    h("section", { class: "block" }, h("div", { class: "wrap" },
+      IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("historia", "Editar historia")) : null,
+      items.length ? items.map(function (it) {
+        var fotos = Array.isArray(it.fotos) ? it.fotos.filter(Boolean) : [];
+        return h("div", { class: "tl-item" }, h("div", { class: "tl-year" }, it.anio || "", it.detalle ? h("small", { text: it.detalle }) : null),
+          h("div", { class: "tl-dot", style: "background:" + colorVar(it.color) }),
+          h("div", { class: "tl-body" }, h("h3", { text: it.titulo }), it.texto ? h("p", { text: it.texto }) : null,
+            fotos.length ? h("div", { class: "tl-photos" + (fotos.length === 1 ? " one" : "") }, fotos.map(function (id) {
+              return h("button", { type: "button", "aria-label": "Ver foto: " + (it.titulo || ""), onclick: function () { openLightbox({ asset: id, titulo: (it.anio ? it.anio + " · " : "") + (it.titulo || "") }); } },
+                h("img", { src: blobUrl(id), alt: "", loading: "lazy" }));
+            })) : null));
+      }) : emptyBox("Todavía no hay hitos en la historia.", "historia")))
   ];
 };
 
@@ -373,7 +403,7 @@ PAGES.imagenes = function () {
   var cats = ["todas", "Banda", "Bandín", "Escuela", "Asociación"];
   var visible = fotos.filter(function (f) { return FOTO_FILTER === "todas" || f.categoria === FOTO_FILTER; });
   return [
-    pageHead("Imágenes", "Galería", "Momentos de la Banda, el Bandín y la escuela. En nuestras redes hay muchas más fotos y vídeos."),
+    pageHead("Galería", "Momentos de la Banda, el Bandín y la escuela", "En nuestras redes hay muchas más fotos y vídeos."),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" },
         h("div", { class: "filters", role: "group", "aria-label": "Filtrar galería" }, cats.map(function (c) {
@@ -388,6 +418,8 @@ PAGES.imagenes = function () {
   ];
 };
 
+PAGES.galeria = PAGES.imagenes;
+
 PAGES.contacto = function () {
   var c = DATA.contacto || {};
   function kv(k, v, id) {
@@ -400,11 +432,10 @@ PAGES.contacto = function () {
     h("section", { class: "block" }, h("div", { class: "wrap" },
       IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("contacto", "Editar datos de contacto")) : null,
       h("div", { class: "contact" },
-        h("div", { class: "cbox" }, kv("Sede", c.direccion), kv("Teléfono", c.telefono, "c-tel"), kv("Correo electrónico", c.email, "c-mail"),
-          c.direccion ? h("a", { class: "btn ghost", style: "justify-self:start", href: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(c.direccion), target: "_blank", rel: "noopener", text: "Cómo llegar" }) : null),
+        h("div", { class: "cbox" }, kv("Sede", c.direccion), kv("Teléfono (WhatsApp)", c.telefono, "c-tel"), kv("Correo electrónico", c.email, "c-mail"),
+          h("a", { class: "btn ghost", style: "justify-self:start", href: safeUrl(c.mapa) || MAPA_DEFECTO, target: "_blank", rel: "noopener", text: "Cómo llegar" })),
         h("div", { class: "cbox hl" }, h("h3", { text: "Únete a la música" }),
-          h("p", { text: "Si quieres matricularte en la escuela, tocar en la Banda o en el Bandín, o hacerte socio desde 1 € al mes, llámanos o escríbenos y te contamos todo: instrumentos, horarios y tarifas." }),
-          h("div", { class: "links" }, linksList().map(function (a) { a.className = "btn small"; a.style.background = "#fff"; a.style.color = "#145c30"; return a; }))))))
+          h("p", { text: "Si quieres matricularte en la escuela, tocar en la Banda o en el Bandín, o hacerte socio desde 12 € al año, llámanos, escríbenos por WhatsApp o mándanos un correo y te contamos todo: instrumentos, horarios y tarifas." })))))
   ];
 };
 
@@ -460,7 +491,18 @@ var SCHEMAS = {
     filter: { k: "formacion", label: "Formación", options: ["Banda", "Bandín"] },
     group: function (d) { return (d.formacion || "") + " · " + (d.instrumento || "Otros"); } }
 };
-var TABS = [["directiva", "Directiva"], ["directores", "Directores"], ["musicos", "Músicos"], ["eventos", "Eventos"], ["noticias", "Noticias"], ["enlaces", "Enlaces y redes"], ["fotos", "Galería"], ["contacto", "Contacto"], ["pie", "Pie de página"], ["usuarios", "Administradores"]];
+var TABS = [["directiva", "Directiva"], ["directores", "Directores"], ["historia", "Historia"], ["musicos", "Músicos"], ["eventos", "Eventos"], ["noticias", "Noticias"], ["enlaces", "Enlaces y redes"], ["fotos", "Galería"], ["contacto", "Contacto"], ["pie", "Pie de página"], ["usuarios", "Administradores"]];
+SCHEMAS.historia = { label: "Historia", singular: "hito", fields: [
+    { k: "anio", l: "Año o etiqueta", req: true, ph: "1984" },
+    { k: "detalle", l: "Fecha o detalle", ph: "24 de diciembre" },
+    { k: "titulo", l: "Título", req: true, ph: "Nace la Asociación" },
+    { k: "texto", l: "Texto", type: "textarea" },
+    { k: "fotos", l: "Imágenes", type: "images", help: "Opcional. Se pueden ampliar al pulsarlas." },
+    { k: "color", l: "Color de la nota", type: "select", options: [["azul", "Azul"], ["naranja", "Naranja"], ["verde", "Verde"], ["negro", "Negro"]] },
+    { k: "orden", l: "Orden", type: "number", help: "Los hitos se muestran de menor a mayor. Usa 10, 20, 30… para poder meter otros en medio." }],
+  title: function (d) { return (d.anio ? d.anio + " · " : "") + (d.titulo || ""); },
+  sub: function (d) { return [d.detalle, (Array.isArray(d.fotos) && d.fotos.length) ? d.fotos.length + (d.fotos.length === 1 ? " imagen" : " imágenes") : ""].filter(Boolean).join(" · "); },
+  sort: function (a, b) { return (Number(a.orden) || 999) - (Number(b.orden) || 999); } };
 var LIST_FILTER = {};
 
 PAGES.admin = function (tab) {
@@ -835,7 +877,7 @@ function adminFotos() {
 
 function adminContacto() {
   var c = DATA.contacto || {}, st = statusEl();
-  var fields = [["direccion", "Dirección de la sede", "text"], ["telefono", "Teléfono", "tel"], ["email", "Correo electrónico", "email"]];
+  var fields = [["direccion", "Dirección de la sede", "text"], ["telefono", "Teléfono (WhatsApp)", "tel"], ["email", "Correo electrónico", "email"], ["mapa", "Enlace del botón Cómo llegar (Google Maps)", "url"]];
   var form = h("form", { class: "aform", style: "position:static;max-width:560px" }, h("h3", { text: "Datos de contacto" }),
     fields.map(function (f) { return h("div", { class: "field" }, h("label", { for: "ct-" + f[0], text: f[1] }), h("input", { id: "ct-" + f[0], name: f[0], type: f[2], value: c[f[0]] || "" })); }));
   var save = h("button", { class: "btn primary", type: "submit", text: "Guardar" });
@@ -876,7 +918,7 @@ function adminPie() {
 function renderFooter() {
   var p = DATA.pie || {}, c = DATA.contacto || {};
   var socials = DATA.enlaces.slice().sort(byOrden).filter(function (l) { return safeUrl(l.url); });
-  var pages = [["inicio", "Inicio"], ["quienes", "Quiénes somos"], ["banda", "Banda"], ["bandin", "Bandín"], ["actuaciones", "Actuaciones"], ["noticias", "Noticias"], ["contacto", "Contacto"]];
+  var pages = [["inicio", "Inicio"], ["quienes", "Quiénes somos"], ["banda", "Banda"], ["bandin", "Bandín"], ["actuaciones", "Actuaciones"], ["galeria", "Galería"], ["contacto", "Contacto"]];
   var el = document.getElementById("footer");
   el.replaceChildren(
     h("div", { class: "foot" },
@@ -884,8 +926,8 @@ function renderFooter() {
         p.texto ? h("p", { text: p.texto }) : null, p.apoyos ? h("p", { text: p.apoyos }) : null),
       h("div", null, h("h4", { text: "La web" }), h("ul", null, pages.map(function (x) { return h("li", null, h("a", { href: "#" + x[0], text: x[1] })); }))),
       h("div", null, h("h4", { text: "Síguenos" }),
-        socials.length ? h("div", { class: "socials" }, socials.map(function (l) { return h("a", { href: l.url, target: "_blank", rel: "noopener", text: l.nombre }); })) : null,
-        h("div", { class: "foot-contact" }, c.direccion ? h("span", { text: c.direccion }) : null, c.telefono ? h("span", { text: "Tel. " + c.telefono }) : null, c.email ? h("span", { text: c.email }) : null))),
+        socials.length ? h("div", { class: "socials" }, socials.map(function (l) { var b = socialBrand(l); return h("a", { class: b ? "soc soc-" + b : "", href: l.url, target: "_blank", rel: "noopener", text: l.nombre }); })) : null,
+        h("div", { class: "foot-contact" }, c.direccion ? h("span", { text: c.direccion }) : null, c.telefono ? h("span", { text: "Tel. " + c.telefono + " (WhatsApp)" }) : null, c.email ? h("span", { text: c.email }) : null))),
     h("div", { class: "foot-bottom" }, h("span", { text: p.copyright || "" }),
       h("a", { href: "#admin", text: IS_ADMIN ? "Administración" : "Acceso administradores" })));
 }
@@ -918,6 +960,7 @@ var lastRoute = "";
 function route() {
   var hash = (location.hash || "").replace(/^#/, "") || "inicio";
   var parts = hash.split("-"), page = parts[0], sub = parts.slice(1).join("-");
+  if (page === "imagenes") page = "galeria";
   if (!PAGES[page]) { page = "inicio"; sub = ""; }
   return { page: page, sub: sub, key: page + "-" + sub };
 }

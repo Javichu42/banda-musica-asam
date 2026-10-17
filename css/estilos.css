@@ -247,7 +247,8 @@ section.block.alt { background: var(--surface); border-block: 1px solid var(--li
 .kv .k { font-size: .75rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .kv .v { font-size: 1.12rem; font-weight: 600; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; word-break: break-word; }
 .copy { font: 600 .8rem var(--f-body); border: 1px solid var(--line); background: var(--bg); color: var(--fg); padding: 4px 10px; border-radius: 999px; cursor: pointer; }
-.cbox.hl { background: var(--verde); border-color: var(--verde); color: #fff; }
+.cbox.hl { background: #3473cc; border-color: #3473cc; color: #fff; }
+.cbox.hl p { opacity: .95; }
 .cbox.hl h3 { font-size: 1.5rem; }
 
 /* Administración */
@@ -316,24 +317,37 @@ section.block.alt { background: var(--surface); border-block: 1px solid var(--li
 .list-filter select { font: 400 .95rem var(--f-body); color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
 .group-h { font-family: var(--f-display); font-size: 1rem; margin: 14px 0 2px; color: var(--muted); }
 
-/* Pie de página */
-footer { background: var(--fg); color: var(--bg); padding-block: 48px 28px; }
-.foot { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 32px; }
-@media (max-width: 860px) { .foot { grid-template-columns: 1fr; gap: 26px; } }
-.foot .badge { padding: 8px 10px; justify-self: start; }
-.foot img { height: 46px; display: block; }
-.foot-brand { display: grid; gap: 14px; align-content: start; }
-.foot-brand p { opacity: .8; font-size: .93rem; max-width: 46ch; }
-.foot h4 { font-family: var(--f-body); font-size: .75rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; opacity: .65; margin-bottom: 12px; }
-.foot ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
-.foot a { color: var(--bg); font-weight: 600; font-size: .94rem; text-decoration: none; }
+/* Pie de página: azul noche fijo, igual en tema claro y oscuro */
+footer { --foot-bg: #12223b; --foot-fg: #e6edf8; --foot-line: rgba(230, 237, 248, .16); background: var(--foot-bg); color: var(--foot-fg); padding-block: 30px 16px; font-size: .88rem; }
+.foot { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1.2fr); gap: 24px; }
+@media (max-width: 860px) { .foot { grid-template-columns: 1fr 1fr; gap: 22px; } .foot-brand { grid-column: 1 / -1; } }
+@media (max-width: 520px) { .foot { grid-template-columns: 1fr; } }
+.foot .badge { padding: 5px 8px; justify-self: start; border-radius: 10px; box-shadow: none; }
+.foot img { height: 34px; display: block; }
+.foot-brand { display: grid; gap: 10px; align-content: start; }
+.foot-brand p { opacity: .78; font-size: .86rem; max-width: 46ch; line-height: 1.5; }
+.foot h4 { font-family: var(--f-body); font-size: .7rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; opacity: .6; margin-bottom: 8px; }
+.foot ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, max-content)); gap: 4px 18px; }
+.foot a { color: var(--foot-fg); font-weight: 600; font-size: .86rem; text-decoration: none; }
 .foot a:hover { text-decoration: underline; }
-.socials { display: flex; flex-wrap: wrap; gap: 8px; }
-.socials a { border: 1px solid color-mix(in srgb, var(--bg) 35%, transparent); border-radius: 999px; padding: 7px 14px; font-size: .9rem; }
-.socials a:hover { background: color-mix(in srgb, var(--bg) 12%, transparent); text-decoration: none; }
-.foot-contact { opacity: .85; font-size: .93rem; display: grid; gap: 4px; margin-top: 14px; overflow-wrap: anywhere; }
-.foot-bottom { margin-top: 36px; padding-top: 18px; border-top: 1px solid color-mix(in srgb, var(--bg) 20%, transparent); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 20px; font-size: .88rem; opacity: .75; }
-.foot-bottom a { font-size: .88rem; color: var(--bg); font-weight: 600; }
+.socials { display: flex; flex-wrap: wrap; gap: 6px; }
+.socials a { border: 1px solid var(--foot-line); border-radius: 999px; padding: 5px 12px; font-size: .82rem; }
+.socials a:hover { text-decoration: none; filter: brightness(1.1); }
+.foot-contact { opacity: .8; font-size: .84rem; display: grid; gap: 2px; margin-top: 10px; overflow-wrap: anywhere; }
+.foot-bottom { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--foot-line); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; font-size: .8rem; opacity: .7; }
+.foot-bottom a { font-size: .8rem; color: var(--foot-fg); font-weight: 600; }
+
+/* Colores de las redes sociales */
+.soc { color: #fff !important; border-color: transparent !important; }
+.btn.soc { border: 0; }
+.btn.soc:hover { filter: brightness(1.08); }
+.soc-facebook { background: #1877f2; }
+.soc-instagram { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285aeb 90%); }
+.soc-youtube { background: #ff0000; }
+.soc-whatsapp { background: #25d366; }
+.soc-tiktok { background: #010101; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
+.soc-x { background: #000; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
+.soc-spotify { background: #1db954; }
 
 /* Fotos de personas */
 .avatar.photo { object-fit: cover; object-position: center 18%; background: var(--surface-2); padding: 0; }
@@ -356,3 +370,37 @@ footer { background: var(--fg); color: var(--bg); padding-block: 48px 28px; }
   .dfeature { grid-template-columns: 1fr; gap: 22px; padding: 20px; }
   .dphoto { max-width: 240px; }
 }
+
+/* Portada: franja de años y formaciones */
+.milestone { border-top: 1px solid var(--line); background: var(--surface); position: relative; z-index: 1; }
+.hero .wrap.ms-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr)); align-items: stretch; gap: 0; padding-block: 0; }
+.ms-years { display: flex; align-items: center; gap: 16px; padding: 22px 24px 22px 0; border-right: 1px solid var(--line); min-width: 0; }
+.ms-years b { font-family: var(--f-display); font-weight: 800; font-size: clamp(3rem, 6vw, 4.4rem); line-height: .9; letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, var(--azul) 0%, var(--azul) 45%, var(--verde) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ms-years > div { display: grid; gap: 2px; }
+.ms-big { font-family: var(--f-display); font-weight: 700; font-size: 1.15rem; line-height: 1.15; }
+.ms-small { color: var(--muted); font-size: .88rem; }
+.ms-item { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; align-content: center; padding: 18px 20px; border-right: 1px solid var(--line); text-decoration: none; color: var(--fg); transition: background .15s; min-width: 0; }
+.ms-item:last-child { border-right: 0; }
+.ms-item:hover { background: var(--surface-2); }
+.ms-item .dot { grid-row: 1 / 3; align-self: center; width: 16px; height: 12px; }
+.ms-item b { font-family: var(--f-display); font-size: 1.2rem; }
+.ms-item span { color: var(--muted); font-size: .88rem; }
+.ms-item b::after { content: " →"; color: var(--muted); font-weight: 500; opacity: 0; transition: opacity .15s; }
+.ms-item:hover b::after { opacity: 1; }
+@media (max-width: 860px) {
+  .hero .wrap.ms-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); padding-block: 0; gap: 0; }
+  .ms-years { grid-column: 1 / -1; border-right: 0; border-bottom: 1px solid var(--line); padding-right: 0; }
+  .ms-item { padding: 14px 12px; }
+}
+@media (max-width: 520px) {
+  .hero .wrap.ms-grid { grid-template-columns: 1fr; }
+  .ms-item { border-right: 0; border-bottom: 1px solid var(--line); }
+  .ms-item:last-child { border-bottom: 0; }
+}
+
+/* Historia: imágenes de cada hito */
+.tl-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 12px; max-width: 620px; }
+.tl-photos.one { grid-template-columns: minmax(0, 420px); }
+.tl-photos button { border: 0; padding: 0; border-radius: 12px; overflow: hidden; aspect-ratio: 4 / 3; max-width: 100%; cursor: zoom-in; background: var(--surface-2); }
+.tl-photos img { width: 100%; height: 100%; object-fit: cover; display: block; }

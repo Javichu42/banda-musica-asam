@@ -97,7 +97,8 @@ Pulsa **Administración** en el menú de arriba e inicia sesión. Desde ahí se 
 | Pestaña | Qué se edita |
 |---|---|
 | Directiva | Miembros de la junta directiva y su cargo |
-| Directores | Directores con su presentación y trayectoria |
+| Directores | Directores con su foto, presentación y trayectoria |
+| Historia | Hitos de la historia con texto e imágenes |
 | Músicos | Músicos de la Banda y del Bandín, por instrumento, con el cargo de jefe de sección |
 | Eventos | Actuaciones: las futuras salen en la portada y las pasadas en "Actuaciones anteriores" |
 | Noticias | Noticias con fotos y enlaces a otras webs |
@@ -109,7 +110,7 @@ Pulsa **Administración** en el menú de arriba e inicia sesión. Desde ahí se 
 
 Las fotos grandes del móvil se reducen solas antes de subirse.
 
-Las páginas Quiénes somos e Historia y las descripciones de la Banda y el Bandín están escritas directamente en `js/app.js`. Para cambiarlas hay que editar ese archivo.
+La página Quiénes somos y las descripciones de la Banda y el Bandín están escritas directamente en `js/app.js`. Para cambiarlas hay que editar ese archivo.
 
 ## Límites del plan gratuito
 
