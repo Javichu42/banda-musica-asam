@@ -87,6 +87,14 @@ var DEFAULTS = {
     ],
     pago: "Cuota trimestral, Domiciliación bancaria"
   },
+  socio: {
+    titulo: "Hazte socio de la ASAM",
+    intro: "La asociación se sostiene gracias a sus socios. Con tu cuota ayudas a que haya conciertos gratuitos, música en las fiestas y una escuela abierta a todas las edades.",
+    cuota: "Desde 12 € al año",
+    texto: "Personas, empresas e instituciones pueden colaborar con la divulgación de la música en Siero y la Comarca del Nora haciéndose socio o mecenas.",
+    pasos: "Rellena la hoja de socio con tus datos.\nEntrégala en nuestras oficinas o envíanosla.\nTe confirmamos el alta y empiezas a formar parte de la asociación.",
+    aviso: "Para más información, contacte con nosotros o pase por nuestras oficinas."
+  },
   pie: { texto: "Asociación sin ánimo de lucro que enseña, toca y comparte música en el concejo de Siero desde 1984.", apoyos: "Con el apoyo del Ayuntamiento de Siero y la Fundación Caja Rural de Asturias", copyright: "© Asociación Sierense Amigos de la Música · Pola de Siero, Asturias" }
 };
 
@@ -143,6 +151,7 @@ function photoSrc(f) { return f.asset ? blobUrl(f.asset) : ""; }
 function adminLink(tab, label) { return IS_ADMIN ? h("a", { class: "admin-hint", href: "#admin-" + tab, text: "✎ " + label }) : null; }
 
 /* ---------- Componentes públicos ---------- */
+function headSize(el, c) { el.classList.add(c); return el; }
 function pageHead(eyebrow, title, lead, cls, extra, logo, bg) {
   return h("div", { class: "page-head" + (logo ? " with-logo" : "") + (bg ? " has-bg" : "") },
     bg ? h("div", { class: "head-bg", "aria-hidden": "true", style: "background-image:url('" + bg + "')" }) : null,
@@ -224,7 +233,17 @@ var MUSIC_CAPS = (function () {
     "?": sk(16, [p("M3 12 C3 2 15 2 15 12 C15 20 8 20 8 30", 3.4), head(8, 40)]),
     "¿": sk(16, [head(8, 9), p("M8 18 C8 28 1 28 1 36 C1 46 13 46 13 36", 3.4)]),
     ",": sk(8, [head(4, 40), p("M6 41 L2 48", 2.6)]),
-    ".": sk(8, [head(4, 42)])
+    ".": sk(8, [head(4, 42)]),
+    "0": sk(20, [E("ellipse", { cx: 10, cy: 25, rx: 8.5, ry: 19, "class": "g-open", style: "stroke-width:3.6" }), head(17, 9)]),
+    "1": sk(14, [p("M3 14 L10 6 L10 44", 4.2), head(10, 44)]),
+    "2": sk(20, [p("M3 13 C4 3 19 3 18 14 C17 24 3 34 3 44 L19 44", 3.8), head(19, 44)]),
+    "3": sk(20, [p("M3 10 C7 3 18 4 18 14 C18 22 9 24 8 24 C20 24 21 44 9 44 C5 44 3 42 3 40", 3.6), head(3, 40)]),
+    "4": sk(22, [p("M15 44 L15 6 L2 32 L21 32", 3.6), head(15, 44)]),
+    "5": sk(20, [p("M18 6 L5 6 L4 22 C12 18 19 24 19 33 C19 46 5 46 3 39", 3.6), head(3, 40)]),
+    "6": sk(20, [p("M17 8 C8 3 3 14 3 30 C3 46 18 46 18 33 C18 22 5 22 3 30", 3.6), head(17, 9)]),
+    "7": sk(20, [p("M2 6 L19 6 L8 44", 3.8), head(8, 44)]),
+    "8": sk(20, [p("M10 24 C2 22 3 6 10 6 C17 6 18 22 10 24 C1 26 2 44 10 44 C19 44 19 26 10 24", 3.4), head(17, 8)]),
+    "9": sk(20, [p("M17 18 C17 4 3 4 3 15 C3 26 17 26 17 18 L17 34 C17 45 6 46 4 40", 3.6), head(4, 40)])
   });
   C["Á"] = acc("A", 14, 1); C["É"] = acc("E", 12, 1); C["Ó"] = acc("O", 13, 1); C["Ú"] = acc("U", 11, 1);
   C["Ñ"] = { w: C.N.w, els: [E("g", { transform: C.N.els[0].a.transform, _children: C.N.els[0].a._children.concat([p("M4 -1 C8 -5 12 1 18 -3", 2.6)]) })] };
@@ -235,6 +254,7 @@ function staffLettering(text, opts) {
   var SET = opts.glyphs || MUSIC_GLYPHS;
   var wordColors = opts.colors || { 1: "c-azul", 4: "c-verde" };
   var punct = opts.punct || "c-naranja";
+  opts.center = opts.center !== false; opts.noBar = !opts.bar;
   var NS = "http://www.w3.org/2000/svg";
   function el(tag, attrs) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
   var GAP = 4, x = 0, glyphs = [];
@@ -403,7 +423,8 @@ PAGES.inicio = function () {
           h("div", null, h("span", { class: "ms-big", text: "años poniendo música a Siero" }), h("span", { class: "ms-small", text: "Fundada el 24 de diciembre de 1984" }))),
         h("a", { class: "ms-item", href: "#banda" }, h("i", { class: "dot", style: "background:var(--azul)" }), h("b", { text: "Banda" }), h("span", { text: "Viento y percusión" })),
         h("a", { class: "ms-item", href: "#bandin" }, h("i", { class: "dot", style: "background:var(--naranja)" }), h("b", { text: "Bandín" }), h("span", { text: "Cantera de jóvenes músicos" })),
-        h("a", { class: "ms-item", href: "#escuela" }, h("i", { class: "dot", style: "background:var(--verde)" }), h("b", { text: "Escuela" }), h("span", { text: "Clases desde los 6 años" }))))),
+        h("a", { class: "ms-item", href: "#escuela" }, h("i", { class: "dot", style: "background:var(--verde)" }), h("b", { text: "Escuela" }), h("span", { text: "Clases desde los 6 años" })),
+        h("a", { class: "ms-item ms-socio", href: "#socio" }, h("i", { class: "dot", style: "background:var(--nota)" }), h("b", { text: "Hacerse socio" }), h("span", { text: socioCuota() }))))),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("h2", { text: "Tres maneras de vivir la música" })),
       h("div", { class: "doors" },
@@ -417,14 +438,41 @@ PAGES.inicio = function () {
       news.length ? h("div", { class: "row-head" }, h("h2", { text: "Más noticias" }), h("a", { class: "btn ghost small", href: "#noticias", text: "Todas las noticias" })) : null,
       news.length ? h("div", { class: "news" }, news.map(function (n, i) { return newsCard(n, i + 1); })) : (latest ? null : emptyBox("Todavía no hay noticias publicadas.", "noticias")),
       h("div", { class: "join", style: "margin-top:40px" },
-        h("div", null, h("b", { text: "¿Quieres tocar con nosotros?" }), h("p", { text: "Clases para todas las edades y sitio en el Bandín y la Banda. Hazte socio desde 12 € al año." })),
+        h("div", null, h("b", { text: "¿Quieres tocar con nosotros?" }), h("p", { text: "Clases para todas las edades y sitio en el Bandín y la Banda. Hazte socio " + socioCuota().toLowerCase() + "." })),
         h("a", { class: "btn", href: "#contacto", text: "Contacta" }))))
+  ];
+};
+
+function socioData() { return Object.assign({}, DEFAULTS.socio, DATA.socio || {}); }
+function socioCuota() { return socioData().cuota || "Desde 12 € al año"; }
+PAGES.socio = function () {
+  var S = socioData();
+  var pasos = String(S.pasos || "").split("\n").map(function (x) { return x.trim(); }).filter(Boolean);
+  return [
+    pageHead("Hacerse socio", S.titulo || "Hazte socio", S.intro || null, null,
+      staffLettering("¡Hazte socio!", { glyphs: MUSIC_CAPS, colors: { 0: "c-azul", 1: "c-verde" }, punct: "c-naranja" })),
+    h("section", { class: "block" }, h("div", { class: "wrap" },
+      IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("socio", "Editar esta página")) : null,
+      h("div", { class: "socio-grid" },
+        h("div", { class: "socio-info" },
+          h("h2", { text: "¿Cómo hacerse socio?" }),
+          S.texto ? h("p", { class: "muted", text: S.texto }) : null,
+          pasos.length ? h("ol", { class: "socio-steps" }, pasos.map(function (t) { return h("li", { text: t }); })) : null),
+        h("aside", { class: "socio-price" },
+          h("span", { class: "eyebrow", text: "Cuota de socio" }),
+          h("b", { text: S.cuota || "" }),
+          h("a", { class: "btn primary", href: "#socio-hoja", onclick: function (ev) { ev.preventDefault(); var t = document.getElementById("socio-hoja"); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); }, text: "Hoja de socio ↓" }))),
+      h("div", { class: "socio-hoja", id: "socio-hoja" },
+        h("div", null, h("span", { class: "eyebrow", text: "Hoja de socio" }),
+          h("h3", { text: "Muy pronto podrás rellenarla aquí" }),
+          h("p", { class: "muted", text: "Estamos preparando la hoja de inscripción para que puedas completarla desde la web. Mientras tanto, puedes pedirla en nuestras oficinas." }))),
+      S.aviso ? h("p", { class: "socio-aviso" }, h("span", { "aria-hidden": "true", text: "ℹ️ " }), S.aviso + " ", h("a", { href: "#contacto", text: "Ver datos de contacto →" })) : null))
   ];
 };
 
 PAGES.quienes = function () {
   return [
-    pageHead("Quiénes somos", "Una asociación hecha por y para la gente de Siero", "Entidad sin ánimo de lucro dedicada a promover y difundir la música en el concejo de Siero desde 1984.", null, staffLettering("Música hecha en Siero", { glyphs: MUSIC_CAPS, colors: { 0: "c-azul", 3: "c-verde" }, punct: "c-naranja" })),
+    pageHead("Quiénes somos", "Una asociación hecha por y para la gente de Siero", "Entidad sin ánimo de lucro dedicada a promover y difundir la música en el concejo de Siero desde 1984."),
     h("section", { class: "block" }, h("div", { class: "wrap" }, h("div", { class: "two" },
       h("div", { class: "prose" },
         h("p", { html: "La <b>Asociación Sierense Amigos de la Música (ASAM)</b> nació en 1984 para promover y difundir la música en el concejo de Siero. Desde entonces organiza conciertos gratuitos, pone música a los pasacalles de las fiestas locales y forma a nuevas generaciones de músicos." }),
@@ -434,7 +482,8 @@ PAGES.quienes = function () {
         h("div", { class: "aside-card" }, h("h3", { text: "Escuela de música" }), h("p", { text: "Formación impartida por profesorado con experiencia, desde la teoría hasta la práctica instrumental." }),
           h("ul", null, h("li", { text: "Repertorio" }), h("li", { text: "Instrumentos de viento madera y metal" }), h("li", { text: "Percusión" }), h("li", { text: "Práctica de conjunto en el Bandín y la Banda" })),
           h("a", { class: "btn small", href: "#escuela", style: "background:#fff;color:#2a63b3;justify-self:start", text: "Horarios y cuotas →" })),
-        h("div", { class: "socio" }, h("b", { text: "Hazte socio desde 12 € al año" }), h("p", { text: "Personas, empresas e instituciones pueden colaborar con la divulgación de la música en Siero y la Comarca del Nora haciéndose socio o mecenas." })))))),
+        h("div", { class: "socio" }, h("b", { text: "Hazte socio desde 12 € al año" }), h("p", { text: "Personas, empresas e instituciones pueden colaborar con la divulgación de la música en Siero y la Comarca del Nora haciéndose socio o mecenas." }),
+          h("a", { class: "btn ghost small", href: "#socio", style: "justify-self:start;margin-top:6px", text: "Cómo hacerse socio →" })))))),
     h("section", { class: "block alt" }, h("div", { class: "wrap" }, h("div", { class: "pillars" },
       h("div", { class: "pillar" }, h("h3", null, h("i", { style: "background:var(--azul)" }), "Misión"), h("p", { text: "Promover la cultura musical en Siero y en Asturias a través de la educación, la interpretación y la participación de toda la comunidad." })),
       h("div", { class: "pillar" }, h("h3", null, h("i", { style: "background:var(--verde)" }), "Visión"), h("p", { text: "Ser un referente cultural del concejo, con un entorno inclusivo donde personas de cualquier edad desarrollen su talento musical." })),
@@ -445,7 +494,7 @@ PAGES.quienes = function () {
 PAGES.historia = function () {
   var items = DATA.historia.slice().sort(function (x, y) { return (Number(x.orden) || 999) - (Number(y.orden) || 999); });
   return [
-    pageHead("Historia", "Más de cuatro décadas de compases", "Siero tiene una larga tradición bandística. La ASAM tomó el relevo en los años ochenta y desde entonces no ha dejado de sonar.", "negra", staffLettering("Toda una vida de música", { glyphs: MUSIC_CAPS, colors: { 2: "c-naranja", 4: "c-azul" }, punct: "c-naranja" })),
+    pageHead("Historia", "Más de cuatro décadas de compases", "Siero tiene una larga tradición bandística. La ASAM tomó el relevo en los años ochenta y desde entonces no ha dejado de sonar.", "negra", staffLettering(yearsSinceFounding() + " años haciendo música", { glyphs: MUSIC_CAPS, colors: { 0: "c-naranja", 3: "c-azul" }, punct: "c-naranja" })),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("historia", "Editar historia")) : null,
       items.length ? items.map(function (it) {
@@ -524,7 +573,7 @@ function plantilla(formacion, alt) {
 
 PAGES.banda = function () {
   return [
-    pageHead("Banda de Música de Siero", "La banda que suena en las fiestas y auditorios del concejo", null, null, staffLettering("¡La Banda de Pola mola!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja", center: true, noBar: true }), { src: "img/logo/logo-banda.webp", alt: "Logotipo de la Banda de Música de Siero" }, "img/fondos/banda.jpg"),
+    headSize(pageHead("Banda de Música de Siero", "La banda que suena en las fiestas y auditorios del concejo", null, null, staffLettering("¡La Banda de Pola mola!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja", center: true, noBar: true }), { src: "img/logo/logo-banda.webp", alt: "Logotipo de la Banda de Música de Siero" }, "img/fondos/banda.jpg"), "head-base"),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       directorFeature(/banda/i, "azul", "Director de la Banda"),
       h("div", { class: "prose" },
@@ -539,7 +588,7 @@ PAGES.banda = function () {
 
 PAGES.bandin = function () {
   return [
-    pageHead("El Bandín", "La cantera: donde se aprende a tocar en grupo", null, null, staffLettering("¡El Bandín de Pola mola!", { glyphs: MUSIC_CAPS, colors: { 1: "c-naranja", 4: "c-verde" }, punct: "c-azul" }), null, "img/fondos/bandin.jpg"),
+    headSize(pageHead("El Bandín", "La cantera: donde se aprende a tocar en grupo", null, null, staffLettering("¡El Bandín de Pola mola!", { glyphs: MUSIC_CAPS, colors: { 1: "c-naranja", 4: "c-verde" }, punct: "c-azul" }), null, "img/fondos/bandin.jpg"), "head-mid"),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       directorFeature(/bandín|bandin/i, "naranja", "Director del Bandín"),
       h("div", { class: "prose" },
@@ -557,7 +606,7 @@ PAGES.bandin = function () {
 PAGES.direccion = function () {
   var dirs = DATA.directores.slice().sort(byOrden), junta = DATA.directiva.slice().sort(byOrden);
   return [
-    pageHead("Dirección", "Quién lleva la batuta y quién sostiene la asociación", null, "verde", staffLettering("Al frente de la música", { glyphs: MUSIC_CAPS, colors: { 1: "c-verde", 4: "c-azul" }, punct: "c-naranja" })),
+    headSize(pageHead("Dirección", "Quién lleva la batuta y quién sostiene la asociación", null, "verde", staffLettering("Al frente de la música", { glyphs: MUSIC_CAPS, colors: { 1: "c-verde", 4: "c-azul" }, punct: "c-naranja" })), "head-fill"),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("h2", { text: "Directores musicales" }), adminLink("directores", "Editar directores")),
       dirs.length ? h("div", { class: "directors" }, dirs.map(function (d) {
@@ -620,7 +669,7 @@ PAGES.escuela = function () {
   var periodo = E.periodo || "trimestre";
   var sedes = normSedes(E.sedes);
   return [
-    pageHead("Escuela de música", E.titulo || "Escuela de música", E.intro || null, null, staffLettering("Anímate a tocar con nosotros", { glyphs: MUSIC_CAPS, colors: { 0: "c-naranja", 2: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), sedes.length ? { el: sedesCard(sedes) } : null, "img/fondos/escuela.jpg"),
+    headSize(pageHead("Escuela de música", E.titulo || "Escuela de música", E.intro || null, null, staffLettering("Anímate a tocar con nosotros", { glyphs: MUSIC_CAPS, colors: { 0: "c-naranja", 2: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), sedes.length ? { el: sedesCard(sedes) } : null, "img/fondos/escuela.jpg"), "head-fill"),
     h("section", { class: "block escuela-first" }, h("div", { class: "wrap" },
       IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("escuela", "Editar la escuela")) : null,
       h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Clases semanales" })),
@@ -652,7 +701,7 @@ PAGES.escuela = function () {
 PAGES.actuaciones = function () {
   var s = eventsSplit();
   return [
-    pageHead("Actuaciones", "Una temporada de conciertos a lo largo del año", "Los conciertos en los auditorios municipales son gratuitos hasta completar aforo.", null, staffLettering("¡Nos vemos en el concierto!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), null, "img/fondos/actuaciones.jpg"),
+    headSize(pageHead("Actuaciones", "Una temporada de conciertos a lo largo del año", "Los conciertos en los auditorios municipales son gratuitos hasta completar aforo.", null, staffLettering("¡Nos vemos en el concierto!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), null, "img/fondos/actuaciones.jpg"), "head-fill"),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("h2", { text: "Próximas actuaciones" }), adminLink("eventos", "Gestionar eventos")),
       s.up.length ? h("div", { class: "events" }, s.up.map(function (e) { return eventRow(e); })) : emptyBox("Pronto anunciaremos las próximas actuaciones.", "eventos"))),
@@ -712,7 +761,7 @@ PAGES.contacto = function () {
       id ? h("button", { class: "copy", type: "button", onclick: function (ev) { copyText(ev.currentTarget, document.getElementById(id)); }, text: "Copiar" }) : null));
   }
   return [
-    pageHead("Contacto", "Ven a vernos o escríbenos", null, null, staffLettering("¡Escríbenos!", { glyphs: MUSIC_CAPS, colors: { 0: "c-azul" }, punct: "c-naranja" })),
+    pageHead("Contacto", "Ven a vernos o escríbenos", null, null, staffLettering("Anímate", { glyphs: MUSIC_CAPS, colors: { 0: "c-azul" }, punct: "c-naranja" })),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("contacto", "Editar datos de contacto")) : null,
       h("div", { class: "contact" },
@@ -782,7 +831,7 @@ var SCHEMAS = {
     filter: { k: "formacion", label: "Formación", options: ["Banda", "Bandín", "Banda y Bandín"] },
     group: function (d) { return (d.formacion || "") + " · " + (d.instrumento || "Otros"); } }
 };
-var TABS = [["directiva", "Directiva"], ["directores", "Directores"], ["profesores", "Profesorado"], ["historia", "Historia"], ["musicos", "Músicos"], ["eventos", "Eventos"], ["noticias", "Noticias"], ["enlaces", "Enlaces y redes"], ["fotos", "Galería"], ["escuela", "Escuela"], ["contacto", "Contacto"], ["pie", "Pie de página"], ["cuentas", "Cuentas de músicos"], ["usuarios", "Administradores"]];
+var TABS = [["directiva", "Directiva"], ["directores", "Directores"], ["profesores", "Profesorado"], ["historia", "Historia"], ["musicos", "Músicos"], ["eventos", "Eventos"], ["noticias", "Noticias"], ["enlaces", "Enlaces y redes"], ["fotos", "Galería"], ["escuela", "Escuela"], ["socio", "Hacerse socio"], ["contacto", "Contacto"], ["pie", "Pie de página"], ["cuentas", "Cuentas de músicos"], ["usuarios", "Administradores"]];
 SCHEMAS.historia = { label: "Historia", singular: "hito", fields: [
     { k: "anio", l: "Año o etiqueta", req: true, ph: "1984" },
     { k: "detalle", l: "Fecha o detalle", ph: "24 de diciembre" },
@@ -828,6 +877,7 @@ PAGES.admin = function (tab) {
   if (tab === "fotos") body = adminFotos();
   else if (tab === "contacto") body = adminContacto();
   else if (tab === "pie") body = adminPie();
+  else if (tab === "socio") body = adminSocio();
   else if (tab === "escuela") body = adminEscuela();
   else if (tab === "usuarios") body = adminUsuarios();
   else if (tab === "cuentas") body = adminCuentas();
@@ -1315,10 +1365,33 @@ function adminPie() {
   return form;
 }
 
+function adminSocio() {
+  var S = socioData(), st = statusEl();
+  var fields = [["titulo", "Título", "text"], ["intro", "Presentación", "textarea"], ["cuota", "Cuota", "text"], ["texto", "Quién puede hacerse socio", "textarea"],
+    ["pasos", "Pasos para hacerse socio (uno por línea)", "textarea"], ["aviso", "Aviso final", "textarea"]];
+  var form = h("form", { class: "aform", style: "position:static;max-width:620px" }, h("h3", { text: "Página Hacerse socio" }),
+    h("p", { class: "muted", text: "La cuota también se muestra en el recuadro de la página de inicio." }),
+    fields.map(function (f) {
+      var inp = f[2] === "textarea" ? h("textarea", { id: "so-" + f[0], name: f[0], style: "min-height:80px" }) : h("input", { id: "so-" + f[0], name: f[0], type: "text" });
+      inp.value = S[f[0]] || "";
+      return h("div", { class: "field" }, h("label", { for: "so-" + f[0], text: f[1] }), inp);
+    }));
+  var save = h("button", { class: "btn primary", type: "submit", text: "Guardar" });
+  add(form, h("div", { class: "form-acts" }, save), st);
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var obj = Object.assign({}, DATA.socio || {}); fields.forEach(function (f) { obj[f[0]] = form.elements[f[0]].value.trim(); });
+    save.disabled = true; save.textContent = "Guardando…";
+    DB.doc("ajustes/socio").set(obj).then(function () { save.disabled = false; save.textContent = "Guardar"; setStatus(st, "Página de socios guardada.", true); },
+      function (e) { save.disabled = false; save.textContent = "Guardar"; setStatus(st, errMsg(e), false); });
+  });
+  return form;
+}
+
 function renderFooter() {
   var p = DATA.pie || {}, c = DATA.contacto || {};
   var socials = DATA.enlaces.slice().sort(byOrden).filter(function (l) { return safeUrl(l.url); });
-  var pages = [["inicio", "Inicio"], ["quienes", "Quiénes somos"], ["banda", "Banda"], ["bandin", "Bandín"], ["escuela", "Escuela"], ["actuaciones", "Actuaciones"], ["galeria", "Galería"], ["contacto", "Contacto"]];
+  var pages = [["inicio", "Inicio"], ["quienes", "Quiénes somos"], ["banda", "Banda"], ["bandin", "Bandín"], ["escuela", "Escuela"], ["actuaciones", "Actuaciones"], ["galeria", "Galería"], ["socio", "Hacerse socio"], ["contacto", "Contacto"]];
   var el = document.getElementById("footer");
   el.replaceChildren(
     h("div", { class: "foot" },
@@ -1933,6 +2006,7 @@ function loadAll() {
         if (r.id === "contacto") DATA.contacto = r.datos || {};
         if (r.id === "pie") DATA.pie = r.datos || {};
         if (r.id === "escuela") DATA.escuela = r.datos || {};
+        if (r.id === "socio") DATA.socio = r.datos || {};
         return;
       }
       if (next[r.coleccion]) { var o = Object.assign({}, r.datos); o.id = r.id; next[r.coleccion].push(o); }
