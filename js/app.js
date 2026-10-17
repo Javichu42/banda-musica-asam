@@ -179,8 +179,26 @@ function yearsSinceFounding() {
   return y;
 }
 
+function excerpt(t, max) {
+  t = String(t || "").replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  var cut = t.slice(0, max); var sp = cut.lastIndexOf(" ");
+  return (sp > max * 0.6 ? cut.slice(0, sp) : cut) + "…";
+}
+function heroNews(n) {
+  var foto = Array.isArray(n.fotos) && n.fotos[0];
+  return h("article", { class: "hero-news" },
+    foto ? h("div", { class: "hn-photo" }, h("img", { src: blobUrl(foto), alt: "" })) : null,
+    h("div", { class: "hn-body" },
+      h("span", { class: "eyebrow", text: "Última noticia" }),
+      n.fecha ? h("time", { datetime: n.fecha, text: fmtLong(n.fecha) }) : null,
+      h("h2", { text: n.titulo }),
+      n.texto ? h("p", { text: excerpt(n.texto, foto ? 150 : 240) }) : null,
+      h("a", { class: "btn primary", href: "#noticias", text: "Ver más" })));
+}
+
 PAGES.inicio = function () {
-  var ev = eventsSplit().up.slice(0, 3), news = sortedNews().slice(0, 3);
+  var allNews = sortedNews(), latest = allNews[0], ev = eventsSplit().up.slice(0, 3), news = allNews.slice(1, 4);
   return [
     h("div", { class: "hero" },
       h("div", { class: "wrap" },
@@ -189,7 +207,7 @@ PAGES.inicio = function () {
           h("h1", { html: 'Ponemos <span class="a">música</span> a Siero: la <span class="v">banda</span>, el <span class="o">bandín</span> y la escuela.' }),
           h("p", { class: "lead", text: "La Asociación Sierense Amigos de la Música es una entidad sin ánimo de lucro que enseña, toca y comparte música en el concejo. Conciertos gratuitos, pasacalles en las fiestas y clases para todas las edades." }),
           h("div", { class: "actions" }, h("a", { class: "btn primary", href: "#actuaciones", text: "Ver actuaciones" }), h("a", { class: "btn ghost", href: "#contacto", text: "Apúntate a clase" }))),
-        h("div", { class: "logo-card" }, h("img", { src: LOGO_FULL, alt: "Logotipo de la Asociación Sierense Amigos de la Música" }))),
+        latest ? heroNews(latest) : h("div", { class: "logo-card" }, h("img", { src: LOGO_FULL, alt: "Logotipo de la Asociación Sierense Amigos de la Música" }))),
       h("div", { class: "staff-lines", "aria-hidden": "true" }),
       h("div", { class: "milestone" }, h("div", { class: "wrap ms-grid" },
         h("div", { class: "ms-years" },
@@ -208,8 +226,8 @@ PAGES.inicio = function () {
       h("div", { class: "row-head" }, h("h2", { text: "Próximas actuaciones" }), h("a", { class: "btn ghost small", href: "#actuaciones", text: "Ver todas" })),
       ev.length ? h("div", { class: "events" }, ev.map(function (e) { return eventRow(e); })) : emptyBox("Pronto anunciaremos las próximas actuaciones. Síguenos en redes para no perderte nada.", "eventos"))),
     h("section", { class: "block" }, h("div", { class: "wrap" },
-      h("div", { class: "row-head" }, h("h2", { text: "Últimas noticias" }), h("a", { class: "btn ghost small", href: "#noticias", text: "Todas las noticias" })),
-      news.length ? h("div", { class: "news" }, news.map(newsCard)) : emptyBox("Todavía no hay noticias publicadas.", "noticias"),
+      news.length ? h("div", { class: "row-head" }, h("h2", { text: "Más noticias" }), h("a", { class: "btn ghost small", href: "#noticias", text: "Todas las noticias" })) : null,
+      news.length ? h("div", { class: "news" }, news.map(function (n, i) { return newsCard(n, i + 1); })) : (latest ? null : emptyBox("Todavía no hay noticias publicadas.", "noticias")),
       h("div", { class: "join", style: "margin-top:40px" },
         h("div", null, h("b", { text: "¿Quieres tocar con nosotros?" }), h("p", { text: "Clases para todas las edades y sitio en el Bandín y la Banda. Hazte socio desde 12 € al año." })),
         h("a", { class: "btn", href: "#contacto", text: "Contacta" }))))

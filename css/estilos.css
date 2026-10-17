@@ -404,3 +404,17 @@ footer { --foot-bg: #12223b; --foot-fg: #e6edf8; --foot-line: rgba(230, 237, 248
 .tl-photos.one { grid-template-columns: minmax(0, 420px); }
 .tl-photos button { border: 0; padding: 0; border-radius: 12px; overflow: hidden; aspect-ratio: 4 / 3; max-width: 100%; cursor: zoom-in; background: var(--surface-2); }
 .tl-photos img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Portada: foto de la banda de fondo y última noticia */
+.hero::before { content: ""; position: absolute; inset: 0; background: url("../img/banda-fondo.jpg") center 40% / cover no-repeat; opacity: .1; pointer-events: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hero::before { opacity: .14; } }
+:root[data-theme="dark"] .hero::before { opacity: .14; }
+.hero-news { justify-self: end; width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); overflow: hidden; display: grid; }
+.hn-photo { aspect-ratio: 16 / 9; max-width: 100%; background: var(--surface-2); }
+.hn-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hn-body { padding: 22px 24px 24px; display: grid; gap: 10px; justify-items: start; }
+.hn-body time { font-size: .8rem; font-weight: 700; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.hn-body h2 { font-size: 1.45rem; line-height: 1.2; }
+.hn-body p { color: var(--muted); }
+.hn-body .btn { margin-top: 4px; }
+@media (max-width: 860px) { .hero-news { justify-self: stretch; max-width: none; } }
