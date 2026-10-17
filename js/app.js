@@ -1502,7 +1502,7 @@ function renderFooter() {
   var el = document.getElementById("footer");
   el.replaceChildren(
     h("div", { class: "foot" },
-      h("div", { class: "foot-brand" }, h("span", { class: "foot-logo" }, h("img", { src: "img/logo/logo-asam-simbolo-bola.svg", alt: "ASAM" })),
+      h("div", { class: "foot-brand" }, h("span", { class: "foot-logo" }, h("img", { src: "img/logo/logo-asam-simbolo-unido.svg", alt: "ASAM" })),
         p.texto ? h("p", { text: p.texto }) : null, p.apoyos ? h("p", { text: p.apoyos }) : null),
       h("div", null, h("h4", { text: "La web" }), h("ul", null, pages.map(function (x) { return h("li", null, h("a", { href: "#" + x[0], text: x[1] })); }))),
       h("div", null, h("h4", { text: "Síguenos" }),
