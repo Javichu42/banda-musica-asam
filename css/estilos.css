@@ -427,3 +427,4 @@ footer { --foot-bg: #12223b; --foot-fg: #e6edf8; --foot-line: rgba(230, 237, 248
 .video-play:hover img { opacity: 1; }
 .play-icon { position: absolute; left: 50%; top: 50%; width: 64px; height: 44px; transform: translate(-50%, -50%); background: #ff0000; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.35); }
 .play-icon::after { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-35%, -50%); border-style: solid; border-width: 10px 0 10px 17px; border-color: transparent transparent transparent #fff; }
+.cover-video .video, .hn-video .video { border-radius: 0; }

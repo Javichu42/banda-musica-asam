@@ -156,17 +156,20 @@ function newsCard(n, i) {
   var videos = allLinks.filter(function (l) { return youtubeId(l.url); });
   var links = allLinks.filter(function (l) { return !youtubeId(l.url); });
   function shot(id) { return { asset: id, titulo: n.titulo }; }
-  var top = fotos.length
+  var firstVideo = videos[0];
+  var top = firstVideo
+    ? h("div", { class: "cover-video" }, videoEmbed(youtubeId(firstVideo.url), firstVideo.texto || n.titulo))
+    : fotos.length
     ? h("button", { class: "cover", type: "button", "aria-label": "Ver foto de " + (n.titulo || "la noticia"), onclick: function () { openLightbox(shot(fotos[0])); } },
         h("img", { src: blobUrl(fotos[0]), alt: "", loading: "lazy" }))
     : h("div", { class: "bar", style: "background:" + colors[i % 4] });
   return h("article", { class: "post" }, top,
     h("div", { class: "in" }, n.fecha ? h("time", { datetime: n.fecha, text: fmtLong(n.fecha) }) : null,
       n.etiqueta ? h("span", { class: "tag", text: n.etiqueta }) : null, h("h3", { text: n.titulo }), n.texto ? h("p", { text: n.texto }) : null,
-      fotos.length > 1 ? h("div", { class: "thumbs" }, fotos.slice(1).map(function (id) {
+      (firstVideo ? fotos : fotos.slice(1)).length ? h("div", { class: "thumbs" }, (firstVideo ? fotos : fotos.slice(1)).map(function (id) {
         return h("button", { type: "button", "aria-label": "Ver otra foto", onclick: function () { openLightbox(shot(id)); } }, h("img", { src: blobUrl(id), alt: "", loading: "lazy" }));
       })) : null,
-      videos.map(function (l) { return videoEmbed(youtubeId(l.url), l.texto || n.titulo); }),
+      videos.slice(1).map(function (l) { return videoEmbed(youtubeId(l.url), l.texto || n.titulo); }),
       links.length ? h("div", { class: "post-links" }, links.map(function (l) {
         return h("a", { href: l.url, target: "_blank", rel: "noopener", text: "↗ " + (l.texto || l.url.replace(/^https?:\/\//, "")) });
       })) : null));
@@ -207,13 +210,15 @@ function excerpt(t, max) {
 }
 function heroNews(n) {
   var foto = Array.isArray(n.fotos) && n.fotos[0];
+  var yt = (Array.isArray(n.enlaces) ? n.enlaces : []).filter(function (l) { return l && youtubeId(l.url); })[0];
   return h("article", { class: "hero-news" },
-    foto ? h("div", { class: "hn-photo" }, h("img", { src: blobUrl(foto), alt: "" })) : null,
+    yt ? h("div", { class: "hn-video" }, videoEmbed(youtubeId(yt.url), yt.texto || n.titulo))
+      : foto ? h("div", { class: "hn-photo" }, h("img", { src: blobUrl(foto), alt: "" })) : null,
     h("div", { class: "hn-body" },
       h("span", { class: "eyebrow", text: "Última noticia" }),
       n.fecha ? h("time", { datetime: n.fecha, text: fmtLong(n.fecha) }) : null,
       h("h2", { text: n.titulo }),
-      n.texto ? h("p", { text: excerpt(n.texto, foto ? 150 : 240) }) : null,
+      n.texto ? h("p", { text: excerpt(n.texto, (foto || yt) ? 150 : 240) }) : null,
       h("a", { class: "btn primary", href: "#noticias", text: "Ver más" })));
 }
 
