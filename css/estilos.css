@@ -567,3 +567,12 @@ button.mus-av { cursor: zoom-in; }
 .com-form input { flex: 1; min-width: 0; font: 400 .95rem var(--f-body); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; }
 .aitem .acts input { font: 400 .88rem var(--f-body); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; width: 160px; }
 @media (max-width: 620px) { .mev { grid-template-columns: 1fr; } .mev .cal { justify-self: start; min-width: 70px; } }
+
+/* Letras musicales del pentagrama de la Banda */
+.lettering { color: var(--nota); }
+.lettering .c-azul { color: var(--azul); }
+.lettering .c-verde { color: var(--verde); }
+.lettering .c-naranja { color: var(--naranja); }
+.lettering .g-fill { fill: currentColor; }
+.lettering .g-open { fill: none; stroke: currentColor; stroke-width: 3.2; }
+.lettering .g-stroke { fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }

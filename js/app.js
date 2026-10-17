@@ -127,33 +127,64 @@ function pageHead(eyebrow, title, lead, cls, extra, logo) {
     h("div", { class: "staff-lines", "aria-hidden": "true" }), extra || null);
 }
 
-/* "La banda de Pola mola" escrito en el pentagrama: cada sílaba con su nota.
-   Las líneas del pentagrama están a 12 px; la de abajo (Mi) en y = 60. */
-function staffMelody() {
+/* "¡La Banda de Pola mola!" escrito en el pentagrama con letras hechas de figuras musicales.
+   Cada letra se dibuja en una caja de 48 px de alto, que coincide con las cinco líneas del pentagrama
+   (la de arriba en y = 12 y la de abajo en y = 60 dentro de la capa). */
+var MUSIC_GLYPHS = (function () {
+  function E(tag, a) { return { tag: tag, a: a }; }
+  function head(cx, cy, open) { return E("ellipse", { cx: cx, cy: cy, rx: 6, ry: 4.4, transform: "rotate(-20 " + cx + " " + cy + ")", "class": open ? "g-open" : "g-fill" }); }
+  function stem(x, y1, y2) { return E("line", { x1: x, y1: y1, x2: x, y2: y2, "class": "g-stroke" }); }
+  function beam(x1, x2, y) { return E("polygon", { points: x1 + "," + (y + 3) + " " + x2 + "," + (y - 1) + " " + x2 + "," + (y + 4) + " " + x1 + "," + (y + 8), "class": "g-fill" }); }
+  function path(d, cls) { return E("path", { d: d, "class": cls || "g-stroke" }); }
+  return {
+    "¡": { w: 10, els: [E("circle", { cx: 5, cy: 18, r: 3, "class": "g-fill" }), stem(5, 26, 46)] },
+    "!": { w: 10, els: [stem(5, 2, 28), head(5, 40)] },
+    " ": { w: 12, els: [] },
+    // Mayúsculas: trazo doble, como la plica de una nota escrita a mano
+    "L": { w: 22, els: [stem(4, 2, 46), stem(9, 2, 41), beam(4, 21, 38)] },
+    "B": { w: 24, els: [stem(4, 2, 46), stem(9, 2, 46), path("M9 3 C22 4 23 20 9 22"), path("M9 22 C24 22 25 45 9 45")] },
+    "P": { w: 22, els: [stem(4, 2, 46), stem(9, 2, 46), E("ellipse", { cx: 14, cy: 12, rx: 7, ry: 7.5, "class": "g-open" })] },
+    // Minúsculas: notas
+    "a": { w: 20, els: [E("ellipse", { cx: 9, cy: 35, rx: 6.5, ry: 7, "class": "g-open" }), stem(15.6, 22, 46)] },
+    "d": { w: 20, els: [E("ellipse", { cx: 9, cy: 35, rx: 6.5, ry: 7, "class": "g-open" }), stem(15.6, 2, 46)] },
+    "o": { w: 20, els: [E("ellipse", { cx: 10, cy: 34, rx: 7.5, ry: 6, transform: "rotate(-20 10 34)", "class": "g-open" })] },
+    "e": { w: 20, els: [path("M3.5 33 H17 C17 25 4 23 3.5 33 C3.5 42 13 44 17 39")] },
+    "l": { w: 13, els: [stem(4, 2, 46), path("M4 2 C12 8 13 13 10 20")] },
+    "n": { w: 22, els: [stem(4, 22, 46), stem(18, 18, 46), beam(4, 18, 16)] },
+    "m": { w: 32, els: [stem(4, 22, 46), stem(16, 20, 46), stem(28, 18, 46), beam(4, 28, 14), beam(4, 28, 22)] }
+  };
+})();
+function staffLettering(text) {
   var NS = "http://www.w3.org/2000/svg";
   function el(tag, attrs) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
-  // posición vertical de cada nota (clave de sol)
-  var Y = { Mi4: 60, Fa4: 54, Sol4: 48, La4: 42, Si4: 36, Do5: 30, Re5: 24, Mi5: 18, Fa5: 12 };
-  var melody = [["La4", "La"], ["Do5", "ban-"], ["Si4", "da"], ["Sol4", "de"], ["Do5", "Po-"], ["La4", "la"], ["Re5", "mo-"], ["La4", "la"]];
-  var narrow = window.innerWidth < 700;
-  var start = narrow ? 14 : 46, end = narrow ? 92 : 94;
-  var svg = el("svg", { "aria-label": "Pentagrama con la frase La banda de Pola mola", role: "img" });
-  melody.forEach(function (n, i) {
-    var x = start + (end - start) * i / (melody.length - 1);
-    var g = el("svg", { x: x + "%", y: "0", overflow: "visible" });
-    var y = Y[n[0]], down = y <= 36;
-    g.appendChild(el("ellipse", { class: "head", cx: "0", cy: String(y), rx: "6.6", ry: "4.8", transform: "rotate(-20 0 " + y + ")" }));
-    g.appendChild(down ? el("line", { class: "stem", x1: "-6", y1: String(y), x2: "-6", y2: String(y + 32) })
-                       : el("line", { class: "stem", x1: "6", y1: String(y), x2: "6", y2: String(y - 32) }));
-    var t = el("text", { class: "lyric", x: "0", y: "84" }); t.textContent = n[1]; g.appendChild(t);
-    svg.appendChild(g);
+  var GAP = 4, x = 0, glyphs = [];
+  // Colores: "Banda" en azul, "mola" en verde y las exclamaciones en naranja
+  var words = text.split(" "), colorOf = {};
+  Array.from(text).forEach(function (ch) {
+    var g = MUSIC_GLYPHS[ch] || MUSIC_GLYPHS[ch.toLowerCase()] || MUSIC_GLYPHS[" "];
+    glyphs.push({ ch: ch, g: g, x: x });
+    x += g.w + GAP;
   });
-  var endX = (end + (narrow ? 4 : 3)) + "%";
-  var b = el("svg", { x: endX, y: "0", overflow: "visible" });
-  b.appendChild(el("line", { class: "bar", x1: "0", y1: "12", x2: "0", y2: "60" }));
-  b.appendChild(el("line", { class: "bar thick", x1: "6", y1: "12", x2: "6", y2: "60" }));
-  svg.appendChild(b);
-  return h("div", { class: "staff-notes", "aria-hidden": "false" }, h("div", { class: "wrap" }, svg));
+  var W = x - GAP;
+  var avail = Math.max(200, Math.min(window.innerWidth, 1120) - 40);
+  var sc = Math.min(1, (avail * (window.innerWidth < 700 ? 1 : 0.62)) / W);
+  var svg = el("svg", { role: "img", "aria-label": text });
+  var anchor = el("svg", { x: "100%", y: "0", overflow: "visible" });
+  var g = el("g", { transform: "translate(" + (-(W * sc) - 26) + " " + (12 + (48 - 48 * sc) / 2) + ") scale(" + sc + ")", "class": "lettering" });
+  var word = 0;
+  glyphs.forEach(function (it) {
+    if (it.ch === " ") { word++; return; }
+    var cls = (it.ch === "¡" || it.ch === "!") ? "c-naranja" : word === 1 ? "c-azul" : word === 4 ? "c-verde" : "";
+    var gg = el("g", { transform: "translate(" + it.x + " 0)", "class": cls });
+    it.g.els.forEach(function (e) { gg.appendChild(el(e.tag, e.a)); });
+    g.appendChild(gg);
+  });
+  anchor.appendChild(g);
+  // doble barra final
+  anchor.appendChild(el("line", { "class": "bar", x1: "-9", y1: "12", x2: "-9", y2: "60" }));
+  anchor.appendChild(el("line", { "class": "bar thick", x1: "-3", y1: "12", x2: "-3", y2: "60" }));
+  svg.appendChild(anchor);
+  return h("div", { class: "staff-notes" }, h("div", { class: "wrap" }, svg));
 }
 function eventRow(e, past) {
   var p = parseDate(e.fecha);
@@ -392,7 +423,7 @@ function plantilla(formacion, alt) {
 
 PAGES.banda = function () {
   return [
-    pageHead("Banda de Música de Siero", "La banda que suena en las fiestas y auditorios del concejo", null, null, staffMelody(), { src: "img/logo/logo-banda.webp", alt: "Logotipo de la Banda de Música de Siero" }),
+    pageHead("Banda de Música de Siero", "La banda que suena en las fiestas y auditorios del concejo", null, null, staffLettering("¡La Banda de Pola mola!"), { src: "img/logo/logo-banda.webp", alt: "Logotipo de la Banda de Música de Siero" }),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       directorFeature(/banda/i, "azul", "Director de la Banda"),
       h("div", { class: "prose" },
