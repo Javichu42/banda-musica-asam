@@ -753,13 +753,23 @@ function upcomingCard(up) {
     })) : h("p", { class: "muted", text: "Pronto anunciaremos nuevos conciertos." }),
     list.length ? h("a", { class: "up-more", href: "#actuaciones", onclick: function (ev) { ev.preventDefault(); var t = document.getElementById("proximas"); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); }, text: "Ver todos los detalles ↓" }) : null);
 }
-PAGES.actuaciones = function () {
-  var s = eventsSplit();
+function staffDivider(text, opts) {
+  return h("div", { class: "staff-divider", "aria-hidden": null },
+    h("div", { class: "staff-lines", "aria-hidden": "true" }),
+    staffLettering(text, Object.assign({ glyphs: MUSIC_CAPS }, opts || {})));
+}
+PAGES.actuaciones = function (sub) {
+  var s = eventsSplit(), n = sortedNews();
+  if (sub === "noticias") setTimeout(function () { var t = document.getElementById("noticias-sec"); if (t) t.scrollIntoView({ block: "start" }); }, 0);
   return [
-    headSize(pageHead("Actuaciones", "Una temporada de conciertos a lo largo del año", "Los conciertos en los auditorios municipales son gratuitos hasta completar aforo.", null, staffLettering("¡Nos vemos en el concierto!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), { el: upcomingCard(s.up) }, "img/fondos/actuaciones.jpg"), "head-photo"),
-    h("section", { class: "block" }, h("div", { class: "wrap" },
+    headSize(pageHead("Actuaciones y noticias", "Una temporada de conciertos a lo largo del año", "Los conciertos en los auditorios municipales son gratuitos hasta completar aforo.", null, staffLettering("¡Nos vemos en el concierto!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), { el: upcomingCard(s.up) }, "img/fondos/actuaciones.jpg"), "head-photo"),
+    h("section", { class: "block act-news" }, h("div", { class: "wrap" },
       h("div", { class: "row-head", id: "proximas" }, h("h2", { text: "Próximas actuaciones" }), adminLink("eventos", "Gestionar eventos")),
-      s.up.length ? h("div", { class: "events" }, s.up.map(function (e) { return eventRow(e); })) : emptyBox("Pronto anunciaremos las próximas actuaciones.", "eventos"))),
+      s.up.length ? h("div", { class: "events" }, s.up.map(function (e) { return eventRow(e); })) : emptyBox("Pronto anunciaremos las próximas actuaciones.", "eventos")),
+      staffDivider("Lo último de la banda", { colors: { 1: "c-naranja", 4: "c-azul" }, punct: "c-naranja" }),
+      h("div", { class: "wrap", id: "noticias-sec" },
+        h("div", { class: "row-head" }, h("h2", { text: "Noticias" }), adminLink("noticias", "Gestionar noticias")),
+        n.length ? h("div", { class: "news" }, n.map(newsCard)) : emptyBox("Todavía no hay noticias publicadas.", "noticias"))),
     h("section", { class: "block alt" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("h2", { text: "Nuestra temporada habitual" })),
       h("div", { class: "season" }, [
@@ -773,16 +783,6 @@ PAGES.actuaciones = function () {
     s.past.length ? h("section", { class: "block" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("h2", { text: "Actuaciones anteriores" })),
       h("div", { class: "events" }, s.past.slice(0, 12).map(function (e) { return eventRow(e, true); })))) : null
-  ];
-};
-
-PAGES.noticias = function () {
-  var n = sortedNews();
-  return [
-    pageHead("Noticias", "Lo último de la asociación", null, null, staffLettering("Lo último de la banda", { glyphs: MUSIC_CAPS, colors: { 1: "c-naranja", 4: "c-azul" }, punct: "c-naranja" })),
-    h("section", { class: "block" }, h("div", { class: "wrap" },
-      IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("noticias", "Gestionar noticias")) : null,
-      n.length ? h("div", { class: "news" }, n.map(newsCard)) : emptyBox("Todavía no hay noticias publicadas.", "noticias")))
   ];
 };
 
@@ -908,6 +908,30 @@ SCHEMAS.profesores = { label: "Profesorado", singular: "profesor", fields: [
   title: function (d) { return d.nombre; }, sub: function (d) { return d.especialidad || ""; }, sort: byOrden };
 var LIST_FILTER = {};
 
+/* Acceso privado: un único botón para músicos y administradores */
+PAGES.privado = function () {
+  var head = pageHead("Acceso privado", "Área de músicos y administración", SESSION ? null : "Entra con tu usuario o tu correo y tu contraseña.", "negra");
+  if (!SB) {
+    return [head, h("section", { class: "block" }, h("div", { class: "wrap" }, h("div", { class: "notice" },
+      h("h3", { text: "Falta conectar la base de datos" }),
+      h("p", { class: "muted", text: "Rellena la dirección y la clave pública de Supabase en el archivo js/config.js (lo explica el README del repositorio)." }))))];
+  }
+  if (!SESSION) return [head, h("section", { class: "block" }, h("div", { class: "wrap" }, loginForm("Acceso privado")))];
+  var esMusico = !!myMusico();
+  // Si solo es músico, va directo a su área
+  if (esMusico && !IS_ADMIN) { setTimeout(function () { if (location.hash.indexOf("#privado") === 0) location.hash = "#musicos"; }, 0); }
+  var logout = h("button", { class: "btn ghost small", type: "button", text: "Cerrar sesión", onclick: function () { SB.auth.signOut(); } });
+  var cards = [];
+  if (IS_ADMIN || esMusico) cards.push(h("a", { class: "priv-card", href: "#musicos" }, h("i", { style: "background:var(--azul)" }),
+    h("b", { text: "Área de músicos" }), h("span", { text: "Convocatorias, asistencia, partituras y anuncios." })));
+  if (IS_ADMIN) cards.push(h("a", { class: "priv-card", href: "#admin" }, h("i", { style: "background:var(--naranja)" }),
+    h("b", { text: "Administración" }), h("span", { text: "Edita los contenidos de la web, las cuentas y los administradores." })));
+  return [head, h("section", { class: "block" }, h("div", { class: "wrap" },
+    cards.length ? h("div", { class: "priv-cards" }, cards) : h("div", { class: "notice" },
+      h("h3", { text: "Tu usuario no tiene acceso" }),
+      h("p", { class: "muted", text: "Has entrado como " + ((SESSION.user && SESSION.user.email) || "usuario") + ", pero no tienes cuenta de músico ni permiso de administrador." })),
+    h("div", { class: "form-acts", style: "margin-top:18px" }, logout)))];
+};
 PAGES.admin = function (tab) {
   tab = tab || "directiva";
   var head = pageHead("Administración", "Panel de administración", "Los cambios que guardes aquí se ven en la web para todas las personas que la visitan.", "negra");
@@ -1446,18 +1470,18 @@ function adminSocio() {
 function renderFooter() {
   var p = DATA.pie || {}, c = DATA.contacto || {};
   var socials = DATA.enlaces.slice().sort(byOrden).filter(function (l) { return safeUrl(l.url); });
-  var pages = [["inicio", "Inicio"], ["quienes", "Quiénes somos"], ["banda", "Banda"], ["bandin", "Bandín"], ["escuela", "Escuela"], ["actuaciones", "Actuaciones"], ["galeria", "Galería"], ["socio", "Hacerse socio"], ["contacto", "Contacto"]];
+  var pages = [["inicio", "Inicio"], ["quienes", "Quiénes somos"], ["banda", "Banda"], ["bandin", "Bandín"], ["escuela", "Escuela"], ["actuaciones", "Actuaciones y noticias"], ["galeria", "Galería"], ["socio", "Hacerse socio"], ["contacto", "Contacto"]];
   var el = document.getElementById("footer");
   el.replaceChildren(
     h("div", { class: "foot" },
-      h("div", { class: "foot-brand" }, h("span", { class: "badge" }, h("img", { src: LOGO_MARK, alt: "ASAM" })),
+      h("div", { class: "foot-brand" }, h("span", { class: "foot-logo" }, h("img", { src: "img/logo/logo-asam-mini-claro.svg", alt: "ASAM" })),
         p.texto ? h("p", { text: p.texto }) : null, p.apoyos ? h("p", { text: p.apoyos }) : null),
       h("div", null, h("h4", { text: "La web" }), h("ul", null, pages.map(function (x) { return h("li", null, h("a", { href: "#" + x[0], text: x[1] })); }))),
       h("div", null, h("h4", { text: "Síguenos" }),
         socials.length ? h("div", { class: "socials" }, socials.map(function (l) { var b = socialBrand(l); return h("a", { class: b ? "soc soc-" + b : "", href: l.url, target: "_blank", rel: "noopener", text: l.nombre }); })) : null,
         h("div", { class: "foot-contact" }, c.direccion ? h("span", { text: c.direccion }) : null, c.telefono ? h("span", { text: "Tel. " + c.telefono + " (WhatsApp)" }) : null, c.email ? h("span", { text: c.email }) : null))),
     h("div", { class: "foot-bottom" }, h("span", { text: p.copyright || "" }),
-      h("a", { href: "#admin", text: IS_ADMIN ? "Administración" : "Acceso administradores" })));
+      h("a", { href: "#privado", text: "Acceso privado" })));
 }
 
 /* ---------- Lightbox y copiar ---------- */
@@ -1489,6 +1513,7 @@ function route() {
   var hash = (location.hash || "").replace(/^#/, "") || "inicio";
   var parts = hash.split("-"), page = parts[0], sub = parts.slice(1).join("-");
   if (page === "imagenes") page = "galeria";
+  if (page === "noticias") { page = "actuaciones"; sub = "noticias"; }
   if (!PAGES[page]) { page = "inicio"; sub = ""; }
   return { page: page, sub: sub, key: page + "-" + sub };
 }
@@ -1524,7 +1549,8 @@ function render() {
   var page = h("div", { class: "page" });
   add(page, PAGES[r.page](r.sub));
   app.appendChild(page);
-  Array.prototype.forEach.call(navEl.querySelectorAll("a"), function (a) { a.setAttribute("aria-current", a.getAttribute("data-p") === r.page ? "page" : "false"); });
+  var navPage = (r.page === "admin" || r.page === "musicos") ? "privado" : r.page;
+  Array.prototype.forEach.call(navEl.querySelectorAll("a"), function (a) { a.setAttribute("aria-current", a.getAttribute("data-p") === navPage ? "page" : "false"); });
   renderFooter();
   if (r.key !== lastRoute) { window.scrollTo(0, 0); lastRoute = r.key; }
   else { window.scrollTo(0, scroll); page.style.animation = "none"; if (focusId) { var f = document.getElementById(focusId); if (f) f.focus({ preventScroll: true }); } }
@@ -2151,7 +2177,7 @@ var ASSETS_ADAPTER = {
     return SB.storage.from("fotos").remove([id]).then(function (r) { if (r.error) throw r.error; return { deleted: true }; });
   }
 };
-function updateNav() { var a = document.getElementById("nav-admin"); a.hidden = false; a.textContent = tr("Administración"); }
+function updateNav() {}
 function refreshAdmin() {
   if (!SESSION) { IS_ADMIN = false; ASSETS = null; updateNav(); return Promise.resolve(); }
   return SB.rpc("es_admin").then(function (r) {

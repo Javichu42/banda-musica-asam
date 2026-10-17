@@ -22,6 +22,14 @@ window.ASAM_AST = {
     "Ver la web en asturiano": "Ver la web n'asturianu",
     "Ver la web en castellano": "Ver la web en castellanu",
     "Más información abajo": "Más información embaxo",
+    "Actuaciones y noticias": "Actuaciones y noticies",
+    "Acceso privado": "Accesu priváu",
+    "Área de músicos y administración": "Área de músicos y alministración",
+    "Entra con tu usuario o tu correo y tu contraseña.": "Entra col to usuariu o col to corréu y cola to contraseña.",
+    "Convocatorias, asistencia, partituras y anuncios.": "Convocatories, asistencia, partitures y anuncios.",
+    "Edita los contenidos de la web, las cuentas y los administradores.": "Edita los conteníos de la web, les cuentes y los alministradores.",
+    "Correo o nombre de usuario": "Corréu o nome d'usuariu",
+    "Cerrar sesión": "Zarrar sesión",
 
     /* Inicio */
     "La Asociación Sierense Amigos de la Música es una entidad sin ánimo de lucro que enseña, toca y comparte música en el concejo. Conciertos gratuitos, pasacalles en las fiestas y clases para todas las edades.":
