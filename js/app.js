@@ -6,17 +6,18 @@ var LOGO_MARK = "img/logo-simbolo.webp";
 var CFG = window.ASAM_CONFIG || {};
 var SB = null, SESSION = null;
 function configured() { return /^https:\/\//.test(CFG.supabaseUrl || "") && CFG.supabaseAnonKey && !/PEGA_AQUI/.test(CFG.supabaseAnonKey + CFG.supabaseUrl); }
-function blobUrl(id) { return id && CFG.supabaseUrl ? String(CFG.supabaseUrl).replace(/\/$/, "") + "/storage/v1/object/public/fotos/" + encodeURI(id) : ""; }
+function isStored(id) { return !!id && !/^img\//.test(id); }
+function blobUrl(id) { if (id && /^img\//.test(id)) return id; return id && CFG.supabaseUrl ? String(CFG.supabaseUrl).replace(/\/$/, "") + "/storage/v1/object/public/fotos/" + encodeURI(id) : ""; }
 var INSTRUMENTOS = ["Flautín", "Flauta", "Oboe", "Fagot", "Requinto", "Clarinete", "Clarinete bajo", "Saxofón soprano", "Saxofón alto", "Saxofón tenor", "Saxofón barítono", "Trompa", "Trompeta", "Fliscorno", "Trombón", "Bombardino", "Tuba", "Contrabajo", "Percusión", "Piano"];
 
 /* ---------- Datos iniciales (se usan si la base de datos no está disponible) ---------- */
 var DEFAULTS = {
   directiva: [
-    { id: "presidente", cargo: "Presidente", nombre: "Carlos Presa", orden: 1 },
+    { id: "presidente", cargo: "Presidente", nombre: "Carlos Presa", orden: 1, foto: "img/personas/carlos-presa.jpg" },
     { id: "jaime-pelaez", cargo: "Vocal", nombre: "Jaime Peláez", orden: 5 }
   ],
   directores: [
-    { id: "emilio-huerta", nombre: "Emilio Huerta Villanueva", cargo: "Director de la Banda de Música", color: "azul", orden: 1,
+    { id: "emilio-huerta", nombre: "Emilio Huerta Villanueva", cargo: "Director de la Banda de Música", color: "azul", orden: 1, foto: "img/personas/emilio-huerta.jpg",
       bio: "Nacido en Traspando (Siero), es flautista de la banda desde su creación en 1984. Dirigió el Bandín entre 2008 y 2012, fue subdirector de la Banda de 2014 a 2021 y desde septiembre de 2021 es su director.",
       trayectoria: "Profesor de Piano, Profesor Superior de Lenguaje Musical y de Órgano por el Conservatorio Superior Eduardo Martínez Torner de Oviedo.\nMaestro especialista en Educación Musical por la Universidad de Oviedo.\nOrganista titular de la parroquia de San Pedro Apóstol de Pola de Siero.\nCompositor y arreglista para banda, órgano, coro, teatro y música infantil.\nMiembro del dúo Nuberu entre 1991 y 2007." },
     { id: "victor-peino", nombre: "Víctor Peinó Ornia", cargo: "Director del Bandín", color: "naranja", orden: 2,
@@ -223,11 +224,25 @@ PAGES.historia = function () {
   ];
 };
 
-function directorMini(match, color) {
+function personAvatar(p, color, cls) {
+  if (p.foto) return h("img", { class: (cls || "avatar") + " photo", src: blobUrl(p.foto), alt: "Foto de " + (p.nombre || ""), loading: "lazy" });
+  return h("div", { class: cls || "avatar", style: "background:" + colorVar(p.color || color) }, initials(p.nombre));
+}
+function directorFeature(match, color, label) {
   var d = DATA.directores.filter(function (x) { return match.test(x.cargo || ""); })[0];
-  if (!d) return null;
-  return h("div", { class: "mini" }, h("div", { class: "avatar", style: "background:" + colorVar(d.color || color) }, initials(d.nombre)),
-    h("div", null, h("b", { text: d.nombre }), h("span", { text: d.cargo })));
+  if (!d) return IS_ADMIN ? emptyBox("Añade al director desde Administración para que aparezca aquí.", "directores") : null;
+  return h("article", { class: "dfeature" },
+    h("div", { class: "dphoto" }, d.foto
+      ? h("img", { src: blobUrl(d.foto), alt: "Foto de " + d.nombre })
+      : h("div", { class: "initials", style: "background:" + colorVar(d.color || color) }, initials(d.nombre))),
+    h("div", { class: "dtext" },
+      h("span", { class: "eyebrow" + (color === "naranja" ? "" : " verde"), text: label }),
+      h("h2", { text: d.nombre }),
+      h("p", { class: "role", text: d.cargo }),
+      d.bio ? h("p", { class: "bio", text: d.bio }) : null,
+      h("div", { class: "actions", style: "margin-top:6px" },
+        h("a", { class: "btn ghost small", href: "#direccion", text: "Ver trayectoria completa" }),
+        adminLink("directores", "Editar director"))));
 }
 function formationEvents(re) {
   var up = eventsSplit().up.filter(function (e) { return re.test(e.formacion || ""); }).slice(0, 3);
@@ -267,15 +282,13 @@ function plantilla(formacion, alt) {
 PAGES.banda = function () {
   return [
     pageHead("Banda de Música de Siero", "La banda que suena en las fiestas y auditorios del concejo"),
-    h("section", { class: "block" }, h("div", { class: "wrap" }, h("div", { class: "two" },
+    h("section", { class: "block" }, h("div", { class: "wrap" },
+      directorFeature(/banda/i, "azul", "Director de la Banda"),
       h("div", { class: "prose" },
-        h("p", { text: "La Banda de Música de Siero es el corazón de la ASAM. La forman músicos profesionales y aficionados que comparten atril y que interpretan un repertorio amplio y variado." }),
+        h("p", { text: "La Banda de Música de Siero es el corazón de la ASAM. La forman músicos profesionales y aficionados que comparten atril y que interpretan un repertorio amplio y variado, del pasodoble y la zarzuela a las bandas sonoras." }),
         h("p", { text: "Sus conciertos forman parte de la programación cultural y festiva del municipio. En los auditorios municipales la entrada es gratuita, y en las fiestas más señaladas la banda sale a la calle con sus pasacalles." }),
         h("p", { text: "Además de los conciertos propios, organiza intercambios con otras formaciones y colabora con coros como los de la Sociedad Siero Musical." }),
-        h("p", { class: "color-note" }, h("span", { class: "dot", style: "background:var(--azul)" }), h("span", { class: "dot", style: "background:var(--verde)" }), "Azul por la tradición, verde por el futuro: los colores del logotipo del 40 aniversario.")),
-      h("div", { class: "panel" }, h("h3", { text: "Del pasodoble a la banda sonora" }),
-        h("div", { class: "chips" }, ["Pasodobles", "Zarzuela", "Música clásica", "Bandas sonoras", "Obras para banda", "Música popular", "Villancicos"].map(function (c) { return h("span", { class: "chip", text: c }); })),
-        directorMini(/banda/i, "azul"))))),
+        h("p", { class: "color-note" }, h("span", { class: "dot", style: "background:var(--azul)" }), h("span", { class: "dot", style: "background:var(--verde)" }), "Azul por la tradición, verde por el futuro: los colores del logotipo del 40 aniversario.")))),
     plantilla("Banda", true),
     formationEvents(/banda/i)
   ];
@@ -284,14 +297,12 @@ PAGES.banda = function () {
 PAGES.bandin = function () {
   return [
     pageHead("El Bandín", "La cantera: donde se aprende a tocar en grupo"),
-    h("section", { class: "block" }, h("div", { class: "wrap" }, h("div", { class: "two" },
+    h("section", { class: "block" }, h("div", { class: "wrap" },
+      directorFeature(/bandín|bandin/i, "naranja", "Director del Bandín"),
       h("div", { class: "prose" },
         h("p", { text: "El Bandín reúne a los músicos más jóvenes de la escuela. Mientras mejoran con su instrumento, niños y niñas aprenden algo que pocas enseñanzas musicales ofrecen: tocar en conjunto, escuchar a los demás y subirse a un escenario." }),
         h("p", { text: "Es un ambiente formativo, cercano y con ganas de pasarlo bien. Aquí se prepara el relevo generacional de la Banda de Siero." }),
         h("p", { class: "color-note" }, h("span", { class: "dot", style: "background:var(--naranja)" }), "El naranja de su logotipo representa el amanecer a la música de las jóvenes promesas.")),
-      h("div", { class: "panel" }, h("h3", { text: "Algunas obras que ha tocado" }),
-        h("div", { class: "chips" }, ["Parque Jurásico", "Encanto", "I Vow to Thee, My Country", "Edelweiss", "Canon of Peace", "Día de nieve"].map(function (c) { return h("span", { class: "chip", text: c }); })),
-        directorMini(/bandín|bandin/i, "naranja"))),
       h("div", { class: "join", style: "margin-top:36px" },
         h("div", null, h("b", { text: "¿Tu hijo o tu hija estudia un instrumento?" }), h("p", { text: "Pregúntanos por las clases y por cómo entrar en el Bandín." })),
         h("a", { class: "btn", href: "#contacto", text: "Escríbenos" })))),
@@ -309,14 +320,17 @@ PAGES.direccion = function () {
       dirs.length ? h("div", { class: "directors" }, dirs.map(function (d) {
         var tray = String(d.trayectoria || "").split("\n").map(function (s) { return s.trim(); }).filter(Boolean);
         return h("article", { class: "dcard" },
-          h("header", null, h("div", { class: "avatar", style: "background:" + colorVar(d.color) }, initials(d.nombre)), h("div", null, h("h3", { text: d.nombre }), h("div", { class: "role", text: d.cargo }))),
+          h("header", null, personAvatar(d, "azul"), h("div", null, h("h3", { text: d.nombre }), h("div", { class: "role", text: d.cargo }))),
           d.bio ? h("p", { text: d.bio }) : null,
           tray.length ? h("details", null, h("summary", { text: "Trayectoria" }), h("ul", null, tray.map(function (t) { return h("li", { text: t }); }))) : null);
       })) : emptyBox("Todavía no hay directores añadidos.", "directores"))),
     h("section", { class: "block alt" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Junta Directiva" }), h("p", { class: "muted", text: "Trabajo voluntario y altruista" })), adminLink("directiva", "Editar directiva")),
       junta.length ? h("div", { class: "junta" }, junta.map(function (m) {
-        return h("div", { class: "member" + (/presiden/i.test(m.cargo || "") && !/vice/i.test(m.cargo || "") ? " lead-m" : "") }, h("span", { class: "cargo", text: m.cargo }), h("b", { text: m.nombre }));
+        var lead = /presiden/i.test(m.cargo || "") && !/vice/i.test(m.cargo || "");
+        return h("div", { class: "member" + (lead ? " lead-m" : "") + (m.foto ? " has-photo" : "") },
+          m.foto ? h("img", { class: "mphoto", src: blobUrl(m.foto), alt: "Foto de " + m.nombre, loading: "lazy" }) : null,
+          h("div", { class: "mtext" }, h("span", { class: "cargo", text: m.cargo }), h("b", { text: m.nombre })));
       })) : emptyBox("Todavía no hay miembros de la directiva añadidos.", "directiva")))
   ];
 };
@@ -399,12 +413,14 @@ var SCHEMAS = {
   directiva: { label: "Directiva", singular: "miembro", fields: [
     { k: "cargo", l: "Cargo", req: true, ph: "Presidente, Secretaría, Vocal…" },
     { k: "nombre", l: "Nombre y apellidos", req: true },
+    { k: "foto", l: "Foto", type: "images", single: true, help: "Opcional. Mejor una foto vertical en la que se vea bien la cara." },
     { k: "orden", l: "Orden", type: "number", help: "Número para ordenar (1 aparece primero)." }],
     title: function (d) { return d.nombre; }, sub: function (d) { return d.cargo; }, sort: byOrden },
   directores: { label: "Directores", singular: "director", fields: [
     { k: "nombre", l: "Nombre y apellidos", req: true },
     { k: "cargo", l: "Cargo", req: true, ph: "Director de la Banda de Música" },
-    { k: "bio", l: "Presentación", type: "textarea" },
+    { k: "foto", l: "Foto", type: "images", single: true, help: "Se muestra en Dirección y en la página de su formación. Mejor una foto vertical." },
+    { k: "bio", l: "Presentación", type: "textarea", help: "Biografía breve. Aparece también en la página de la Banda o del Bandín." },
     { k: "trayectoria", l: "Trayectoria", type: "textarea", help: "Un mérito por línea." },
     { k: "color", l: "Color", type: "select", options: [["azul", "Azul"], ["naranja", "Naranja"], ["verde", "Verde"], ["negro", "Negro"]] },
     { k: "orden", l: "Orden", type: "number" }],
@@ -552,7 +568,8 @@ function fieldWidget(col, f, val) {
     } };
   }
   if (f.type === "images") {
-    var keep = (Array.isArray(val) ? val : []).slice(), added = [];
+    var initial = Array.isArray(val) ? val.filter(Boolean) : (val ? [val] : []);
+    var keep = initial.slice(), added = [];
     var box = h("div", { class: "imgs" });
     function draw() {
       box.replaceChildren();
@@ -566,15 +583,17 @@ function fieldWidget(col, f, val) {
       });
     }
     draw();
-    var input = h("input", { type: "file", id: id, accept: "image/jpeg,image/png,image/webp,image/gif", multiple: true });
+    var input = h("input", { type: "file", id: id, accept: "image/jpeg,image/png,image/webp,image/gif", multiple: !f.single });
     input.addEventListener("change", function () {
+      if (f.single && input.files.length) { added.forEach(function (a) { URL.revokeObjectURL(a.url); }); added = []; keep = []; }
       Array.prototype.forEach.call(input.files, function (file) { if (/^image\//.test(file.type)) added.push({ file: file, url: URL.createObjectURL(file) }); });
+      if (f.single) added = added.slice(-1);
       input.value = ""; draw();
     });
     var el2 = h("div", { class: "field" }, h("label", { for: id, text: f.l }), box,
       ASSETS ? input : h("small", { text: "Para subir fotos tienes que haber iniciado sesión como administrador." }),
       f.help ? h("small", { text: f.help }) : null);
-    return { el: el2, original: (Array.isArray(val) ? val : []).slice(), get: function () { return { keep: keep.slice(), files: added.map(function (a) { return a.file; }) }; } };
+    return { el: el2, original: initial.slice(), get: function () { return { keep: keep.slice(), files: added.map(function (a) { return a.file; }) }; } };
   }
   var input2;
   if (f.type === "textarea") input2 = h("textarea", { id: id, name: f.k, placeholder: f.ph || null });
@@ -618,31 +637,36 @@ function adminCrud(col) {
     current ? h("button", { class: "btn ghost", type: "button", text: "Cancelar", onclick: function () { EDITING[col] = null; render(); } }) : null), st);
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
-    var obj = {}, missing = [], imgField = null, imgVal = null;
+    var obj = {}, missing = [], imgs = [];
     try {
       S.fields.forEach(function (f) {
         var v = widgets[f.k].get();
-        if (f.type === "images") { imgField = f; imgVal = v; return; }
+        if (f.type === "images") { imgs.push({ f: f, v: v }); return; }
         if (f.req && (v === "" || v == null)) missing.push(f.l);
         obj[f.k] = v;
       });
     } catch (e) { setStatus(st, e.message, false); return; }
     if (missing.length) { setStatus(st, "Falta: " + missing.join(", ") + ".", false); return; }
     if (S.fields.some(function (f) { return f.type === "url"; }) && obj.url && !safeUrl(obj.url)) { setStatus(st, "La dirección debe empezar por https://", false); return; }
-    if (imgVal && imgVal.files.length && !ASSETS) { setStatus(st, "Solo los administradores pueden subir fotos.", false); return; }
+    var pendingFiles = imgs.reduce(function (n, x) { return n + x.v.files.length; }, 0);
+    if (pendingFiles && !ASSETS) { setStatus(st, "Solo los administradores pueden subir fotos.", false); return; }
     save.disabled = true; save.textContent = "Guardando…";
-    var up = imgVal && imgVal.files.length
-      ? uploadAll(imgVal.files, function (i, n) { save.textContent = "Subiendo foto " + i + " de " + n + "…"; })
-      : Promise.resolve([]);
-    up.then(function (newIds) {
-      if (imgField) obj[imgField.k] = imgVal.keep.concat(newIds);
+    var done = 0;
+    var up = imgs.reduce(function (p, x) {
+      return p.then(function () {
+        return uploadAll(x.v.files, function () { done++; save.textContent = "Subiendo foto " + done + " de " + pendingFiles + "…"; })
+          .then(function (newIds) { var all = x.v.keep.concat(newIds); obj[x.f.k] = x.f.single ? (all[0] || "") : all; });
+      });
+    }, Promise.resolve());
+    up.then(function () {
       save.textContent = "Guardando…";
       return current ? DB.collection(col).doc(current.id).set(obj) : DB.collection(col).add(obj);
     }).then(function () {
-      if (imgField && current && ASSETS) {
-        var removed = widgets[imgField.k].original.filter(function (a) { return imgVal.keep.indexOf(a) < 0; });
-        removed.forEach(function (a) { ASSETS.delete(a).catch(function () {}); });
-      }
+      if (current && ASSETS) imgs.forEach(function (x) {
+        var now = [].concat(obj[x.f.k] || []);
+        widgets[x.f.k].original.filter(function (a) { return now.indexOf(a) < 0 && isStored(a); })
+          .forEach(function (a) { ASSETS.delete(a).catch(function () {}); });
+      });
       EDITING[col] = null; FLASH = { col: col, msg: current ? "Cambios guardados." : "Añadido." }; render();
     }, function (e) { save.disabled = false; save.textContent = label; setStatus(st, errMsg(e), false); });
   });
@@ -661,14 +685,15 @@ function adminCrud(col) {
   var rows = [];
   items.forEach(function (it) {
     if (S.group) { var g = S.group(it); if (g !== lastGroup) { rows.push(h("p", { class: "group-h", text: g })); lastGroup = g; } }
-    var thumb = Array.isArray(it.fotos) && it.fotos[0] ? h("img", { src: blobUrl(it.fotos[0]), alt: "" }) : null;
+    var thumbId = (Array.isArray(it.fotos) && it.fotos[0]) || it.foto;
+    var thumb = thumbId ? h("img", { src: blobUrl(thumbId), alt: "" }) : null;
     rows.push(h("div", { class: "aitem" + (it.id === editId ? " editing" : "") }, thumb,
       h("div", { class: "t", style: "flex:1" }, h("b", { text: S.title(it) || "(sin título)" }), h("span", { text: S.sub(it) || "" })),
       h("div", { class: "acts" },
         h("button", { class: "btn ghost small", type: "button", text: "Editar", onclick: function () { EDITING[col] = it.id; render(); var f = document.querySelector(".aform input, .aform textarea"); if (f) f.focus(); } }),
         deleteButton(function (b) {
           DB.collection(col).doc(it.id).delete().then(function () {
-            if (ASSETS && Array.isArray(it.fotos)) it.fotos.forEach(function (a) { ASSETS.delete(a).catch(function () {}); });
+            if (ASSETS) [].concat(it.fotos || [], it.foto || []).filter(isStored).forEach(function (a) { ASSETS.delete(a).catch(function () {}); });
             if (EDITING[col] === it.id) EDITING[col] = null; FLASH = { col: col, msg: "Borrado." }; render();
           }, function (e) { b.disabled = false; b.textContent = "Borrar"; alertInline(b, errMsg(e)); });
         }))));
