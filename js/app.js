@@ -69,8 +69,8 @@ var DEFAULTS = {
     intro: "Clases de instrumento y de repertorio y, desde el principio, práctica en grupo con el Bandín.",
     edad: "Abierto a partir de 6 años",
     semana: [
-      { nombre: "Clase de instrumento", duracion: "45 min", texto: "Cada alumno aprende su instrumento con su profesor.", color: "azul" },
-      { nombre: "Clase de repertorio", duracion: "60 min", texto: "Se trabajan las obras que se van a tocar en grupo.", color: "verde" },
+      { nombre: "Clase de instrumento", duracion: "45 min", texto: "Clase individual: cada alumno aprende su instrumento con su profesor.", color: "azul" },
+      { nombre: "Clase de repertorio", duracion: "60 min", texto: "Teoría musical.", color: "verde" },
       { nombre: "Ensayo del Bandín", duracion: "60 min", texto: "Todo lo aprendido se pone en práctica tocando juntos.", color: "naranja" }
     ],
     cuotasTitulo: "Cuotas de socio promesa",
@@ -558,7 +558,7 @@ PAGES.escuela = function () {
     pageHead("Escuela de música", E.titulo || "Escuela de música", E.intro || null),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("escuela", "Editar la escuela")) : null,
-      h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Educación musical semanal" }), h("p", { class: "muted", text: "Lo que hace un alumno cada semana" })),
+      h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Clases semanales" })),
         E.edad ? h("span", { class: "age-badge", text: E.edad }) : null),
       h("div", { class: "week" }, semana.map(function (w) {
         return h("div", { class: "wk" }, h("span", { class: "wk-time", style: "color:" + colorVar(w.color) }, w.duracion || ""),
@@ -568,7 +568,7 @@ PAGES.escuela = function () {
       h("div", { class: "row-head" }, h("div", null, h("h2", { text: E.cuotasTitulo || "Cuotas" }), h("p", { class: "muted", text: "Precios por " + periodo }))),
       h("div", { class: "prices" }, cuotas.map(function (c) {
         return h("div", { class: "price" + (c.destacado ? " featured" : ""), style: "--c:" + colorVar(c.color) },
-          c.destacado ? h("span", { class: "price-tag", text: "Lo más completo" }) : null,
+          c.destacado ? h("span", { class: "price-tag", text: "Recomendado" }) : null,
           h("h3", { text: c.nombre || "" }),
           h("div", { class: "amount" }, h("b", { text: (c.precio || "") + " €" }), h("span", { text: "/ " + periodo })));
       })),
@@ -1167,7 +1167,7 @@ function adminEscuela() {
       field(k + "-n", "Concepto", input(k + "-n", c.nombre, "Clases de instrumento")),
       field(k + "-p", "Precio (€)", input(k + "-p", c.precio, "120", "text")),
       field(k + "-c", "Color", colorSel(k + "-c", c.color)),
-      h("label", { class: "check", for: k + "-x" }, dest, " Destacar"),
+      h("label", { class: "check", for: k + "-x" }, dest, " Recomendado"),
       h("button", { class: "btn danger small", type: "button", text: "Quitar", onclick: function () { r.remove(); } }));
     r._get = function () { return { nombre: r.querySelector("#" + k + "-n").value.trim(), precio: r.querySelector("#" + k + "-p").value.trim().replace(/\s*€$/, ""), color: r.querySelector("#" + k + "-c").value, destacado: dest.checked }; };
     cuoBox.appendChild(r);
@@ -1179,7 +1179,7 @@ function adminEscuela() {
   var form = h("form", { class: "aform", style: "position:static;max-width:900px", novalidate: true },
     h("h3", { text: "Página de la Escuela" }),
     field("es-titulo", "Título", titulo), field("es-intro", "Presentación", intro), field("es-edad", "Edad / etiqueta", edad),
-    h("h3", { text: "Educación musical semanal", style: "margin-top:10px" }), semBox,
+    h("h3", { text: "Clases semanales", style: "margin-top:10px" }), semBox,
     h("button", { class: "btn ghost small", type: "button", style: "justify-self:start", text: "+ Añadir actividad", onclick: function () { semRow({ color: "azul" }); } }),
     h("h3", { text: "Cuotas", style: "margin-top:10px" }),
     field("es-ctit", "Título de las cuotas", cuotasTitulo), field("es-per", "Periodo de los precios", periodo, "Se muestra como «90 € / trimestre»."),
