@@ -576,3 +576,8 @@ button.mus-av { cursor: zoom-in; }
 .lettering .g-fill { fill: currentColor; }
 .lettering .g-open { fill: none; stroke: currentColor; stroke-width: 3.2; }
 .lettering .g-stroke { fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Recuadros de color de la barra, sin reborde */
+.nav a.nav-banda, .nav a.nav-bandin, .nav a.nav-inicio { border: 0; margin: 0 2px; }
+.nav a.nav-inicio { background: color-mix(in srgb, var(--azul) 14%, transparent); }
+.nav a.nav-inicio:hover, .nav a.nav-inicio[aria-current="page"] { background: color-mix(in srgb, var(--azul) 26%, transparent); color: var(--fg); }

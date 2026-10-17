@@ -456,7 +456,7 @@ function plantilla(formacion, alt) {
 
 PAGES.banda = function () {
   return [
-    pageHead("Banda de Música de Siero", "La banda que suena en las fiestas y auditorios del concejo", null, null, staffLettering("¡La Banda de Pola mola!"), { src: "img/logo/logo-banda.webp", alt: "Logotipo de la Banda de Música de Siero" }),
+    pageHead("Banda de Música de Siero", "La banda que suena en las fiestas y auditorios del concejo", null, null, staffLettering("¡La Banda de Pola mola!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), { src: "img/logo/logo-banda.webp", alt: "Logotipo de la Banda de Música de Siero" }),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       directorFeature(/banda/i, "azul", "Director de la Banda"),
       h("div", { class: "prose" },
