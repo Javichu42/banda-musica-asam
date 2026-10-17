@@ -120,10 +120,39 @@ function photoSrc(f) { return f.asset ? blobUrl(f.asset) : ""; }
 function adminLink(tab, label) { return IS_ADMIN ? h("a", { class: "admin-hint", href: "#admin-" + tab, text: "✎ " + label }) : null; }
 
 /* ---------- Componentes públicos ---------- */
-function pageHead(eyebrow, title, lead, cls) {
+function pageHead(eyebrow, title, lead, cls, extra) {
   return h("div", { class: "page-head" }, h("div", { class: "wrap" },
     h("span", { class: "eyebrow " + (cls || ""), text: eyebrow }), h("h1", { text: title }), lead ? h("p", { class: "lead", text: lead }) : null),
-    h("div", { class: "staff-lines", "aria-hidden": "true" }));
+    h("div", { class: "staff-lines", "aria-hidden": "true" }), extra || null);
+}
+
+/* "La banda de Pola mola" escrito en el pentagrama: cada sílaba con su nota.
+   Las líneas del pentagrama están a 12 px; la de abajo (Mi) en y = 60. */
+function staffMelody() {
+  var NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+  // posición vertical de cada nota (clave de sol)
+  var Y = { Mi4: 60, Fa4: 54, Sol4: 48, La4: 42, Si4: 36, Do5: 30, Re5: 24, Mi5: 18, Fa5: 12 };
+  var melody = [["La4", "La"], ["Do5", "ban-"], ["Si4", "da"], ["Sol4", "de"], ["Do5", "Po-"], ["La4", "la"], ["Re5", "mo-"], ["La4", "la"]];
+  var narrow = window.innerWidth < 700;
+  var start = narrow ? 14 : 46, end = narrow ? 92 : 94;
+  var svg = el("svg", { "aria-label": "Pentagrama con la frase La banda de Pola mola", role: "img" });
+  melody.forEach(function (n, i) {
+    var x = start + (end - start) * i / (melody.length - 1);
+    var g = el("svg", { x: x + "%", y: "0", overflow: "visible" });
+    var y = Y[n[0]], down = y <= 36;
+    g.appendChild(el("ellipse", { class: "head", cx: "0", cy: String(y), rx: "6.6", ry: "4.8", transform: "rotate(-20 0 " + y + ")" }));
+    g.appendChild(down ? el("line", { class: "stem", x1: "-6", y1: String(y), x2: "-6", y2: String(y + 32) })
+                       : el("line", { class: "stem", x1: "6", y1: String(y), x2: "6", y2: String(y - 32) }));
+    var t = el("text", { class: "lyric", x: "0", y: "84" }); t.textContent = n[1]; g.appendChild(t);
+    svg.appendChild(g);
+  });
+  var endX = (end + (narrow ? 4 : 3)) + "%";
+  var b = el("svg", { x: endX, y: "0", overflow: "visible" });
+  b.appendChild(el("line", { class: "bar", x1: "0", y1: "12", x2: "0", y2: "60" }));
+  b.appendChild(el("line", { class: "bar thick", x1: "6", y1: "12", x2: "6", y2: "60" }));
+  svg.appendChild(b);
+  return h("div", { class: "staff-notes", "aria-hidden": "false" }, h("div", { class: "wrap" }, svg));
 }
 function eventRow(e, past) {
   var p = parseDate(e.fecha);
@@ -231,7 +260,6 @@ PAGES.inicio = function () {
     h("div", { class: "hero" },
       h("div", { class: "wrap" },
         h("div", null,
-          h("span", { class: "eyebrow", text: "Pola de Siero · desde 1984" }),
           h("h1", { html: 'Ponemos <span class="a">música</span> a Siero: la <span class="v">banda</span>, el <span class="o">bandín</span> y la escuela.' }),
           h("p", { class: "lead", text: "La Asociación Sierense Amigos de la Música es una entidad sin ánimo de lucro que enseña, toca y comparte música en el concejo. Conciertos gratuitos, pasacalles en las fiestas y clases para todas las edades." }),
           h("div", { class: "actions" }, h("a", { class: "btn primary", href: "#actuaciones", text: "Ver actuaciones" }), h("a", { class: "btn ghost", href: "#contacto", text: "Apúntate a clase" }))),
@@ -363,7 +391,7 @@ function plantilla(formacion, alt) {
 
 PAGES.banda = function () {
   return [
-    pageHead("Banda de Música de Siero", "La banda que suena en las fiestas y auditorios del concejo"),
+    pageHead("Banda de Música de Siero", "La banda que suena en las fiestas y auditorios del concejo", null, null, staffMelody()),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       directorFeature(/banda/i, "azul", "Director de la Banda"),
       h("div", { class: "prose" },
