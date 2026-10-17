@@ -351,7 +351,13 @@ function plantilla(formacion, alt) {
       adminLink("musicos", "Editar músicos")),
     list.length ? h("div", { class: "sections" }, groups.map(function (g) {
       return h("div", { class: "sect" }, h("h3", null, g.name, h("small", { text: String(g.items.length) })),
-        h("ul", null, g.items.map(function (m) { return h("li", null, h("span", { text: m.nombre }), isJefe(m) ? h("span", { class: "jefe", text: "Jefe de sección" }) : null); })));
+        h("ul", null, g.items.map(function (m) {
+          var av = m.foto
+            ? h("button", { type: "button", class: "mus-av", "aria-label": "Ver foto de " + m.nombre, onclick: function () { openLightbox({ asset: m.foto, titulo: m.nombre + (m.instrumento ? " · " + m.instrumento : "") }); } },
+                h("img", { src: blobUrl(m.foto), alt: "", loading: "lazy" }))
+            : h("span", { class: "mus-av", "aria-hidden": "true", text: initials(m.nombre) });
+          return h("li", null, av, h("div", { class: "mus-name" }, h("span", { text: m.nombre }), isJefe(m) ? h("span", { class: "jefe", text: "Jefe de sección" }) : null));
+        })));
     })) : emptyBox("Pronto publicaremos la plantilla de músicos.", "musicos")));
 }
 
@@ -458,7 +464,7 @@ PAGES.escuela = function () {
       })),
       h("div", { class: "pay" },
         h("b", { text: "Forma de pago" }),
-        h("span", { class: "chip", text: "Cuota mensual" }),
+        h("span", { class: "chip", text: "Cuota trimestral" }),
         h("span", { class: "chip", text: "Domiciliación bancaria" })))),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("h2", { text: "Profesorado" }), adminLink("profesores", "Editar profesorado")),
@@ -588,6 +594,7 @@ var SCHEMAS = {
     { k: "formacion", l: "Formación", type: "select", req: true, options: [["Banda", "Banda"], ["Bandín", "Bandín"]] },
     { k: "instrumento", l: "Instrumento", type: "datalist", req: true, list: INSTRUMENTOS, help: "Elige de la lista o escribe otro instrumento." },
     { k: "cargo", l: "Cargo", type: "select", options: [["Músico", "Músico"], ["Jefe de sección", "Jefe de sección"]] },
+    { k: "foto", l: "Foto", type: "images", single: true, help: "Opcional. Mejor una foto en la que se vea bien la cara." },
     { k: "orden", l: "Orden dentro de su instrumento", type: "number", help: "Opcional. El jefe de sección aparece siempre el primero." }],
     title: function (d) { return d.nombre; },
     sub: function (d) { return [d.instrumento, isJefe(d) ? "Jefe de sección" : ""].filter(Boolean).join(" · "); },
