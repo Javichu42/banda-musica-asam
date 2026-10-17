@@ -73,7 +73,11 @@ var DEFAULTS = {
       { nombre: "Clase de repertorio", duracion: "60 min", texto: "Clase grupal de teoría musical.", color: "verde" },
       { nombre: "Ensayo del Bandín", duracion: "60 min", texto: "Todo lo aprendido se pone en práctica tocando juntos.", color: "naranja", enlace: "#bandin", boton: "Conoce el Bandín" }
     ],
-    sedes: "Casa de la Música, Pola de Siero\nLa Fresneda\nLugones",
+    sedes: [
+      { nombre: "Casa de la Música", lugar: "Pola de Siero", enlace: "https://maps.app.goo.gl/ekUwwADRScStcLzo6", lat: 43.39219, lng: -5.65457, color: "azul" },
+      { nombre: "Centro Cultural de La Fresneda", lugar: "La Fresneda", enlace: "https://maps.app.goo.gl/y2AwxYPMYkwN8cir6", lat: 43.41274, lng: -5.79082, color: "naranja" },
+      { nombre: "CPI Lugones", lugar: "Lugones", enlace: "https://maps.app.goo.gl/pvGtepy4hUm2UW6V9", lat: 43.40210, lng: -5.80442, color: "verde" }
+    ],
     cuotasTitulo: "Cuotas de socio promesa",
     periodo: "trimestre",
     cuotas: [
@@ -142,7 +146,7 @@ function adminLink(tab, label) { return IS_ADMIN ? h("a", { class: "admin-hint",
 function pageHead(eyebrow, title, lead, cls, extra, logo) {
   return h("div", { class: "page-head" + (logo ? " with-logo" : "") }, h("div", { class: "wrap" },
     h("span", { class: "eyebrow " + (cls || ""), text: eyebrow }), h("h1", { text: title }), lead ? h("p", { class: "lead", text: lead }) : null,
-    logo ? h("div", { class: "head-logo" }, h("img", { src: logo.src, alt: logo.alt })) : null),
+    logo ? (logo.el ? logo.el : h("div", { class: "head-logo" }, h("img", { src: logo.src, alt: logo.alt }))) : null),
     h("div", { class: "staff-lines", "aria-hidden": "true" }), extra || null);
 }
 
@@ -248,8 +252,20 @@ function eventRow(e, past) {
     h("div", { class: "cal" }, h("b", { text: p ? String(p.d) : "—" }), h("span", { text: p ? MES_CORTO[p.m - 1] + " " + String(p.y).slice(2) : "" })),
     h("div", null, h("h3", { text: e.titulo }),
       h("div", { class: "meta" }, e.hora ? h("span", { text: "🕗 " + e.hora }) : null, e.lugar ? h("span", { text: "📍 " + e.lugar }) : null),
-      e.descripcion ? h("p", { text: e.descripcion }) : null),
-    e.formacion ? h("span", { class: "pill " + fcls, text: e.formacion }) : null);
+      e.descripcion ? h("p", { text: e.descripcion }) : null,
+      repertorioList(e, past)),
+    e.formacion ? h("span", { class: "pill " + fcls, text: e.formacion }) : null,
+    !past && e.cartel ? h("button", { type: "button", class: "event-cartel", "aria-label": "Ver el cartel de " + e.titulo,
+      onclick: function () { openLightbox({ asset: e.cartel, titulo: "Cartel · " + e.titulo }); } },
+      h("img", { src: blobUrl(e.cartel), alt: "Cartel de " + e.titulo, loading: "lazy" }), h("span", { text: "Ver cartel" })) : null);
+}
+function repertorioList(e, past) {
+  var obras = String(e.repertorio || "").split("\n").map(function (x) { return x.trim(); }).filter(Boolean);
+  if (!obras.length) return null;
+  var d = h("details", { class: "repertorio" }, h("summary", { text: "🎼 Repertorio (" + obras.length + (obras.length === 1 ? " obra)" : " obras)") }),
+    h("ol", null, obras.map(function (o) { return h("li", { text: o }); })));
+  if (!past) d.open = obras.length <= 8;
+  return d;
 }
 function youtubeId(url) {
   var m = /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/|youtube-nocookie\.com\/embed\/)([A-Za-z0-9_-]{11})/.exec(url || "");
@@ -549,16 +565,79 @@ function teacherGrid() {
   }));
 }
 
+function sedeColor(c, i) { return c || ["azul", "naranja", "verde", "negro"][i % 4]; }
+function normSedes(v) {
+  if (Array.isArray(v)) return v.filter(function (x) { return x && x.nombre; });
+  // formato antiguo: un lugar por línea
+  return String(v || "").split(/\n|;/).map(function (x) { return x.trim(); }).filter(Boolean).map(function (n) { return { nombre: n }; });
+}
+function sedeHref(sd) { return safeUrl(sd.enlace) || ("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(sd.nombre + " " + (sd.lugar || "") + ", Asturias")); }
+var LEAFLET_P = null;
+function loadLeaflet() {
+  if (window.L) return Promise.resolve(window.L);
+  if (LEAFLET_P) return LEAFLET_P;
+  LEAFLET_P = new Promise(function (res, rej) {
+    var css = document.createElement("link"); css.rel = "stylesheet"; css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; document.head.appendChild(css);
+    var js = document.createElement("script"); js.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    js.onload = function () { res(window.L); }; js.onerror = function () { LEAFLET_P = null; rej(new Error("leaflet")); };
+    document.head.appendChild(js);
+  });
+  return LEAFLET_P;
+}
+var CSS_COLORS = { azul: "#3f7fd6", naranja: "#ee7a10", verde: "#1f8f48", negro: "#151a24" };
+function sedesCard(sedes) {
+  var mapEl = h("div", { class: "sedes-map", role: "img", "aria-label": "Mapa con las sedes de la escuela" });
+  var withCoords = sedes.filter(function (s) { return isFinite(parseFloat(s.lat)) && isFinite(parseFloat(s.lng)); });
+  if (withCoords.length) {
+    setTimeout(function () {
+      if (!mapEl.isConnected) return;
+      loadLeaflet().then(function (L) {
+        if (!mapEl.isConnected || mapEl._map) return;
+        var map = L.map(mapEl, { scrollWheelZoom: false, attributionControl: true, zoomControl: true });
+        mapEl._map = map;
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+          maxZoom: 18, subdomains: "abcd",
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        }).addTo(map);
+        var pts = [];
+        withCoords.forEach(function (sd, i) {
+          var ll = [parseFloat(sd.lat), parseFloat(sd.lng)]; pts.push(ll);
+          var col = CSS_COLORS[sedeColor(sd.color, i)] || CSS_COLORS.azul;
+          var m = L.circleMarker(ll, { radius: 9, color: "#fff", weight: 3, fillColor: col, fillOpacity: 1 }).addTo(map);
+          var pop = document.createElement("div");
+          var b = document.createElement("b"); b.textContent = sd.nombre; pop.appendChild(b);
+          if (sd.lugar) { pop.appendChild(document.createElement("br")); pop.appendChild(document.createTextNode(sd.lugar)); }
+          pop.appendChild(document.createElement("br"));
+          var a = document.createElement("a"); a.href = sedeHref(sd); a.target = "_blank"; a.rel = "noopener"; a.textContent = "Cómo llegar →"; pop.appendChild(a);
+          m.bindPopup(pop);
+          var west = withCoords.every(function (o) { return parseFloat(o.lng) >= ll[1]; }) && withCoords.length > 1;
+          m.bindTooltip(sd.lugar || sd.nombre, { permanent: true, direction: west ? "left" : "right", className: "sede-tip", offset: [west ? -8 : 8, 0] });
+        });
+        // centro de Asturias: se encuadran las sedes con margen para ver Oviedo y Gijón alrededor
+        map.fitBounds(L.latLngBounds(pts).pad(0.9), { maxZoom: 12 });
+      }).catch(function () { mapEl.classList.add("no-map"); });
+    }, 0);
+  }
+  return h("aside", { class: "sedes-card" },
+    h("h2", { text: "¿Dónde se dan las clases?" }),
+    withCoords.length ? mapEl : null,
+    h("ul", { class: "sedes-ul" }, sedes.map(function (sd, i) {
+      return h("li", null, h("i", { class: "dot", style: "background:" + colorVar(sedeColor(sd.color, i)) }),
+        h("span", { class: "sede-txt" }, h("b", { text: sd.nombre }), sd.lugar ? h("span", { text: sd.lugar }) : null),
+        h("a", { href: sedeHref(sd), target: "_blank", rel: "noopener", text: "Cómo llegar" }));
+    })));
+}
+
 PAGES.escuela = function () {
   var E = Object.assign({}, DEFAULTS.escuela, DATA.escuela || {});
   var semana = Array.isArray(E.semana) ? E.semana : [];
   var cuotas = Array.isArray(E.cuotas) ? E.cuotas : [];
   var pago = String(E.pago || "").split(",").map(function (x) { return x.trim(); }).filter(Boolean);
   var periodo = E.periodo || "trimestre";
-  var sedes = String(E.sedes || "").split(/\n|;/).map(function (x) { return x.trim(); }).filter(Boolean);
+  var sedes = normSedes(E.sedes);
   return [
-    pageHead("Escuela de música", E.titulo || "Escuela de música", E.intro || null),
-    h("section", { class: "block" }, h("div", { class: "wrap" },
+    pageHead("Escuela de música", E.titulo || "Escuela de música", E.intro || null, null, null, sedes.length ? { el: sedesCard(sedes) } : null),
+    h("section", { class: "block escuela-first" }, h("div", { class: "wrap" },
       IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("escuela", "Editar la escuela")) : null,
       h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Clases semanales" })),
         E.edad ? h("span", { class: "age-badge", text: E.edad }) : null),
@@ -567,13 +646,7 @@ PAGES.escuela = function () {
           h("h3", null, h("i", { class: "dot", style: "background:" + colorVar(w.color) }), w.nombre || ""), w.texto ? h("p", { text: w.texto }) : null,
           (w.enlace && (/^#[a-z]+$/.test(w.enlace) || safeUrl(w.enlace))) ? h("a", { class: "btn ghost small wk-link", href: w.enlace, target: /^#/.test(w.enlace) ? null : "_blank", rel: /^#/.test(w.enlace) ? null : "noopener", text: (w.boton || "Saber más") + " →" }) : null);
       })),
-      sedes.length ? h("div", { class: "sedes" },
-        h("div", { class: "sedes-head" }, h("h3", { text: "¿Dónde se dan las clases?" }),
-          h("p", { class: "muted", text: sedes.length > 1 ? "En " + sedes.length + " sedes del concejo:" : "" })),
-        h("div", { class: "sedes-list" }, sedes.map(function (sd) {
-          return h("a", { class: "sede", href: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(sd + (/siero|lugones|fresneda/i.test(sd) ? ", Asturias" : ", Siero, Asturias")), target: "_blank", rel: "noopener" },
-            h("span", { class: "sede-pin", "aria-hidden": "true", text: "📍" }), h("b", { text: sd }), h("span", { class: "sede-map", text: "Ver en el mapa →" }));
-        }))) : null)),
+      )),
     cuotas.length ? h("section", { class: "block alt" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("div", null, h("h2", { text: E.cuotasTitulo || "Cuotas" }), h("p", { class: "muted", text: "Precios por " + periodo }))),
       h("div", { class: "prices" }, cuotas.map(function (c) {
@@ -692,6 +765,8 @@ var SCHEMAS = {
     { k: "formacion", l: "Convocatoria", type: "select", options: [["Banda", "Banda"], ["Bandín", "Bandín"], ["Banda y Bandín", "Banda y Bandín"], ["Escuela", "Escuela"], ["Asociación", "Toda la asociación"]], help: "Quién está convocado. En el Área de músicos solo lo verán ellos." },
     { k: "publico", l: "¿Dónde se ve?", type: "select", options: [["si", "En la web pública y en el Área de músicos"], ["no", "Solo en el Área de músicos (ensayos, avisos internos…)"]] },
     { k: "descripcion", l: "Descripción", type: "textarea" },
+    { k: "cartel", l: "Cartel del concierto", type: "images", single: true, help: "Opcional. El cartel con el programa o repertorio; se muestra en Próximas actuaciones y se amplía al pulsarlo." },
+    { k: "repertorio", l: "Repertorio", type: "textarea", ph: "Una obra por línea, por ejemplo:\nEl Gato Montés — M. Penella\nAsturias, patria querida", help: "Opcional. Una obra por línea. Se muestra en la web junto al evento." },
     { k: "indumentaria", l: "Indumentaria", ph: "Uniforme de gala, ropa negra…", help: "Solo se muestra a los músicos." },
     { k: "notas", l: "Indicaciones para los músicos", type: "textarea", help: "Hora de llegada, atriles, partituras… Solo se muestra en el Área de músicos." }],
     title: function (d) { return d.titulo; }, sub: function (d) { return [d.publico === "no" ? "🔒 Interno" : "", d.tipo, fmtLong(d.fecha), d.hora, d.lugar].filter(Boolean).join(" · "); },
@@ -1156,7 +1231,7 @@ function adminEscuela() {
   var edad = input("es-edad", E.edad, "Abierto a partir de 6 años");
   var cuotasTitulo = input("es-ctit", E.cuotasTitulo), periodo = input("es-per", E.periodo, "trimestre, mes, curso…");
   var pago = input("es-pago", E.pago, "Cuota trimestral, Domiciliación bancaria");
-  var sedesIn = h("textarea", { id: "es-sedes", style: "min-height:90px" }); sedesIn.value = E.sedes || "";
+  var sedBox = h("div", { class: "rep-rows" });
 
   var semBox = h("div", { class: "rep-rows" }), cuoBox = h("div", { class: "rep-rows" });
   var n = 0;
@@ -1187,6 +1262,25 @@ function adminEscuela() {
     r._get = function () { return { nombre: r.querySelector("#" + k + "-n").value.trim(), precio: r.querySelector("#" + k + "-p").value.trim().replace(/\s*€$/, ""), color: r.querySelector("#" + k + "-c").value, destacado: dest.checked }; };
     cuoBox.appendChild(r);
   }
+  function sedRow(sd) {
+    var k = "d" + (n++);
+    var coords = (isFinite(parseFloat(sd.lat)) && isFinite(parseFloat(sd.lng))) ? sd.lat + ", " + sd.lng : "";
+    var r = h("div", { class: "rep-row" },
+      field(k + "-n", "Nombre", input(k + "-n", sd.nombre, "Casa de la Música")),
+      field(k + "-l", "Localidad", input(k + "-l", sd.lugar, "Pola de Siero")),
+      field(k + "-c", "Color", colorSel(k + "-c", sd.color)),
+      field(k + "-g", "Coordenadas", input(k + "-g", coords, "43.39219, -5.65457")),
+      h("button", { class: "btn danger small", type: "button", text: "Quitar", onclick: function () { r.remove(); } }),
+      h("div", { class: "rep-extra" }, field(k + "-e", "Enlace de Google Maps", input(k + "-e", sd.enlace, "https://maps.app.goo.gl/…"))));
+    r._get = function () {
+      var g = r.querySelector("#" + k + "-g").value.split(",").map(function (x) { return parseFloat(x); });
+      var o = { nombre: r.querySelector("#" + k + "-n").value.trim(), lugar: r.querySelector("#" + k + "-l").value.trim(), color: r.querySelector("#" + k + "-c").value, enlace: r.querySelector("#" + k + "-e").value.trim() };
+      if (g.length === 2 && isFinite(g[0]) && isFinite(g[1])) { o.lat = g[0]; o.lng = g[1]; }
+      return o;
+    };
+    sedBox.appendChild(r);
+  }
+  normSedes(E.sedes).forEach(sedRow);
   (E.semana || []).forEach(semRow);
   (E.cuotas || []).forEach(cuoRow);
 
@@ -1196,7 +1290,9 @@ function adminEscuela() {
     field("es-titulo", "Título", titulo), field("es-intro", "Presentación", intro), field("es-edad", "Edad / etiqueta", edad),
     h("h3", { text: "Clases semanales", style: "margin-top:10px" }), semBox,
     h("button", { class: "btn ghost small", type: "button", style: "justify-self:start", text: "+ Añadir actividad", onclick: function () { semRow({ color: "azul" }); } }),
-    field("es-sedes", "¿Dónde se dan las clases?", sedesIn, "Un lugar por línea. Cada uno enlaza a Google Maps."),
+    h("h3", { text: "¿Dónde se dan las clases?", style: "margin-top:10px" }), sedBox,
+    h("button", { class: "btn ghost small", type: "button", style: "justify-self:start", text: "+ Añadir sede", onclick: function () { sedRow({ color: "azul" }); } }),
+    h("small", { class: "muted", text: "Las coordenadas sirven para colocar el punto en el mapa. En Google Maps, haz clic derecho sobre el sitio y copia los dos números." }),
     h("h3", { text: "Cuotas", style: "margin-top:10px" }),
     field("es-ctit", "Título de las cuotas", cuotasTitulo), field("es-per", "Periodo de los precios", periodo, "Se muestra como «90 € / trimestre»."),
     cuoBox,
@@ -1209,7 +1305,8 @@ function adminEscuela() {
       semana: Array.prototype.map.call(semBox.children, function (r) { return r._get(); }).filter(function (w) { return w.nombre; }),
       cuotasTitulo: cuotasTitulo.value.trim(), periodo: periodo.value.trim() || "trimestre",
       cuotas: Array.prototype.map.call(cuoBox.children, function (r) { return r._get(); }).filter(function (c) { return c.nombre; }),
-      pago: pago.value.trim(), sedes: sedesIn.value.trim() };
+      pago: pago.value.trim(),
+      sedes: Array.prototype.map.call(sedBox.children, function (r) { return r._get(); }).filter(function (x) { return x.nombre; }) };
     save.disabled = true; save.textContent = "Guardando…";
     DB.doc("ajustes/escuela").set(obj).then(function () { save.disabled = false; save.textContent = "Guardar la escuela"; setStatus(st, "Escuela guardada.", true); },
       function (e) { save.disabled = false; save.textContent = "Guardar la escuela"; setStatus(st, errMsg(e), false); });

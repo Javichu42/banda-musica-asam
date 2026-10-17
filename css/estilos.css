@@ -205,7 +205,15 @@ section.block.alt { background: var(--surface); border-block: 1px solid var(--li
 .pill.bandin { border-color: var(--naranja); }
 .pill.escuela { border-color: var(--verde); }
 .event.past { opacity: .78; }
-@media (max-width: 620px) { .event { grid-template-columns: 70px minmax(0, 1fr); } .event .pill { grid-column: 2; justify-self: start; } }
+.event:has(.event-cartel) { grid-template-columns: 86px minmax(0, 1fr) auto auto; }
+.event-cartel { grid-row: 1; grid-column: -2; align-self: start; display: grid; gap: 6px; justify-items: center; padding: 0; border: 0; background: none; cursor: zoom-in; color: var(--azul); font: inherit; font-size: .82rem; font-weight: 700; }
+.event-cartel img { width: 120px; max-height: 170px; object-fit: cover; object-position: top; border-radius: 10px; border: 1px solid var(--line); box-shadow: var(--shadow); transition: transform .15s; }
+.event-cartel:hover img, .event-cartel:focus-visible img { transform: scale(1.04) rotate(-1deg); }
+.repertorio { margin-top: 10px; }
+.repertorio summary { cursor: pointer; font-weight: 700; font-size: .92rem; color: var(--azul); width: fit-content; }
+.repertorio ol { margin: 8px 0 0; padding-left: 22px; display: grid; gap: 3px; font-size: .95rem; }
+.repertorio li::marker { color: var(--muted); font-weight: 700; }
+@media (max-width: 620px) { .event, .event:has(.event-cartel) { grid-template-columns: 70px minmax(0, 1fr); } .event .pill { grid-column: 2; justify-self: start; } .event-cartel { grid-row: auto; grid-column: 2; justify-self: start; } }
 .season { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
 .gig { background: var(--bg); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 6px; align-content: start; }
 .gig .mes { font-weight: 800; font-family: var(--f-display); font-size: .9rem; letter-spacing: .08em; text-transform: uppercase; color: var(--azul-ink); }
@@ -492,7 +500,7 @@ button.mus-av { cursor: zoom-in; }
 
 /* Logo de la Banda en la cabecera de su página */
 .page-head.with-logo .wrap { grid-template-columns: minmax(0, 1fr) auto; column-gap: 32px; }
-.page-head.with-logo .wrap > :not(.head-logo) { grid-column: 1; }
+.page-head.with-logo .wrap > :not(.head-logo):not(.sedes-card) { grid-column: 1; }
 .head-logo { grid-column: 2; grid-row: 1 / span 3; align-self: start; background: #fff; border-radius: 20px; padding: 14px 18px; box-shadow: var(--shadow); border: 1px solid var(--line); width: clamp(150px, 20vw, 250px); }
 .head-logo img { width: 100%; height: auto; display: block; }
 @media (max-width: 700px) {
@@ -602,3 +610,25 @@ button.mus-av { cursor: zoom-in; }
 .sede-pin { grid-row: 1 / 3; font-size: 1.3rem; }
 .sede b { font-family: var(--f-display); font-size: 1.05rem; }
 .sede-map { font-size: .82rem; font-weight: 600; color: var(--azul-ink); }
+
+/* Escuela: mapa de sedes arriba a la derecha */
+.page-head.with-logo .sedes-card { grid-column: 2; grid-row: 1 / span 3; align-self: start; }
+.sedes-card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 14px; box-shadow: var(--shadow); width: clamp(300px, 34vw, 430px); display: grid; gap: 10px; position: relative; z-index: 2; }
+.sedes-card h2 { font-size: 1.05rem; margin: 2px 4px 0; }
+.sedes-map { height: 190px; border-radius: 14px; overflow: hidden; background: #e8eef5; border: 1px solid var(--line); }
+.sedes-map.no-map { display: none; }
+.sedes-ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sedes-ul li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: .9rem; }
+.sedes-ul .dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 2px #fff, 0 0 0 3px var(--line); }
+.sedes-ul .sede-txt { display: grid; line-height: 1.25; }
+.sedes-ul .sede-txt span { color: var(--muted); font-size: .82rem; }
+.sedes-ul a { font-weight: 700; font-size: .82rem; color: var(--azul); white-space: nowrap; }
+.sede-tip { font: 700 11px/1.2 inherit; padding: 2px 6px; border-radius: 6px; }
+.sede-tip::before { display: none; }
+.leaflet-container a { color: var(--azul); }
+.block.escuela-first { padding-top: 26px; }
+.page-head .wrap:has(.sedes-card) { padding-block: 30px 74px; grid-template-rows: auto auto 1fr; align-items: start; }
+@media (max-width: 860px) {
+  .page-head.with-logo .wrap:has(.sedes-card) { grid-template-columns: 1fr; }
+  .page-head.with-logo .sedes-card { grid-column: 1; grid-row: auto; width: 100%; margin-top: 14px; }
+}
