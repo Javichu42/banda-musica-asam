@@ -51,8 +51,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .badge { background: #fff; border-radius: 10px; padding: 4px 6px; display: grid; place-items: center; flex: none; box-shadow: 0 0 0 1px var(--line); }
 .brand img { height: 36px; width: auto; display: block; }
 .brand span { font-family: var(--f-display); font-weight: 700; font-size: 1rem; line-height: 1.1; }
-@media (min-width: 1321px) { .brand span { white-space: nowrap; } }
-@media (min-width: 1321px) and (max-width: 1460px) { .brand small { display: none !important; } }
+@media (min-width: 1521px) { .brand span { white-space: nowrap; } }
+@media (min-width: 1521px) and (max-width: 1640px) { .brand small { display: none !important; } }
 .brand small { display: block; font-family: var(--f-body); font-weight: 500; font-size: .74rem; color: var(--muted); }
 .nav { display: flex; gap: 2px; align-items: center; }
 .nav a { text-decoration: none; color: var(--fg); font-weight: 600; font-size: .88rem; padding: 8px 9px; border-radius: 8px; white-space: nowrap; }
@@ -60,7 +60,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .nav a[aria-current="page"] { color: var(--azul-ink); background: var(--surface-2); }
 .nav a.admin-link { border: 1px dashed var(--naranja); margin-left: 6px; }
 .menu-btn { display: none; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: 600 .9rem var(--f-body); border-radius: 10px; padding: 9px 14px; cursor: pointer; }
-@media (max-width: 1320px) {
+@media (max-width: 1520px) {
   .menu-btn { display: inline-flex; }
   .nav { display: none; position: absolute; left: 0; right: 0; top: 100%; flex-direction: column; align-items: stretch; background: var(--surface); border-bottom: 1px solid var(--line); padding: 8px var(--gutter-r) 16px var(--gutter-l); box-shadow: var(--shadow); max-height: calc(100vh - 80px); overflow-y: auto; }
   .nav.open { display: flex; }
@@ -478,7 +478,7 @@ button.mus-av { cursor: zoom-in; }
 .nav a.nav-bandin { border: 1.5px solid #e2b100; background: color-mix(in srgb, #f6c800 20%, transparent); margin: 0 2px; }
 .nav a.nav-banda:hover, .nav a.nav-banda[aria-current="page"] { background: color-mix(in srgb, var(--verde) 20%, transparent); color: var(--fg); }
 .nav a.nav-bandin:hover, .nav a.nav-bandin[aria-current="page"] { background: color-mix(in srgb, #f6c800 34%, transparent); color: var(--fg); }
-@media (min-width: 1321px) { .nav a.admin-link { margin-left: auto; } }
+@media (min-width: 1521px) { .nav a.admin-link { margin-left: auto; } }
 
 /* Pentagrama con notas en la cabecera de la Banda */
 .staff-notes { position: absolute; left: 0; right: 0; bottom: 0; height: 90px; pointer-events: none; z-index: 0; }
@@ -502,7 +502,7 @@ button.mus-av { cursor: zoom-in; }
 
 /* ===== Área de músicos ===== */
 .nav a.area-link { border: 1px solid var(--azul); color: var(--azul-ink); }
-@media (min-width: 1321px) { .nav a.area-link { margin-left: auto; } .nav a.admin-link { margin-left: 6px; } }
+@media (min-width: 1521px) { .nav a.area-link { margin-left: auto; } .nav a.admin-link { margin-left: 6px; } }
 .small { font-size: .88rem; }
 .pending { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 16px 20px; border-radius: 16px; margin-bottom: 26px; text-decoration: none;
   background: color-mix(in srgb, var(--naranja) 14%, var(--surface)); border: 1px solid var(--naranja); color: var(--fg); }
@@ -581,3 +581,9 @@ button.mus-av { cursor: zoom-in; }
 .nav a.nav-banda, .nav a.nav-bandin, .nav a.nav-inicio { border: 0; margin: 0 2px; }
 .nav a.nav-inicio { background: color-mix(in srgb, var(--azul) 14%, transparent); }
 .nav a.nav-inicio:hover, .nav a.nav-inicio[aria-current="page"] { background: color-mix(in srgb, var(--azul) 26%, transparent); color: var(--fg); }
+
+/* Panel de la Escuela: filas repetibles */
+.rep-rows { display: grid; gap: 10px; }
+.rep-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, .7fr) minmax(0, .7fr) minmax(0, 1.6fr) auto; gap: 10px; align-items: end; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+.rep-row .check { display: inline-flex; gap: 6px; align-items: center; font-weight: 700; font-size: .88rem; padding-bottom: 10px; }
+@media (max-width: 760px) { .rep-row { grid-template-columns: 1fr 1fr; } }

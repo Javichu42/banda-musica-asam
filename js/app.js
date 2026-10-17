@@ -64,6 +64,24 @@ var DEFAULTS = {
     { id: "h-hoy", anio: "Hoy", detalle: "Nueva etapa", titulo: "Relevo en el Bandín", color: "naranja", orden: 70, fotos: [], texto: "El clarinetista Víctor Peinó Ornia toma la batuta del Bandín, una de las pocas formaciones infantojuveniles de Asturias." }
   ],
   contacto: { direccion: "Calle Alcalde Parrondo, 32 · 33510 Pola de Siero (Asturias)", telefono: "628 86 31 68", email: "administracion@bandadesiero.es", mapa: "https://maps.app.goo.gl/ekUwwADRScStcLzo6" },
+  escuela: {
+    titulo: "Aprende a tocar desde los 6 años",
+    intro: "Clases de instrumento y de repertorio y, desde el principio, práctica en grupo con el Bandín.",
+    edad: "Abierto a partir de 6 años",
+    semana: [
+      { nombre: "Clase de instrumento", duracion: "45 min", texto: "Cada alumno aprende su instrumento con su profesor.", color: "azul" },
+      { nombre: "Clase de repertorio", duracion: "60 min", texto: "Se trabajan las obras que se van a tocar en grupo.", color: "verde" },
+      { nombre: "Ensayo del Bandín", duracion: "60 min", texto: "Todo lo aprendido se pone en práctica tocando juntos.", color: "naranja" }
+    ],
+    cuotasTitulo: "Cuotas de socio promesa",
+    periodo: "trimestre",
+    cuotas: [
+      { nombre: "Clases de repertorio", precio: "90", color: "azul", destacado: false },
+      { nombre: "Clases de instrumento", precio: "120", color: "verde", destacado: false },
+      { nombre: "Repertorio + instrumento", precio: "210", color: "naranja", destacado: true }
+    ],
+    pago: "Cuota trimestral, Domiciliación bancaria"
+  },
   pie: { texto: "Asociación sin ánimo de lucro que enseña, toca y comparte música en el concejo de Siero desde 1984.", apoyos: "Con el apoyo del Ayuntamiento de Siero y la Fundación Caja Rural de Asturias", copyright: "© Asociación Sierense Amigos de la Música · Pola de Siero, Asturias" }
 };
 
@@ -195,8 +213,9 @@ function staffLettering(text, opts) {
   var avail = Math.max(200, Math.min(window.innerWidth, 1120) - 40);
   var sc = Math.min(1, (avail * (window.innerWidth < 700 ? 1 : 0.62)) / W);
   var svg = el("svg", { role: "img", "aria-label": text });
-  var anchor = el("svg", { x: "100%", y: "0", overflow: "visible" });
-  var g = el("g", { transform: "translate(" + (-(W * sc) - 26) + " " + (12 + (48 - 48 * sc) / 2) + ") scale(" + sc + ")", "class": "lettering" });
+  var anchor = el("svg", { x: opts.center ? "50%" : "100%", y: "0", overflow: "visible" });
+  var dx = opts.center ? -(W * sc) / 2 : -(W * sc) - 26;
+  var g = el("g", { transform: "translate(" + dx + " " + (12 + (48 - 48 * sc) / 2) + ") scale(" + sc + ")", "class": "lettering" });
   var word = 0;
   glyphs.forEach(function (it) {
     if (it.ch === " ") { word++; return; }
@@ -213,9 +232,11 @@ function staffLettering(text, opts) {
     g.appendChild(gg);
   });
   anchor.appendChild(g);
-  // doble barra final
-  anchor.appendChild(el("line", { "class": "bar", x1: "-9", y1: "12", x2: "-9", y2: "60" }));
-  anchor.appendChild(el("line", { "class": "bar thick", x1: "-3", y1: "12", x2: "-3", y2: "60" }));
+  if (!opts.noBar) {
+    // doble barra final
+    anchor.appendChild(el("line", { "class": "bar", x1: "-9", y1: "12", x2: "-9", y2: "60" }));
+    anchor.appendChild(el("line", { "class": "bar thick", x1: "-3", y1: "12", x2: "-3", y2: "60" }));
+  }
   svg.appendChild(anchor);
   return h("div", { class: "staff-notes" }, h("div", { class: "wrap" }, svg));
 }
@@ -456,13 +477,13 @@ function plantilla(formacion, alt) {
 
 PAGES.banda = function () {
   return [
-    pageHead("Banda de Música de Siero", "La banda que suena en las fiestas y auditorios del concejo", null, null, staffLettering("¡La Banda de Pola mola!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), { src: "img/logo/logo-banda.webp", alt: "Logotipo de la Banda de Música de Siero" }),
+    pageHead("Banda de Música de Siero", "La banda que suena en las fiestas y auditorios del concejo", null, null, staffLettering("¡La Banda de Pola mola!", { glyphs: MUSIC_CAPS, colors: { 1: "c-azul", 4: "c-verde" }, punct: "c-naranja", center: true, noBar: true }), { src: "img/logo/logo-banda.webp", alt: "Logotipo de la Banda de Música de Siero" }),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       directorFeature(/banda/i, "azul", "Director de la Banda"),
       h("div", { class: "prose" },
-        h("p", { text: "La Banda de Música de Siero es el corazón de la ASAM. La forman músicos profesionales y aficionados que comparten atril y que interpretan un repertorio amplio y variado, del pasodoble y la zarzuela a las bandas sonoras." }),
-        h("p", { text: "Sus conciertos forman parte de la programación cultural y festiva del municipio. En los auditorios municipales la entrada es gratuita, y en las fiestas más señaladas la banda sale a la calle con sus pasacalles." }),
-        h("p", { text: "Además de los conciertos propios, organiza intercambios con otras formaciones y colabora con coros como los de la Sociedad Siero Musical." }),
+        h("p", { text: "La Banda de Música de Siero es el corazón de la ASAM. La forman músicos profesionales y amateurs que comparten atril e interpretan un repertorio variado, del pasodoble a las bandas sonoras." }),
+        h("p", { text: "Sus conciertos forman parte de la programación cultural del municipio, en el auditorio municipal la entrada es gratuita, y en las fiestas más señaladas de Pola de Siero la banda sale a tocar a la calle." }),
+        h("p", { text: "Además de los conciertos propios, organiza intercambios con otras formaciones y colabora con coros como los de Siero Musical." }),
         h("p", { class: "color-note" }, h("span", { class: "dot", style: "background:var(--azul)" }), h("span", { class: "dot", style: "background:var(--verde)" }), "Azul por la tradición, verde por el futuro: los colores del logotipo del 40 aniversario.")))),
     plantilla("Banda", true),
     formationEvents(/banda/i)
@@ -528,37 +549,30 @@ function teacherGrid() {
 }
 
 PAGES.escuela = function () {
-  var semana = [
-    ["azul", "Clase de instrumento", "45 min", "Cada alumno aprende su instrumento con su profesor."],
-    ["verde", "Clase de repertorio", "60 min", "Se trabajan las obras que se van a tocar en grupo."],
-    ["naranja", "Ensayo del Bandín", "60 min", "Todo lo aprendido se pone en práctica tocando juntos."]
-  ];
-  var cuotas = [
-    ["azul", "Clases de repertorio", "90", false],
-    ["verde", "Clases de instrumento", "120", false],
-    ["naranja", "Repertorio + instrumento", "210", true]
-  ];
+  var E = Object.assign({}, DEFAULTS.escuela, DATA.escuela || {});
+  var semana = Array.isArray(E.semana) ? E.semana : [];
+  var cuotas = Array.isArray(E.cuotas) ? E.cuotas : [];
+  var pago = String(E.pago || "").split(",").map(function (x) { return x.trim(); }).filter(Boolean);
+  var periodo = E.periodo || "trimestre";
   return [
-    pageHead("Escuela de música", "Aprende a tocar desde los 6 años", "Clases de instrumento y de repertorio y, desde el principio, práctica en grupo con el Bandín."),
+    pageHead("Escuela de música", E.titulo || "Escuela de música", E.intro || null),
     h("section", { class: "block" }, h("div", { class: "wrap" },
+      IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("escuela", "Editar la escuela")) : null,
       h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Educación musical semanal" }), h("p", { class: "muted", text: "Lo que hace un alumno cada semana" })),
-        h("span", { class: "age-badge", text: "Abierto a partir de 6 años" })),
+        E.edad ? h("span", { class: "age-badge", text: E.edad }) : null),
       h("div", { class: "week" }, semana.map(function (w) {
-        return h("div", { class: "wk" }, h("span", { class: "wk-time", style: "color:" + colorVar(w[0]) }, w[2]),
-          h("h3", null, h("i", { class: "dot", style: "background:" + colorVar(w[0]) }), w[1]), h("p", { text: w[3] }));
+        return h("div", { class: "wk" }, h("span", { class: "wk-time", style: "color:" + colorVar(w.color) }, w.duracion || ""),
+          h("h3", null, h("i", { class: "dot", style: "background:" + colorVar(w.color) }), w.nombre || ""), w.texto ? h("p", { text: w.texto }) : null);
       })))),
-    h("section", { class: "block alt" }, h("div", { class: "wrap" },
-      h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Cuotas de socio promesa" }), h("p", { class: "muted", text: "Precios por trimestre" }))),
+    cuotas.length ? h("section", { class: "block alt" }, h("div", { class: "wrap" },
+      h("div", { class: "row-head" }, h("div", null, h("h2", { text: E.cuotasTitulo || "Cuotas" }), h("p", { class: "muted", text: "Precios por " + periodo }))),
       h("div", { class: "prices" }, cuotas.map(function (c) {
-        return h("div", { class: "price" + (c[3] ? " featured" : ""), style: "--c:" + colorVar(c[0]) },
-          c[3] ? h("span", { class: "price-tag", text: "Lo más completo" }) : null,
-          h("h3", { text: c[1] }),
-          h("div", { class: "amount" }, h("b", { text: c[2] + " €" }), h("span", { text: "/ trimestre" })));
+        return h("div", { class: "price" + (c.destacado ? " featured" : ""), style: "--c:" + colorVar(c.color) },
+          c.destacado ? h("span", { class: "price-tag", text: "Lo más completo" }) : null,
+          h("h3", { text: c.nombre || "" }),
+          h("div", { class: "amount" }, h("b", { text: (c.precio || "") + " €" }), h("span", { text: "/ " + periodo })));
       })),
-      h("div", { class: "pay" },
-        h("b", { text: "Forma de pago" }),
-        h("span", { class: "chip", text: "Cuota trimestral" }),
-        h("span", { class: "chip", text: "Domiciliación bancaria" })))),
+      pago.length ? h("div", { class: "pay" }, h("b", { text: "Forma de pago" }), pago.map(function (p) { return h("span", { class: "chip", text: p }); })) : null)) : null,
     h("section", { class: "block" }, h("div", { class: "wrap" },
       h("div", { class: "row-head" }, h("h2", { text: "Profesorado" }), adminLink("profesores", "Editar profesorado")),
       teacherGrid(),
@@ -699,7 +713,7 @@ var SCHEMAS = {
     filter: { k: "formacion", label: "Formación", options: ["Banda", "Bandín", "Banda y Bandín"] },
     group: function (d) { return (d.formacion || "") + " · " + (d.instrumento || "Otros"); } }
 };
-var TABS = [["directiva", "Directiva"], ["directores", "Directores"], ["profesores", "Profesorado"], ["historia", "Historia"], ["musicos", "Músicos"], ["eventos", "Eventos"], ["noticias", "Noticias"], ["enlaces", "Enlaces y redes"], ["fotos", "Galería"], ["contacto", "Contacto"], ["pie", "Pie de página"], ["cuentas", "Cuentas de músicos"], ["usuarios", "Administradores"]];
+var TABS = [["directiva", "Directiva"], ["directores", "Directores"], ["profesores", "Profesorado"], ["historia", "Historia"], ["musicos", "Músicos"], ["eventos", "Eventos"], ["noticias", "Noticias"], ["enlaces", "Enlaces y redes"], ["fotos", "Galería"], ["escuela", "Escuela"], ["contacto", "Contacto"], ["pie", "Pie de página"], ["cuentas", "Cuentas de músicos"], ["usuarios", "Administradores"]];
 SCHEMAS.historia = { label: "Historia", singular: "hito", fields: [
     { k: "anio", l: "Año o etiqueta", req: true, ph: "1984" },
     { k: "detalle", l: "Fecha o detalle", ph: "24 de diciembre" },
@@ -745,6 +759,7 @@ PAGES.admin = function (tab) {
   if (tab === "fotos") body = adminFotos();
   else if (tab === "contacto") body = adminContacto();
   else if (tab === "pie") body = adminPie();
+  else if (tab === "escuela") body = adminEscuela();
   else if (tab === "usuarios") body = adminUsuarios();
   else if (tab === "cuentas") body = adminCuentas();
   else body = adminCrud(tab);
@@ -1118,6 +1133,73 @@ function adminContacto() {
   return form;
 }
 
+
+function adminEscuela() {
+  var E = JSON.parse(JSON.stringify(Object.assign({}, DEFAULTS.escuela, DATA.escuela || {})));
+  var st = statusEl();
+  var COLORS = [["azul", "Azul"], ["verde", "Verde"], ["naranja", "Naranja"], ["negro", "Negro"]];
+  function input(id, val, ph, type) { var i = h("input", { id: id, type: type || "text", placeholder: ph || null }); i.value = val == null ? "" : val; return i; }
+  function colorSel(id, val) { return h("select", { id: id }, COLORS.map(function (c) { return h("option", { value: c[0], text: c[1], selected: val === c[0] || null }); })); }
+  function field(id, label, el, help) { return h("div", { class: "field" }, h("label", { for: id, text: label }), el, help ? h("small", { text: help }) : null); }
+
+  var titulo = input("es-titulo", E.titulo), intro = h("textarea", { id: "es-intro", style: "min-height:70px" }); intro.value = E.intro || "";
+  var edad = input("es-edad", E.edad, "Abierto a partir de 6 años");
+  var cuotasTitulo = input("es-ctit", E.cuotasTitulo), periodo = input("es-per", E.periodo, "trimestre, mes, curso…");
+  var pago = input("es-pago", E.pago, "Cuota trimestral, Domiciliación bancaria");
+
+  var semBox = h("div", { class: "rep-rows" }), cuoBox = h("div", { class: "rep-rows" });
+  var n = 0;
+  function semRow(w) {
+    var k = "s" + (n++);
+    var r = h("div", { class: "rep-row" },
+      field(k + "-n", "Actividad", input(k + "-n", w.nombre, "Clase de instrumento")),
+      field(k + "-d", "Duración", input(k + "-d", w.duracion, "45 min")),
+      field(k + "-c", "Color", colorSel(k + "-c", w.color)),
+      field(k + "-t", "Descripción", input(k + "-t", w.texto)),
+      h("button", { class: "btn danger small", type: "button", text: "Quitar", onclick: function () { r.remove(); } }));
+    r._get = function () { return { nombre: r.querySelector("#" + k + "-n").value.trim(), duracion: r.querySelector("#" + k + "-d").value.trim(), color: r.querySelector("#" + k + "-c").value, texto: r.querySelector("#" + k + "-t").value.trim() }; };
+    semBox.appendChild(r);
+  }
+  function cuoRow(c) {
+    var k = "c" + (n++);
+    var dest = h("input", { id: k + "-x", type: "checkbox", checked: c.destacado ? true : null });
+    var r = h("div", { class: "rep-row" },
+      field(k + "-n", "Concepto", input(k + "-n", c.nombre, "Clases de instrumento")),
+      field(k + "-p", "Precio (€)", input(k + "-p", c.precio, "120", "text")),
+      field(k + "-c", "Color", colorSel(k + "-c", c.color)),
+      h("label", { class: "check", for: k + "-x" }, dest, " Destacar"),
+      h("button", { class: "btn danger small", type: "button", text: "Quitar", onclick: function () { r.remove(); } }));
+    r._get = function () { return { nombre: r.querySelector("#" + k + "-n").value.trim(), precio: r.querySelector("#" + k + "-p").value.trim().replace(/\s*€$/, ""), color: r.querySelector("#" + k + "-c").value, destacado: dest.checked }; };
+    cuoBox.appendChild(r);
+  }
+  (E.semana || []).forEach(semRow);
+  (E.cuotas || []).forEach(cuoRow);
+
+  var save = h("button", { class: "btn primary", type: "submit", text: "Guardar la escuela" });
+  var form = h("form", { class: "aform", style: "position:static;max-width:900px", novalidate: true },
+    h("h3", { text: "Página de la Escuela" }),
+    field("es-titulo", "Título", titulo), field("es-intro", "Presentación", intro), field("es-edad", "Edad / etiqueta", edad),
+    h("h3", { text: "Educación musical semanal", style: "margin-top:10px" }), semBox,
+    h("button", { class: "btn ghost small", type: "button", style: "justify-self:start", text: "+ Añadir actividad", onclick: function () { semRow({ color: "azul" }); } }),
+    h("h3", { text: "Cuotas", style: "margin-top:10px" }),
+    field("es-ctit", "Título de las cuotas", cuotasTitulo), field("es-per", "Periodo de los precios", periodo, "Se muestra como «90 € / trimestre»."),
+    cuoBox,
+    h("button", { class: "btn ghost small", type: "button", style: "justify-self:start", text: "+ Añadir cuota", onclick: function () { cuoRow({ color: "azul" }); } }),
+    field("es-pago", "Forma de pago", pago, "Separa las opciones con comas."),
+    h("div", { class: "form-acts" }, save), st);
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var obj = { titulo: titulo.value.trim(), intro: intro.value.trim(), edad: edad.value.trim(),
+      semana: Array.prototype.map.call(semBox.children, function (r) { return r._get(); }).filter(function (w) { return w.nombre; }),
+      cuotasTitulo: cuotasTitulo.value.trim(), periodo: periodo.value.trim() || "trimestre",
+      cuotas: Array.prototype.map.call(cuoBox.children, function (r) { return r._get(); }).filter(function (c) { return c.nombre; }),
+      pago: pago.value.trim() };
+    save.disabled = true; save.textContent = "Guardando…";
+    DB.doc("ajustes/escuela").set(obj).then(function () { save.disabled = false; save.textContent = "Guardar la escuela"; setStatus(st, "Escuela guardada.", true); },
+      function (e) { save.disabled = false; save.textContent = "Guardar la escuela"; setStatus(st, errMsg(e), false); });
+  });
+  return form;
+}
 
 function adminPie() {
   var p = DATA.pie || {}, st = statusEl();
@@ -1758,6 +1840,7 @@ function loadAll() {
       if (r.coleccion === "ajustes") {
         if (r.id === "contacto") DATA.contacto = r.datos || {};
         if (r.id === "pie") DATA.pie = r.datos || {};
+        if (r.id === "escuela") DATA.escuela = r.datos || {};
         return;
       }
       if (next[r.coleccion]) { var o = Object.assign({}, r.datos); o.id = r.id; next[r.coleccion].push(o); }
