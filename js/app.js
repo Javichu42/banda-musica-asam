@@ -120,9 +120,10 @@ function photoSrc(f) { return f.asset ? blobUrl(f.asset) : ""; }
 function adminLink(tab, label) { return IS_ADMIN ? h("a", { class: "admin-hint", href: "#admin-" + tab, text: "✎ " + label }) : null; }
 
 /* ---------- Componentes públicos ---------- */
-function pageHead(eyebrow, title, lead, cls, extra) {
-  return h("div", { class: "page-head" }, h("div", { class: "wrap" },
-    h("span", { class: "eyebrow " + (cls || ""), text: eyebrow }), h("h1", { text: title }), lead ? h("p", { class: "lead", text: lead }) : null),
+function pageHead(eyebrow, title, lead, cls, extra, logo) {
+  return h("div", { class: "page-head" + (logo ? " with-logo" : "") }, h("div", { class: "wrap" },
+    h("span", { class: "eyebrow " + (cls || ""), text: eyebrow }), h("h1", { text: title }), lead ? h("p", { class: "lead", text: lead }) : null,
+    logo ? h("div", { class: "head-logo" }, h("img", { src: logo.src, alt: logo.alt })) : null),
     h("div", { class: "staff-lines", "aria-hidden": "true" }), extra || null);
 }
 
@@ -391,7 +392,7 @@ function plantilla(formacion, alt) {
 
 PAGES.banda = function () {
   return [
-    pageHead("Banda de Música de Siero", "La banda que suena en las fiestas y auditorios del concejo", null, null, staffMelody()),
+    pageHead("Banda de Música de Siero", "La banda que suena en las fiestas y auditorios del concejo", null, null, staffMelody(), { src: "img/logo/logo-banda.webp", alt: "Logotipo de la Banda de Música de Siero" }),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       directorFeature(/banda/i, "azul", "Director de la Banda"),
       h("div", { class: "prose" },

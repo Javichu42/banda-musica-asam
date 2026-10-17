@@ -489,3 +489,13 @@ button.mus-av { cursor: zoom-in; }
 .staff-notes .lyric { fill: var(--muted); font: 600 13px var(--f-body); text-anchor: middle; }
 .staff-notes .bar { stroke: var(--nota); stroke-width: 1.4; }
 .staff-notes .bar.thick { stroke-width: 4; }
+
+/* Logo de la Banda en la cabecera de su página */
+.page-head.with-logo .wrap { grid-template-columns: minmax(0, 1fr) auto; column-gap: 32px; }
+.page-head.with-logo .wrap > :not(.head-logo) { grid-column: 1; }
+.head-logo { grid-column: 2; grid-row: 1 / span 3; align-self: start; background: #fff; border-radius: 20px; padding: 14px 18px; box-shadow: var(--shadow); border: 1px solid var(--line); width: clamp(150px, 20vw, 250px); }
+.head-logo img { width: 100%; height: auto; display: block; }
+@media (max-width: 700px) {
+  .page-head.with-logo .wrap { grid-template-columns: 1fr; }
+  .head-logo { grid-column: 1; grid-row: auto; order: -1; width: 150px; padding: 10px 12px; }
+}
