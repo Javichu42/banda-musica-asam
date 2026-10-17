@@ -132,10 +132,29 @@ function eventRow(e, past) {
       e.descripcion ? h("p", { text: e.descripcion }) : null),
     e.formacion ? h("span", { class: "pill " + fcls, text: e.formacion }) : null);
 }
+function youtubeId(url) {
+  var m = /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/|youtube-nocookie\.com\/embed\/)([A-Za-z0-9_-]{11})/.exec(url || "");
+  return m ? m[1] : null;
+}
+function videoEmbed(id, title) {
+  var box = h("div", { class: "video" });
+  var play = h("button", { type: "button", class: "video-play", "aria-label": "Reproducir vídeo: " + (title || "YouTube") },
+    h("img", { src: "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg", alt: "", loading: "lazy" }),
+    h("span", { class: "play-icon", "aria-hidden": "true" }));
+  play.addEventListener("click", function () {
+    box.replaceChildren(h("iframe", { src: "https://www.youtube-nocookie.com/embed/" + id + "?autoplay=1&rel=0", title: title || "Vídeo de YouTube",
+      allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share", allowfullscreen: true, referrerpolicy: "strict-origin-when-cross-origin" }));
+  });
+  box.appendChild(play);
+  return box;
+}
+
 function newsCard(n, i) {
   var colors = ["var(--verde)", "var(--azul)", "var(--naranja)", "var(--nota)"];
   var fotos = Array.isArray(n.fotos) ? n.fotos.filter(Boolean) : [];
-  var links = Array.isArray(n.enlaces) ? n.enlaces.filter(function (l) { return l && safeUrl(l.url); }) : [];
+  var allLinks = Array.isArray(n.enlaces) ? n.enlaces.filter(function (l) { return l && safeUrl(l.url); }) : [];
+  var videos = allLinks.filter(function (l) { return youtubeId(l.url); });
+  var links = allLinks.filter(function (l) { return !youtubeId(l.url); });
   function shot(id) { return { asset: id, titulo: n.titulo }; }
   var top = fotos.length
     ? h("button", { class: "cover", type: "button", "aria-label": "Ver foto de " + (n.titulo || "la noticia"), onclick: function () { openLightbox(shot(fotos[0])); } },
@@ -147,6 +166,7 @@ function newsCard(n, i) {
       fotos.length > 1 ? h("div", { class: "thumbs" }, fotos.slice(1).map(function (id) {
         return h("button", { type: "button", "aria-label": "Ver otra foto", onclick: function () { openLightbox(shot(id)); } }, h("img", { src: blobUrl(id), alt: "", loading: "lazy" }));
       })) : null,
+      videos.map(function (l) { return videoEmbed(youtubeId(l.url), l.texto || n.titulo); }),
       links.length ? h("div", { class: "post-links" }, links.map(function (l) {
         return h("a", { href: l.url, target: "_blank", rel: "noopener", text: "↗ " + (l.texto || l.url.replace(/^https?:\/\//, "")) });
       })) : null));
@@ -488,7 +508,7 @@ var SCHEMAS = {
     { k: "etiqueta", l: "Etiqueta", ph: "Banda, Bandín, Asociación…" },
     { k: "texto", l: "Texto", type: "textarea" },
     { k: "fotos", l: "Fotos", type: "images", help: "La primera foto se usa como portada de la noticia." },
-    { k: "enlaces", l: "Enlaces a otras webs", type: "links", help: "Por ejemplo, el artículo de un periódico o el programa del concierto." }],
+    { k: "enlaces", l: "Enlaces a otras webs", type: "links", help: "Por ejemplo, el artículo de un periódico o el programa del concierto. Si pegas un enlace de YouTube, el vídeo se verá dentro de la noticia." }],
     title: function (d) { return d.titulo; }, sub: function (d) { return [fmtLong(d.fecha) || "Sin fecha", d.etiqueta].filter(Boolean).join(" · "); },
     sort: function (a, b) { return sortedNews().indexOf(a) - sortedNews().indexOf(b); } },
   enlaces: { label: "Enlaces", singular: "enlace", fields: [
