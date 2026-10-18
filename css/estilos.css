@@ -1503,3 +1503,10 @@ body.in-area .top .wrap { gap: 22px; }
 .pp-tools .seg { flex-wrap: wrap; max-width: 100%; }
 @media (max-width: 520px) { .pp-tools .seg button { padding: 9px 10px; font-size: .74rem; } }
 .reunion-det .back { justify-self: start; margin-left: 0; text-align: left; }
+.pp-flash { display: grid; gap: 10px; margin-bottom: 16px; }
+.acceso-box { border: 1.5px dashed color-mix(in srgb, var(--naranja) 60%, var(--line)); background: color-mix(in srgb, var(--naranja) 8%, var(--surface)); border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; }
+.acceso-box.ok { border-style: solid; border-color: color-mix(in srgb, var(--verde) 50%, var(--line)); background: color-mix(in srgb, var(--verde) 8%, var(--surface)); }
+.acceso-box p { margin: 0; }
+.acceso-box code { font-size: 1rem; font-weight: 700; background: var(--surface); padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line); }
+.send-check { border-color: color-mix(in srgb, var(--azul) 45%, var(--line)); }
+.send-check input { accent-color: var(--azul); }

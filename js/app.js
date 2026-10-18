@@ -970,6 +970,7 @@ var LIST_FILTER = {};
 
 /* Acceso privado: un único botón para músicos y administradores */
 PAGES.privado = function () {
+  if (debeCambiarClave()) return cambiarClavePage();
   var head = pageHead("Acceso privado", "Área de músicos y administración", SESSION ? null : "Entra con tu usuario o tu correo y tu contraseña.", "negra");
   if (!SB) {
     return [head, h("section", { class: "block" }, h("div", { class: "wrap" }, h("div", { class: "notice" },
@@ -993,6 +994,7 @@ PAGES.privado = function () {
     h("div", { class: "form-acts", style: "margin-top:18px" }, logout)))];
 };
 PAGES.admin = function (tab) {
+  if (debeCambiarClave()) return cambiarClavePage();
   if (tab === "cuentas" || tab === "usuarios") tab = "personas";
   var head = pageHead("Administración", "Panel de administración", "Los cambios que guardes aquí se ven en la web para todas las personas que la visitan.", "negra");
   if (!SB) {
@@ -1065,6 +1067,35 @@ function loadAdmins() {
   return adminFn({ action: "list" }).then(function (d) {
     ADMINS.list = d.admins || []; ADMINS.me = d.me; ADMINS.error = ""; ADMINS.loaded = true; ADMINS.loading = false;
   }, function (e) { ADMINS.error = e.message; ADMINS.loaded = true; ADMINS.loading = false; });
+}
+/* Primera entrada con contraseña provisional: hay que elegir una propia */
+function debeCambiarClave() { return !!(SESSION && SESSION.user && SESSION.user.user_metadata && SESSION.user.user_metadata.cambiar_clave); }
+function cambiarClavePage() {
+  var st = statusEl();
+  var p1 = h("input", { id: "nc-1", type: "password", autocomplete: "new-password" });
+  var p2 = h("input", { id: "nc-2", type: "password", autocomplete: "new-password" });
+  var btn = h("button", { class: "btn primary", type: "submit", text: "Guardar mi contraseña" });
+  var f = h("form", { class: "aform", style: "position:static;max-width:440px" }, h("h3", { text: "Elige tu contraseña" }),
+    h("p", { class: "muted", text: "Has entrado con una contraseña provisional. Elige una tuya para seguir; la provisional dejará de valer." }),
+    h("div", { class: "field" }, h("label", { for: "nc-1", text: "Contraseña nueva" }), p1, h("small", { text: "Mínimo 8 caracteres." })),
+    h("div", { class: "field" }, h("label", { for: "nc-2", text: "Repítela" }), p2),
+    h("div", { class: "form-acts" }, btn, h("button", { class: "btn ghost", type: "button", text: "Cerrar sesión", onclick: function () { SB.auth.signOut(); } })), st);
+  f.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (p1.value.length < 8) { setStatus(st, "La contraseña debe tener al menos 8 caracteres.", false); return; }
+    if (p1.value !== p2.value) { setStatus(st, "Las dos contraseñas no coinciden.", false); return; }
+    btn.disabled = true;
+    SB.auth.updateUser({ password: p1.value, data: { cambiar_clave: false } }).then(function (r) {
+      if (r && r.error) throw r.error;
+      if (r && r.data && r.data.user) SESSION.user = r.data.user; else if (SESSION.user.user_metadata) SESSION.user.user_metadata.cambiar_clave = false;
+      render();
+    }).catch(function (e) {
+      btn.disabled = false;
+      var m = (e && e.message) || "";
+      setStatus(st, /different from the old|same/i.test(m) ? "Tiene que ser distinta de la provisional." : /weak|short|characters/i.test(m) ? "Esa contraseña es demasiado débil. Prueba con otra más larga." : "No se ha podido guardar. Inténtalo de nuevo.", false);
+    });
+  });
+  return [pageHead("Bienvenido/a", "Elige tu contraseña", "Un último paso antes de entrar.", "negra"), h("section", { class: "block" }, h("div", { class: "wrap" }, f))];
 }
 function loginForm(title) {
   var st = statusEl();
@@ -1819,6 +1850,7 @@ function areaTabs() {
   return t;
 }
 PAGES.musicos = function (sub) {
+  if (debeCambiarClave()) return cambiarClavePage();
   var wasAdmin = IS_ADMIN;
   AREA_REAL_ADMIN = wasAdmin;
   if (!wasAdmin) AREA.verComo = null;
@@ -3407,6 +3439,28 @@ function roleToggle(id, label, checked, body, onchange) {
   cb.addEventListener("change", function () { wrap.classList.toggle("on", cb.checked); if (onchange) onchange(cb.checked); });
   return { el: wrap, checked: function () { return cb.checked; } };
 }
+// Datos de acceso para mandar a la persona (si el correo automático no está configurado o ha fallado)
+function textoAcceso(a, nueva) {
+  var web = location.origin + location.pathname.replace(/index\.html$/, "") + "#privado";
+  return "Hola, " + a.nombre + ":\n\n" + (nueva ? "Ya tienes cuenta en la web de la Asociación Sierense Amigos de la Música." : "Te hemos puesto una contraseña nueva para entrar en la web de la Asociación Sierense Amigos de la Música.") +
+    "\n\nUsuario: " + a.usuario + "\nContraseña provisional: " + a.password + "\n\nEntra aquí: " + web + "\n\nLa primera vez que entres te pediremos que elijas una contraseña tuya.\n\nUn saludo.";
+}
+function accesoBox(a, correo, nueva) {
+  var ok = correo && correo.enviado;
+  var txt = textoAcceso(a, nueva);
+  var mail = "mailto:" + encodeURIComponent(a.email || "") + "?subject=" + encodeURIComponent(nueva ? "Tu cuenta en la web de la Banda de Música de Siero" : "Tu nueva contraseña de la web de la Banda") + "&body=" + encodeURIComponent(txt);
+  var copy = h("button", { class: "btn ghost small", type: "button", text: "Copiar el mensaje" });
+  copy.addEventListener("click", function () {
+    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function () { copy.textContent = "Copiado ✓"; }, function () { copy.textContent = "No se ha podido copiar"; });
+  });
+  var motivo = !correo || correo.error === "no-pedido" ? "" : correo.error === "no-configurado" ? "El envío automático de correos todavía no está configurado (lo explica el README). " : (correo.error || "") + " ";
+  return h("div", { class: "acceso-box" + (ok ? " ok" : "") }, ok
+    ? h("p", null, "✉️ Le hemos enviado a ", h("b", { text: a.email }), " su usuario «" + a.usuario + "» y la contraseña provisional. Al entrar por primera vez tendrá que elegir una suya.")
+    : h("div", null,
+      h("p", null, motivo + "Mándale estos datos tú: ", h("b", { text: "usuario «" + a.usuario + "»" }), " y contraseña provisional ", h("code", { text: a.password }), "."),
+      h("div", { class: "form-acts" }, h("a", { class: "btn primary small", href: mail, text: "✉️ Enviárselo desde mi correo" }), copy),
+      h("small", { class: "muted", text: "Al entrar por primera vez tendrá que elegir una contraseña suya." })));
+}
 function cuentaForm(c) {
   var nuevo = !c, pre = nuevo ? "pn" : "pe-" + String(c.user_id).replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
   var st = statusEl();
@@ -3425,6 +3479,7 @@ function cuentaForm(c) {
   var rMus = roleToggle(pre + "-esmus", ["🎷 Músico", "Entra en el Área de músicos, responde a las convocatorias y recibe sus partituras."], nuevo ? true : !!c.musico, mf.el);
   var rDir = roleToggle(pre + "-esdir", ["🏛️ Directiva", "Tareas, reuniones y sugerencias, y lo que permita su cargo."], nuevo ? false : !!c.directiva,
     h("div", { class: "role-fields" }, h("div", { class: "field" }, h("label", { for: pre + "-cargo", text: "Cargo en la directiva" }), csel), permBox));
+  var enviarCb = nuevo ? h("input", { type: "checkbox", id: "pn-enviar", checked: true }) : null;
   var btn = h("button", { class: "btn primary", type: "submit", text: nuevo ? "Crear cuenta" : "Guardar cambios" });
   var form = h("form", { class: "aform cuenta-form", novalidate: true }, h("h3", { text: nuevo ? "Nueva cuenta" : "Editar a " + (c.nombre || c.email) }),
     nuevo ? h("p", { class: "muted small", text: "Una sola cuenta por persona. Marca lo que es: músico, miembro de la directiva o las dos cosas." }) : null,
@@ -3435,22 +3490,24 @@ function cuentaForm(c) {
     nuevo ? h("div", { class: "field" }, h("label", { for: pre + "-pass", text: "Contraseña inicial *" }), pass,
       h("button", { class: "btn ghost small", type: "button", style: "justify-self:start", text: "Generar otra", onclick: function () { pass.value = randomPass(); } })) : null,
     h("span", { class: "flabel", text: "Accesos" }), rMus.el, rDir.el,
+    nuevo ? h("label", { class: "perm-check send-check", for: "pn-enviar" }, enviarCb, h("span", null, h("b", { text: "✉️ Enviarle por correo su usuario y contraseña" }), h("small", { text: "Le llegan los datos para entrar y, la primera vez, la web le pide que elija una contraseña suya." }))) : null,
     h("div", { class: "form-acts" }, btn, nuevo ? null : h("button", { class: "btn ghost", type: "button", text: "Cancelar", onclick: function () { CUENTAS.edit = null; render(); } })), st);
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
     var body = { action: nuevo ? "create" : "update", nombre: nombre.value.trim(), usuario: usuario.value.trim().toLowerCase(),
       musico: rMus.checked() ? mf.value() : null, directiva: rDir.checked() ? { cargo_id: csel.value } : null };
-    if (nuevo) { body.email = email.value.trim(); body.password = pass.value; } else body.user_id = c.user_id;
+    if (nuevo) { body.email = email.value.trim(); body.password = pass.value; body.enviar = enviarCb.checked; } else body.user_id = c.user_id;
     if (body.musico) Object.assign(body, { formacion: body.musico.formacion, instrumento: body.musico.instrumento, voz: body.musico.voz, cargo: body.musico.cargo }); // función antigua
     if (!body.nombre || !body.usuario || (nuevo && !body.email)) { setStatus(st, "Rellena el nombre, el usuario" + (nuevo ? " y el correo." : "."), false); return; }
     if (!body.musico && !body.directiva) { setStatus(st, "Marca al menos un acceso: músico o directiva.", false); return; }
     if (body.musico && !body.musico.instrumento) { setStatus(st, "Escribe el instrumento (o elige el puesto Director si no toca).", false); return; }
     btn.disabled = true; btn.textContent = nuevo ? "Creando…" : "Guardando…";
-    musicosFn(body).then(function () {
-      FLASH = { col: "personas", msg: nuevo ? "Cuenta creada. Pásale a " + body.nombre + " su usuario «" + body.usuario + "» y la contraseña «" + body.password + "»." : "Cambios guardados." };
+    musicosFn(body).then(function (d) {
+      FLASH = { col: "personas", msg: nuevo ? "Cuenta de " + body.nombre + " creada." : "Cambios guardados." };
+      if (nuevo) FLASH.acceso = { a: { nombre: body.nombre, usuario: body.usuario, email: body.email, password: body.password }, correo: (d && d.correo) || (body.enviar ? { enviado: false, error: "no-configurado" } : { enviado: false, error: "no-pedido" }), nueva: true };
       CUENTAS.edit = null;
       return Promise.all([loadCuentas(), loadAll(), refreshAdmin()]);
-    }).then(render, function (e) { btn.disabled = false; btn.textContent = nuevo ? "Crear cuenta" : "Guardar cambios"; setStatus(st, e.message, false); });
+    }).then(function () { render(); var fl = document.querySelector(".pp-flash"); if (fl && fl.scrollIntoView) fl.scrollIntoView({ block: "center" }); }, function (e) { btn.disabled = false; btn.textContent = nuevo ? "Crear cuenta" : "Guardar cambios"; setStatus(st, e.message, false); });
   });
   return form;
 }
@@ -3478,6 +3535,13 @@ function cuentaRow(c) {
         h("small", { class: "muted", text: c.ultimo_acceso ? "Último acceso: " + fmtLong(String(c.ultimo_acceso).slice(0, 10)) : "Todavía no ha entrado" }))),
     h("div", { class: "p-acts" },
       h("button", { class: "btn ghost small", type: "button", text: "Editar accesos", onclick: function () { CUENTAS.edit = c.user_id; render(); } }),
+      h("button", { class: "btn ghost small", type: "button", text: "✉️ Enviar acceso nuevo", title: "Le pone una contraseña provisional nueva y se la manda por correo", onclick: function (ev) {
+        var b = ev.currentTarget, np = randomPass(); b.disabled = true; b.textContent = "Enviando…";
+        musicosFn({ action: "password", user_id: c.user_id, password: np, enviar: true }).then(function (d) {
+          FLASH = { col: "personas", msg: "Contraseña provisional nueva para " + (c.nombre || c.email) + ".", acceso: { a: { nombre: c.nombre, usuario: c.usuario || c.email, email: c.email, password: np }, correo: (d && d.correo) || { enviado: false, error: "no-configurado" }, nueva: false } };
+          render(); var fl = document.querySelector(".pp-flash"); if (fl && fl.scrollIntoView) fl.scrollIntoView({ block: "center" });
+        }, function (e) { b.disabled = false; b.textContent = "✉️ Enviar acceso nuevo"; alert2(b, e.message); });
+      } }),
       h("span", { class: "pw-mini" }, pw, pwBtn),
       isMe ? null : deleteButton(function (b) {
         musicosFn({ action: "remove", user_id: c.user_id }).then(function () {
@@ -3490,7 +3554,10 @@ function cuentaRow(c) {
 function adminPersonas() {
   if (!CUENTAS.loaded && !CUENTAS.loading) loadCuentas().then(render);
   var flash = null;
-  if (FLASH && FLASH.col === "personas") { flash = h("p", { class: "status ok", role: "status", text: FLASH.msg }); FLASH = null; }
+  if (FLASH && FLASH.col === "personas") {
+    flash = h("div", { class: "pp-flash" }, h("p", { class: "status ok", role: "status", text: FLASH.msg }), FLASH.acceso ? accesoBox(FLASH.acceso.a, FLASH.acceso.correo, FLASH.acceso.nueva) : null);
+    FLASH = null;
+  }
   var list;
   if (!CUENTAS.loaded) list = h("div", { class: "empty" }, h("p", { text: "Cargando cuentas…" }));
   else if (CUENTAS.error) list = h("div", { class: "notice" }, h("h3", { text: "No se han podido cargar las cuentas" }), h("p", { class: "muted", text: CUENTAS.error }),

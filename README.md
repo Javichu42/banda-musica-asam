@@ -169,3 +169,19 @@ Ejecuta `supabase/directiva.sql` en el SQL Editor (después de `repertorio.sql`)
 - **Reuniones**: convocatoria con orden del día, confirmación de asistencia de cada miembro, acta y acuerdos; cada acuerdo se puede convertir en una tarea.
 
 Los permisos se comprueban en la base de datos (reglas de seguridad de Supabase), no solo en la web.
+
+### Correo automático con el usuario y la contraseña
+
+Al crear una cuenta (o al pulsar «✉️ Enviar acceso nuevo»), la función `musicos` le manda a la persona un correo con su usuario y una contraseña provisional. La primera vez que entra, la web le obliga a elegir una contraseña suya.
+
+Para que los correos salgan hay que configurarlo una vez (si no, la web enseña los datos y un botón para enviarlos desde tu propio correo):
+
+1. Crea una cuenta gratuita en [Brevo](https://www.brevo.com) (300 correos al día).
+2. En **Senders, domains & dedicated IPs → Senders**, añade el correo que enviará los mensajes (por ejemplo `administracion@bandadesiero.es`) y confírmalo con el enlace que te llega.
+3. En **SMTP & API → API keys**, crea una clave.
+4. En Supabase → **Edge Functions → Secrets**, añade:
+   - `BREVO_API_KEY` = la clave de Brevo
+   - `MAIL_FROM` = `Banda de Música de Siero <administracion@bandadesiero.es>`
+   - `WEB_URL` = la dirección de la web (por ejemplo `https://bandadesiero.es`)
+
+También funciona con [Resend](https://resend.com) poniendo `RESEND_API_KEY` en lugar de `BREVO_API_KEY` (Resend pide verificar el dominio). Las claves van solo en los secretos de Supabase, nunca en `js/config.js`.

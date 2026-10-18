@@ -32,6 +32,49 @@ function leerMusico(m: Record<string, unknown> | null | undefined): Musico | str
   return voz ? { formacion, instrumento, voz, cargo } : { formacion, instrumento, cargo };
 }
 
+
+// ---------- Correo con los datos de acceso ----------
+// Se envía con Brevo (BREVO_API_KEY) o con Resend (RESEND_API_KEY), lo que esté configurado
+// en los secretos de las funciones de Supabase. MAIL_FROM = remitente ("Banda de Siero <correo@…>").
+// WEB_URL = dirección de la web (para el enlace del correo).
+function esc(t: string) { return t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!)); }
+async function enviarAcceso(to: string, nombre: string, usuario: string, password: string, motivo: "nueva" | "clave") {
+  const brevo = Deno.env.get("BREVO_API_KEY"), resend = Deno.env.get("RESEND_API_KEY");
+  if (!brevo && !resend) return { enviado: false, error: "no-configurado" };
+  const from = Deno.env.get("MAIL_FROM") || "";
+  const web = (Deno.env.get("WEB_URL") || "").replace(/\/$/, "");
+  const m = /^(.*)<([^>]+)>\s*$/.exec(from);
+  const fromName = (m ? m[1].trim().replace(/^"|"$/g, "") : "") || "Banda de Música de Siero";
+  const fromEmail = m ? m[2].trim() : from.trim();
+  if (!fromEmail) return { enviado: false, error: "Falta el secreto MAIL_FROM (remitente)." };
+  const asunto = motivo === "nueva" ? "Tu cuenta en la web de la Banda de Música de Siero" : "Tu nueva contraseña de la web de la Banda de Música de Siero";
+  const enlace = web ? web + "/#privado" : "";
+  const texto = `Hola, ${nombre}:\n\n${motivo === "nueva" ? "Ya tienes cuenta en la web de la Asociación Sierense Amigos de la Música." : "Te hemos puesto una contraseña nueva para entrar en la web."}\n\nUsuario: ${usuario}\nContraseña provisional: ${password}\n\n${enlace ? "Entra aquí: " + enlace + "\n\n" : ""}La primera vez que entres te pediremos que elijas una contraseña tuya.\n\nUn saludo,\nAsociación Sierense Amigos de la Música`;
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1f2b;max-width:520px">
+<p>Hola, ${esc(nombre)}:</p>
+<p>${motivo === "nueva" ? "Ya tienes cuenta en la web de la <b>Asociación Sierense Amigos de la Música</b>." : "Te hemos puesto una contraseña nueva para entrar en la web de la <b>Asociación Sierense Amigos de la Música</b>."}</p>
+<table style="border-collapse:collapse;margin:14px 0;background:#f2f5fa;border-radius:10px"><tr><td style="padding:10px 16px;color:#5b6475">Usuario</td><td style="padding:10px 16px;font-weight:bold">${esc(usuario)}</td></tr>
+<tr><td style="padding:10px 16px;color:#5b6475">Contraseña provisional</td><td style="padding:10px 16px;font-weight:bold;font-family:monospace;font-size:16px">${esc(password)}</td></tr></table>
+${enlace ? `<p><a href="${esc(enlace)}" style="display:inline-block;background:#3f7fd6;color:#fff;text-decoration:none;padding:11px 20px;border-radius:10px;font-weight:bold">Entrar en la web</a></p>` : ""}
+<p>La primera vez que entres te pediremos que elijas una contraseña tuya.</p>
+<p style="color:#5b6475;font-size:13px">Si no esperabas este correo, puedes ignorarlo.</p></div>`;
+  try {
+    let r: Response;
+    if (brevo) {
+      r = await fetch("https://api.brevo.com/v3/smtp/email", { method: "POST", headers: { "api-key": brevo, "Content-Type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ sender: { name: fromName, email: fromEmail }, to: [{ email: to, name: nombre }], subject: asunto, htmlContent: html, textContent: texto }) });
+    } else {
+      r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: "Bearer " + resend, "Content-Type": "application/json" },
+        body: JSON.stringify({ from: `${fromName} <${fromEmail}>`, to: [to], subject: asunto, html, text: texto }) });
+    }
+    if (!r.ok) { const t = await r.text(); console.error("correo", r.status, t); return { enviado: false, error: "El servicio de correo respondió con un error (" + r.status + ")." }; }
+    return { enviado: true };
+  } catch (e) {
+    console.error("correo", e);
+    return { enviado: false, error: "No se ha podido conectar con el servicio de correo." };
+  }
+}
+
 async function usuarioLibre(admin: SupabaseClient, usuario: string, salvo?: string) {
   const { data: m } = await admin.from("contenido").select("datos").eq("coleccion", "musicos").filter("datos->>usuario", "eq", usuario).limit(5);
   if ((m || []).some((r) => r.datos && r.datos.user_id !== salvo)) return false;
@@ -139,7 +182,7 @@ Deno.serve(async (req: Request) => {
       }
       if (!(await usuarioLibre(admin, usuario))) return json({ error: "Ese nombre de usuario ya existe." }, 400);
 
-      const { data: created, error: ce } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { nombre } });
+      const { data: created, error: ce } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { nombre, cambiar_clave: true } });
       if (ce) {
         if (/already|registered|exists/i.test(ce.message)) return json({ error: "Ya existe una cuenta con ese correo. Búscala en la lista y añádele el acceso." }, 400);
         return json({ error: ce.message }, 400);
@@ -159,7 +202,8 @@ Deno.serve(async (req: Request) => {
         await admin.auth.admin.deleteUser(uid);
         throw e;
       }
-      return json({ ok: true, id: uid });
+      const correo = body.enviar === false ? { enviado: false, error: "no-pedido" } : await enviarAcceso(email, nombre, usuario, password, "nueva");
+      return json({ ok: true, id: uid, correo });
     }
 
     if (body.action === "update") {
@@ -203,7 +247,7 @@ Deno.serve(async (req: Request) => {
       } else if (ficha) {
         await admin.from("contenido").delete().eq("coleccion", "musicos").eq("id", ficha.id);
       }
-      await admin.auth.admin.updateUserById(uid, { user_metadata: { nombre } });
+      await admin.auth.admin.updateUserById(uid, { user_metadata: { ...(u.user.user_metadata || {}), nombre } });
       return json({ ok: true });
     }
 
@@ -211,9 +255,23 @@ Deno.serve(async (req: Request) => {
       const uid = String(body.user_id || "");
       const password = String(body.password || "");
       if (password.length < 8) return json({ error: "La contraseña debe tener al menos 8 caracteres." }, 400);
-      const { error } = await admin.auth.admin.updateUserById(uid, { password });
+      const { data: u } = await admin.auth.admin.getUserById(uid);
+      if (!u?.user) return json({ error: "No se encuentra esa cuenta." }, 404);
+      const { error } = await admin.auth.admin.updateUserById(uid, { password, user_metadata: { ...(u.user.user_metadata || {}), cambiar_clave: true } });
       if (error) return json({ error: error.message }, 400);
-      return json({ ok: true });
+      let correo = { enviado: false, error: "no-pedido" } as { enviado: boolean; error?: string };
+      if (body.enviar) {
+        const ficha = await fichaMusico(admin, uid);
+        const { data: ad } = await admin.from("administradores").select("nombre, usuario").eq("user_id", uid).limit(1);
+        const nombre = String(ficha?.datos?.nombre || ad?.[0]?.nombre || u.user.user_metadata?.nombre || "");
+        const usuario = String(ficha?.datos?.usuario || ad?.[0]?.usuario || u.user.email || "");
+        correo = await enviarAcceso(u.user.email || "", nombre, usuario, password, "clave");
+      }
+      return json({ ok: true, correo });
+    }
+
+    if (body.action === "correo") {
+      return json({ configurado: !!(Deno.env.get("BREVO_API_KEY") || Deno.env.get("RESEND_API_KEY")) && !!Deno.env.get("MAIL_FROM") });
     }
 
     if (body.action === "remove") {
