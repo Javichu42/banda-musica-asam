@@ -803,3 +803,19 @@ button.mus-av { cursor: zoom-in; }
   .pres-photo { aspect-ratio: 1 / 1; min-height: 0; max-height: 380px; }
   .pres-text { border-left: 0; border-top: 6px solid var(--azul); padding: 20px 22px; }
 }
+
+/* Hacerse socio: niveles y ventajas */
+.socio-niveles { display: grid; gap: 34px; margin-top: 40px; }
+.socio-niveles h2 { font-size: clamp(1.5rem, 3vw, 2rem); margin-bottom: 16px; }
+.niv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.niv { --nc: var(--verde); position: relative; background: var(--surface); border: 1px solid var(--line); border-top: 5px solid var(--nc); border-radius: 20px; padding: 22px 22px 20px; display: grid; gap: 6px; align-content: start; }
+.niv-azul { --nc: var(--azul); } .niv-morado { --nc: #9b4fd1; }
+.niv-ico { font-size: 1.6rem; }
+.niv-name { font-size: .8rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--nc); }
+.niv b { font-family: var(--f-display); font-size: 1.5rem; line-height: 1.15; }
+.niv p { color: var(--muted); font-size: .95rem; }
+.ven-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.ven-list li { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; }
+.ven-ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); font-size: 1.3rem; font-weight: 800; color: var(--naranja); }
+.ven-list b { display: block; margin-bottom: 2px; }
+.ven-list p { color: var(--muted); font-size: .93rem; }

@@ -93,7 +93,9 @@ var DEFAULTS = {
     cuota: "Desde 12 € al año",
     texto: "Personas, empresas e instituciones pueden colaborar con la divulgación de la música en Siero y la Comarca del Nora haciéndose socio o mecenas.",
     pasos: "Rellena la hoja de socio con tus datos.\nEntrégala en nuestras oficinas o envíanosla.\nTe confirmamos el alta y empiezas a formar parte de la asociación.",
-    aviso: "Para más información, contacte con nosotros o pase por nuestras oficinas."
+    aviso: "Para más información, contacte con nosotros o pase por nuestras oficinas.",
+    niveles: "Socio | 12 € al año (1 € al mes) | Contribución mínima para apoyar la promoción cultural.\nAmigo | 100 € y más | Recibe el estatus de AMIGO de la asociación.\nMecenas | 500 € y más | Recibe el estatus de MECENAS de la asociación.",
+    ventajas: "Exhibición del logotipo | Solo para MECENAS: empresas e instituciones con su logotipo y enlace en nuestra web.\nMención especial en nuestra web | Opcional, para AMIGOS y MECENAS.\nAcceso a conciertos | Acceso preferente a los conciertos de la asociación."
   },
   pie: { texto: "Asociación sin ánimo de lucro que enseña, toca y comparte música en el concejo de Siero desde 1984.", apoyos: "Con el apoyo del Ayuntamiento de Siero y la Fundación Caja Rural de Asturias", copyright: "© Asociación Sierense Amigos de la Música · Pola de Siero, Asturias" }
 };
@@ -493,6 +495,22 @@ PAGES.inicio = function () {
 
 function socioData() { return Object.assign({}, DEFAULTS.socio, DATA.socio || {}); }
 function socioCuota() { return socioData().cuota || "Desde 12 € al año"; }
+function pipeLines(t) { return String(t || "").split("\n").map(function (l) { return l.split("|").map(function (x) { return x.trim(); }); }).filter(function (p) { return p[0]; }); }
+function socioNiveles(S) {
+  var niv = pipeLines(S.niveles), ven = pipeLines(S.ventajas);
+  var cols = ["verde", "azul", "morado"], icons = ["💶", "🤝", "⭐"], vIcons = ["™", "🏅", "🎫"];
+  if (!niv.length && !ven.length) return null;
+  return h("div", { class: "socio-niveles" },
+    niv.length ? h("div", null, h("h2", { text: "Niveles de membresía" }),
+      h("div", { class: "niv-grid" }, niv.map(function (n, i) {
+        return h("div", { class: "niv niv-" + cols[i % 3] }, h("span", { class: "niv-ico", "aria-hidden": "true", text: icons[i % 3] }),
+          h("span", { class: "niv-name", text: n[0] }), n[1] ? h("b", { text: n[1] }) : null, n[2] ? h("p", { text: n[2] }) : null);
+      }))) : null,
+    ven.length ? h("div", null, h("h2", { text: "Ventajas de Amigos y Mecenas" }),
+      h("ul", { class: "ven-list" }, ven.map(function (v, i) {
+        return h("li", null, h("span", { class: "ven-ico", "aria-hidden": "true", text: vIcons[i % 3] }), h("div", null, h("b", { text: v[0] }), v[1] ? h("p", { text: v[1] }) : null));
+      }))) : null);
+}
 PAGES.socio = function () {
   var S = socioData();
   var pasos = String(S.pasos || "").split("\n").map(function (x) { return x.trim(); }).filter(Boolean);
@@ -510,6 +528,7 @@ PAGES.socio = function () {
           h("span", { class: "eyebrow", text: "Cuota de socio" }),
           h("b", { text: S.cuota || "" }),
           h("a", { class: "btn primary", href: "#socio-hoja", onclick: function (ev) { ev.preventDefault(); var t = document.getElementById("socio-hoja"); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); }, text: "Hoja de socio ↓" }))),
+      socioNiveles(S),
       h("div", { class: "socio-hoja", id: "socio-hoja" },
         h("div", null, h("span", { class: "eyebrow", text: "Hoja de socio" }),
           h("h3", { text: "Muy pronto podrás rellenarla aquí" }),
@@ -1483,7 +1502,10 @@ function adminPie() {
 function adminSocio() {
   var S = socioData(), st = statusEl();
   var fields = [["titulo", "Título", "text"], ["intro", "Presentación", "textarea"], ["cuota", "Cuota", "text"], ["texto", "Quién puede hacerse socio", "textarea"],
-    ["pasos", "Pasos para hacerse socio (uno por línea)", "textarea"], ["aviso", "Aviso final", "textarea"]];
+    ["pasos", "Pasos para hacerse socio (uno por línea)", "textarea"],
+    ["niveles", "Niveles de membresía (uno por línea: Nombre | Importe | Descripción)", "textarea"],
+    ["ventajas", "Ventajas de Amigos y Mecenas (una por línea: Título | Descripción)", "textarea"],
+    ["aviso", "Aviso final", "textarea"]];
   var form = h("form", { class: "aform", style: "position:static;max-width:620px" }, h("h3", { text: "Página Hacerse socio" }),
     h("p", { class: "muted", text: "La cuota también se muestra en el recuadro de la página de inicio." }),
     fields.map(function (f) {
