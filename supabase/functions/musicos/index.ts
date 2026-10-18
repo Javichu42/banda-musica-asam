@@ -155,10 +155,18 @@ Deno.serve(async (req: Request) => {
         cur.directiva = { cargo_id: a.cargo_id, desde: a.creado };
         map.set(a.user_id, cur);
       }
+      // Correos y últimos accesos de todas las cuentas en pocas peticiones (de 1000 en 1000)
+      const usuarios = new Map<string, { email?: string; last_sign_in_at?: string | null }>();
+      for (let page = 1; page <= 20; page++) {
+        const { data: lu, error: le } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+        if (le) throw le;
+        for (const u of lu.users) usuarios.set(u.id, u);
+        if (lu.users.length < 1000) break;
+      }
       const out = [];
       for (const c of map.values()) {
-        const { data: u } = await admin.auth.admin.getUserById(String(c.user_id));
-        out.push({ ...c, email: u?.user?.email || "", ultimo_acceso: u?.user?.last_sign_in_at || null });
+        const u = usuarios.get(String(c.user_id));
+        out.push({ ...c, email: u?.email || "", ultimo_acceso: u?.last_sign_in_at || null });
       }
       return json({ cuentas: out, cargos: cargos || [], me: meId });
     }

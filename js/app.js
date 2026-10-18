@@ -1202,6 +1202,7 @@ PAGES.admin = function (tab) {
       h("h3", { text: "Cargando datos…" }), h("p", { class: "muted", text: "Si este mensaje no desaparece, recarga la página." }))))];
   }
   tab = tab || (can("web") ? "directiva" : "tareas");
+  if (can("cuentas") && !CUENTAS.loaded && !CUENTAS.loading) loadCuentas().then(function () { if (location.hash.indexOf("#admin-personas") === 0) render(); });
   var webTabs = TABS.filter(function (t) { return !TABS_JUNTA.some(function (j) { return j[0] === t[0]; }); });
   var juntaTabs = TABS_JUNTA.filter(function (t) { return !t[2] || can(t[2]); });
   var esJunta = TABS_JUNTA.some(function (j) { return j[0] === tab; });
@@ -4067,12 +4068,14 @@ function cuentaForm(c) {
     if (!body.nombre || !body.usuario || (nuevo && !body.email)) { setStatus(st, "Rellena el nombre, el usuario" + (nuevo ? " y el correo." : "."), false); return; }
     if (!body.musico && !body.directiva) { setStatus(st, "Marca al menos un acceso: músico o directiva.", false); return; }
     if (body.musico && !body.musico.instrumento) { setStatus(st, "Escribe el instrumento (o elige el puesto Director si no toca).", false); return; }
-    btn.disabled = true; btn.textContent = nuevo ? "Creando…" : "Guardando…";
+    btn.disabled = true; btn.textContent = nuevo ? "Creando…" : "Guardando…"; CUENTAS.aviso = null;
     musicosFn(body).then(function (d) {
       FLASH = { col: "personas", msg: nuevo ? "Cuenta de " + body.nombre + " creada." : "Cambios guardados." };
       if (nuevo) FLASH.acceso = { a: { nombre: body.nombre, usuario: body.usuario, email: body.email, password: body.password }, correo: (d && d.correo) || (body.enviar ? { enviado: false, error: "no-configurado" } : { enviado: false, error: "no-pedido" }), nueva: true };
       CUENTAS.edit = null;
-      DIRECTIVA.loaded = false; return Promise.all([loadCuentas(), loadAll(), refreshAdmin(), loadDirectiva()]);
+      // Se recarga la lista en segundo plano; el resultado se enseña ya
+      CUENTAS.loading = true;
+      Promise.all([loadCuentas(), loadAll(), refreshAdmin(), loadDirectiva()]).then(render, render);
     }).then(function () { render(); var fl = document.querySelector(".pp-flash"); if (fl && fl.scrollIntoView) fl.scrollIntoView({ block: "center" }); }, function (e) { btn.disabled = false; btn.textContent = nuevo ? "Crear cuenta" : "Guardar cambios"; setStatus(st, e.message, false); });
   });
   return form;
@@ -4100,7 +4103,7 @@ function cuentaRow(c) {
           d && cg ? permChips(cg.permisos) : null),
         h("small", { class: "muted", text: c.ultimo_acceso ? "Último acceso: " + fmtLong(String(c.ultimo_acceso).slice(0, 10)) : "Todavía no ha entrado" }))),
     h("div", { class: "p-acts" },
-      h("button", { class: "btn ghost small", type: "button", text: "Editar accesos", onclick: function () { CUENTAS.edit = c.user_id; render(); } }),
+      h("button", { class: "btn ghost small", type: "button", text: "Editar accesos", onclick: function () { CUENTAS.edit = c.user_id; CUENTAS.aviso = null; render(); } }),
       h("button", { class: "btn ghost small", type: "button", text: "✉️ Enviar acceso nuevo", title: "Le pone una contraseña provisional nueva y se la manda por correo", onclick: function (ev) {
         var b = ev.currentTarget, np = randomPass(); b.disabled = true; b.textContent = "Enviando…";
         musicosFn({ action: "password", user_id: c.user_id, password: np, enviar: true }).then(function (d) {
@@ -4120,12 +4123,15 @@ function cuentaRow(c) {
 function adminPersonas() {
   if (!CUENTAS.loaded && !CUENTAS.loading) loadCuentas().then(render);
   var flash = null;
-  if (FLASH && FLASH.col === "personas") {
-    flash = h("div", { class: "pp-flash" }, h("p", { class: "status ok", role: "status", text: FLASH.msg }), FLASH.acceso ? accesoBox(FLASH.acceso.a, FLASH.acceso.correo, FLASH.acceso.nueva) : null);
-    FLASH = null;
+  if (FLASH && FLASH.col === "personas") { CUENTAS.aviso = FLASH; FLASH = null; }
+  if (CUENTAS.aviso) {
+    var av = CUENTAS.aviso;
+    flash = h("div", { class: "pp-flash" }, h("div", { class: "pp-flash-top" }, h("p", { class: "status ok", role: "status", text: av.msg }),
+        h("button", { type: "button", class: "ico-btn", "aria-label": "Cerrar aviso", text: "×", onclick: function () { CUENTAS.aviso = null; render(); } })),
+      av.acceso ? accesoBox(av.acceso.a, av.acceso.correo, av.acceso.nueva) : null);
   }
   var list;
-  if (!CUENTAS.loaded) list = h("div", { class: "empty" }, h("p", { text: "Cargando cuentas…" }));
+  if (!CUENTAS.loaded) list = h("div", { class: "personas cargando", "aria-busy": "true" }, [0, 1, 2, 3].map(function () { return h("div", { class: "persona sk" }, h("span", { class: "sk-av" }), h("span", { class: "sk-l" }), h("span", { class: "sk-l c" })); }));
   else if (CUENTAS.error) list = h("div", { class: "notice" }, h("h3", { text: "No se han podido cargar las cuentas" }), h("p", { class: "muted", text: CUENTAS.error }),
     h("div", { class: "form-acts" }, h("button", { class: "btn ghost small", type: "button", text: "Reintentar", onclick: function () { CUENTAS.loaded = false; render(); } })));
   else {

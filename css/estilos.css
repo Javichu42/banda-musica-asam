@@ -1638,3 +1638,10 @@ img.av-mini.photo, img.av-mid.photo { object-fit: cover; }
 .cg-p { display: inline-flex; align-items: center; gap: 6px; font-size: .88rem; background: var(--surface-2); border-radius: 999px; padding: 3px 10px 3px 3px; }
 .c-head .av-mini { width: 24px; height: 24px; }
 .c-head { align-items: center; }
+.persona.sk { grid-template-columns: 40px 1fr; align-items: center; min-height: 92px; }
+.persona.sk .sk-av { width: 40px; height: 40px; border-radius: 50%; grid-row: span 2; }
+.persona.sk .sk-l { height: 12px; border-radius: 6px; width: 60%; }
+.persona.sk .sk-l.c { width: 35%; }
+.persona.sk span { background: linear-gradient(90deg, var(--surface-2) 25%, color-mix(in srgb, var(--surface-2) 60%, var(--surface)) 50%, var(--surface-2) 75%); background-size: 200% 100%; animation: sk 1.2s linear infinite; }
+@keyframes sk { to { background-position: -200% 0; } }
+.pp-flash-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
