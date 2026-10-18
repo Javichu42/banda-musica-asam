@@ -2033,8 +2033,12 @@ function fechasSerie(f) {
 /* =====================================================================
    NOTIFICACIONES AL MÓVIL (Web Push)
    ===================================================================== */
-var VAPID_PUBLIC = "BEeqQDyQujh58-ZCDyauAz2q5YzHHvvA8YFQCriqLHT643pmVBlIwRwHnga8wlKzXUvDbMnm2UlEzY4G_6atIbA";
-var PUSH = { estado: null, ocupado: false, msg: "", ok: true };
+var PUSH = { estado: null, ocupado: false, msg: "", ok: true, clave: undefined };
+// La clave pública la da la función "avisos" (secreto VAPID_PUBLIC_KEY de Supabase)
+function pushClave() {
+  if (PUSH.clave !== undefined) return Promise.resolve(PUSH.clave);
+  return avisosFn({ action: "clave" }).then(function (d) { PUSH.clave = (d && d.publicKey) || null; return PUSH.clave; }, function () { return null; });
+}
 function esIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
 function instalada() { return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true; }
 function swReg() {
@@ -2054,12 +2058,17 @@ function comprobarPush() {
 }
 function activarPush() {
   PUSH.ocupado = true; PUSH.msg = ""; render();
-  return Notification.requestPermission().then(function (perm) {
+  var clave = null;
+  return pushClave().then(function (k) {
+    if (!k) throw new Error("La directiva todavía no ha terminado de configurar los avisos al móvil. Prueba más adelante.");
+    clave = k;
+    return Notification.requestPermission();
+  }).then(function (perm) {
     if (perm !== "granted") throw new Error(perm === "denied" ? "bloqueado" : "Has cerrado el permiso sin aceptarlo.");
     return swReg();
   }).then(function (reg) {
     return reg.pushManager.getSubscription().then(function (old) {
-      return old || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(VAPID_PUBLIC) });
+      return old || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(clave) });
     });
   }).then(function (sub) {
     var j = sub.toJSON();
@@ -2098,7 +2107,9 @@ function probarPush() {
 }
 // Tarjeta para activar los avisos (perfil y aviso en la agenda)
 function pushCard(compacta) {
-  if (PUSH.estado === null) { comprobarPush().then(function () { render(); }); return null; }
+  if (PUSH.estado === null || PUSH.clave === undefined) { Promise.all([comprobarPush(), pushClave()]).then(function () { render(); }); return null; }
+  if (!PUSH.clave && PUSH.estado !== "activo") return compacta ? null : h("section", { class: "push-card" }, h("h3", null, icon("avisos"), h("span", { text: "Avisos en el móvil" })),
+    h("p", { class: "muted", text: "Muy pronto podrás recibir en el móvil las convocatorias y los avisos de la banda." }));
   var st = PUSH.estado, body;
   var msg = PUSH.msg ? h("p", { class: "status " + (PUSH.ok ? "ok" : "err"), role: "status", text: PUSH.msg }) : null;
   if (st === "activo") {
@@ -2125,6 +2136,33 @@ function pushCard(compacta) {
     body = [h("p", { class: "muted", text: "Este navegador no permite notificaciones. Prueba con Chrome en Android o con la web añadida a la pantalla de inicio en iPhone." })];
   }
   return h("section", { class: "push-card" + (compacta ? " compacta" : "") }, h("h3", null, icon("avisos"), h("span", { text: "Avisos en el móvil" })), body, msg);
+}
+// Configuración inicial (quien gestiona las cuentas): genera en este navegador el par de claves
+function pushSetupCard() {
+  if (!can("cuentas")) return null;
+  if (PUSH.clave === undefined) { pushClave().then(function () { render(); }); return null; }
+  if (PUSH.clave) return null;
+  var out = h("div", { class: "vapid-out" });
+  function fila(nombre, valor) {
+    var copy = h("button", { class: "btn ghost small", type: "button", text: "Copiar" });
+    copy.addEventListener("click", function () { (navigator.clipboard ? navigator.clipboard.writeText(valor) : Promise.reject()).then(function () { copy.textContent = "Copiado ✓"; }, function () { copy.textContent = "Selecciónalo y cópialo"; }); });
+    return h("div", { class: "vapid-row" }, h("b", { text: nombre }), h("code", { text: valor }), copy);
+  }
+  var gen = h("button", { class: "btn primary small", type: "button", text: "Generar las claves" });
+  gen.addEventListener("click", function () {
+    gen.disabled = true;
+    crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]).then(function (kp) {
+      return Promise.all([crypto.subtle.exportKey("raw", kp.publicKey), crypto.subtle.exportKey("jwk", kp.privateKey)]);
+    }).then(function (r) {
+      var u = new Uint8Array(r[0]), b = ""; for (var i = 0; i < u.length; i++) b += String.fromCharCode(u[i]);
+      var pub = btoa(b).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      out.replaceChildren(fila("VAPID_PUBLIC_KEY", pub), fila("VAPID_PRIVATE_KEY", r[1].d),
+        h("p", { class: "small" }, "Pega cada una en Supabase → ", h("b", { text: "Edge Functions → Secrets" }), " con ese nombre exacto y guárdalas. Después recarga esta página. ", h("b", { text: "No compartas la privada con nadie." })));
+    }, function () { gen.disabled = false; out.replaceChildren(h("p", { class: "status err", text: "Este navegador no puede generar las claves. Prueba con Chrome o Firefox." })); });
+  });
+  return h("section", { class: "push-card setup" }, h("h3", null, icon("avisos"), h("span", { text: "Falta configurar los avisos al móvil" })),
+    h("p", { text: "Para que los músicos puedan recibir notificaciones hay que crear un par de claves, una sola vez. Se generan aquí, en tu navegador, y solo las verás tú." }),
+    h("div", { class: "form-acts" }, gen), out);
 }
 function pushBanner() {
   var oculto = false; try { oculto = localStorage.getItem("asam-push-oculto") === "1"; } catch (e) {}
@@ -3354,7 +3392,7 @@ function areaPerfil() {
         kv("Instrumento", me && me.instrumento), kv("Voz", me && me.voz ? vocesTxt([INST.normVoz(me.voz)]) : (me ? "Todas las de tu instrumento" : "")),
         IS_ADMIN ? null : h("p", { class: "muted small", text: "Tu instrumento y tu voz deciden qué partituras ves. Si algo no es correcto, pídeselo a la junta." }),
         musForm),
-      h("div", { class: "pf-side" }, pushCard(false), form)));
+      h("div", { class: "pf-side" }, pushSetupCard(), pushCard(false), form)));
 }
 /* Un administrador también es músico: puede crear o cambiar su propia ficha */
 function perfilMusicoForm(me) {
@@ -3699,7 +3737,7 @@ function adminPersonas() {
   return h("div", { class: "personas-panel" },
     h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Personas y accesos" }),
       h("p", { class: "muted", text: "Todas las cuentas en un solo sitio. Una persona puede ser músico, estar en la directiva o las dos cosas; lo que puede hacer en la directiva depende de su cargo (los cargos se cambian en la pestaña Cargos)." }))),
-    flash,
+    flash, pushSetupCard(),
     h("div", { class: "admin-grid" }, list, CUENTAS.loaded && !CUENTAS.error ? cuentaForm(null) : h("div")));
 }
 

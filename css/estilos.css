@@ -1521,3 +1521,8 @@ body.in-area .top .wrap { gap: 22px; }
 .notif-check { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--azul) 40%, var(--line)); border-radius: 12px; background: color-mix(in srgb, var(--azul) 5%, var(--surface)); cursor: pointer; }
 .notif-check input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--azul); flex: none; }
 .notif-check small { color: var(--muted); font-weight: 500; }
+.push-card.setup { border-color: color-mix(in srgb, var(--naranja) 55%, var(--line)); background: color-mix(in srgb, var(--naranja) 7%, var(--surface)); margin-bottom: 16px; }
+.vapid-out { display: grid; gap: 8px; }
+.vapid-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.vapid-row code { overflow-wrap: anywhere; font-size: .8rem; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+@media (max-width: 600px) { .vapid-row { grid-template-columns: 1fr; } }

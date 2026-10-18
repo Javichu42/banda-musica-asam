@@ -194,7 +194,7 @@ Los músicos pueden activar en su móvil los avisos de la web (Área de músicos
 
 Puesta en marcha (una vez):
 1. Ejecuta `supabase/notificaciones.sql` en el SQL Editor.
-2. En Supabase → Edge Functions → Secrets añade `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` (el par de claves de las notificaciones; la pública es la que aparece como `VAPID_PUBLIC` en `js/app.js`). Opcional: `VAPID_CONTACT` = `mailto:correo-de-la-asociacion`.
+2. Entra en Administración → Personas y accesos (con el permiso «Cuentas y permisos»): aparece un recuadro «Falta configurar los avisos al móvil». Pulsa «Generar las claves» (se crean en tu navegador) y copia las dos en Supabase → Edge Functions → Secrets como `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY`. Opcional: `VAPID_CONTACT` = `mailto:correo-de-la-asociacion`.
 3. La función `avisos` (`supabase/functions/avisos/`) es la que envía las notificaciones.
 
-La clave privada no se guarda nunca en el repositorio. Si se pierde, genera un par nuevo, cambia `VAPID_PUBLIC` en `js/app.js` y los músicos tendrán que volver a activar los avisos.
+La clave privada no se guarda nunca en el repositorio ni en la web. Si se cambian las claves, los músicos tendrán que volver a activar los avisos.
