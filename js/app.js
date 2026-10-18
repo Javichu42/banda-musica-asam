@@ -1851,6 +1851,7 @@ function areaTabs() {
 }
 PAGES.musicos = function (sub) {
   if (debeCambiarClave()) return cambiarClavePage();
+  if (SESSION && !IS_ADMIN && myMusico() && debeInstalar()) return instalarPage();
   var wasAdmin = IS_ADMIN;
   AREA_REAL_ADMIN = wasAdmin;
   if (!wasAdmin) AREA.verComo = null;
@@ -2163,6 +2164,52 @@ function pushSetupCard() {
   return h("section", { class: "push-card setup" }, h("h3", null, icon("avisos"), h("span", { text: "Falta configurar los avisos al móvil" })),
     h("p", { text: "Para que los músicos puedan recibir notificaciones hay que crear un par de claves, una sola vez. Se generan aquí, en tu navegador, y solo las verás tú." }),
     h("div", { class: "form-acts" }, gen), out);
+}
+/* En el móvil (iPhone y Android), los músicos usan el Área desde la web instalada en la pantalla
+   de inicio: así funcionan bien las notificaciones. La directiva no está obligada. */
+var INSTALL_PROMPT = null, INSTALADA_AHORA = false;
+window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); INSTALL_PROMPT = e; if (location.hash.indexOf("#musicos") === 0) render(); });
+window.addEventListener("appinstalled", function () { INSTALL_PROMPT = null; INSTALADA_AHORA = true; if (location.hash.indexOf("#musicos") === 0) render(); });
+function esAndroid() { return /android/i.test(navigator.userAgent); }
+function debeInstalar() { return (esIOS() || esAndroid()) && !instalada(); }
+function instalarPage() {
+  var ios = esIOS();
+  var ua = navigator.userAgent;
+  var esSafari = /safari/i.test(ua) && !/crios|fxios|edgios|opios/i.test(ua);
+  var compartir = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M8 10H6.5A1.5 1.5 0 0 0 5 11.5v8A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-8a1.5 1.5 0 0 0-1.5-1.5H16"/></svg>';
+  var anadir = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/></svg>';
+  var menu = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>';
+  function paso(n, icono, titulo, texto) {
+    return h("li", { class: "ip-paso" }, h("span", { class: "ip-n", text: String(n) }),
+      h("div", null, h("b", null, titulo, icono ? h("span", { class: "ip-ico", html: icono }) : null), texto ? h("p", { text: texto }) : null));
+  }
+  var pasos, extra = null, boton = null;
+  if (ios) {
+    if (!esSafari) extra = h("p", { class: "ip-aviso", text: "Estás usando otro navegador. Si no te aparece la opción del paso 2, abre esta página en Safari." });
+    pasos = [paso(1, compartir, "Pulsa el botón Compartir", "Es el cuadrado con una flecha hacia arriba. En iPhone está en la barra de abajo de Safari; en iPad, arriba a la derecha."),
+      paso(2, anadir, "Elige «Añadir a pantalla de inicio»", "Si no lo ves, desliza la lista hacia arriba. Después pulsa «Añadir»."),
+      paso(3, null, "Abre la web desde el icono nuevo", "Aparecerá en tu pantalla de inicio con el logo de la banda. Entra con tu usuario y contraseña (tendrás que volver a ponerlos una vez) y activa los avisos.")];
+  } else {
+    if (INSTALADA_AHORA) extra = h("p", { class: "ip-ok", text: "✅ ¡Instalada! Ahora ábrela desde el icono «Banda Siero» de tu pantalla de inicio." });
+    else if (INSTALL_PROMPT) boton = h("button", { class: "btn primary ip-instalar", type: "button", text: "📲 Instalar la app de la banda", onclick: function () {
+      var pr = INSTALL_PROMPT; pr.prompt();
+      (pr.userChoice || Promise.resolve({})).then(function (r) { if (r && r.outcome === "accepted") { INSTALADA_AHORA = true; INSTALL_PROMPT = null; } render(); });
+    } });
+    pasos = INSTALL_PROMPT || INSTALADA_AHORA ? [paso(1, null, "Pulsa «Instalar la app de la banda»", "Y confirma con «Instalar»."),
+        paso(2, null, "Ábrela desde el icono nuevo", "Aparecerá en tu pantalla de inicio con el logo de la banda. Entra con tu usuario y contraseña (puede que tengas que ponerlos una vez más) y activa los avisos.")]
+      : [paso(1, menu, "Abre el menú del navegador", "En Chrome son los tres puntos de arriba a la derecha."),
+        paso(2, anadir, "Elige «Instalar aplicación» o «Añadir a pantalla de inicio»", "Y confirma con «Instalar» o «Añadir»."),
+        paso(3, null, "Ábrela desde el icono nuevo", "Aparecerá en tu pantalla de inicio con el logo de la banda. Entra con tu usuario y contraseña y activa los avisos.")];
+  }
+  return [h("section", { class: "instalar-ios" }, h("div", { class: "wrap" },
+    h("img", { class: "ip-logo", src: "img/app/icono-192.png", alt: "" }),
+    h("h1", { text: ios ? "Instala la web en tu iPhone" : "Instala la app de la banda" }),
+    h("p", { class: "ip-lead", text: "Para usar el Área de músicos en el móvil hay que instalar la web en la pantalla de inicio. Así te llegarán las convocatorias y los avisos de la banda. Solo se hace una vez." }),
+    extra, boton,
+    h("ol", { class: "ip-pasos" }, pasos),
+    ios ? h("div", { class: "ip-flecha", "aria-hidden": "true", text: "⬇" }) : null,
+    h("div", { class: "form-acts ip-acts" }, h("a", { class: "btn ghost small", href: "#inicio", text: "Volver a la web" }),
+      h("button", { class: "btn ghost small", type: "button", text: "Cerrar sesión", onclick: function () { SB.auth.signOut(); location.hash = "#inicio"; } }))))];
 }
 function pushBanner() {
   var oculto = false; try { oculto = localStorage.getItem("asam-push-oculto") === "1"; } catch (e) {}

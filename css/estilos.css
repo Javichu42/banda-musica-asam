@@ -1526,3 +1526,22 @@ body.in-area .top .wrap { gap: 22px; }
 .vapid-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
 .vapid-row code { overflow-wrap: anywhere; font-size: .8rem; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
 @media (max-width: 600px) { .vapid-row { grid-template-columns: 1fr; } }
+/* Instalar en iPhone */
+.instalar-ios { min-height: 100vh; padding: 28px 0 60px; background: linear-gradient(180deg, color-mix(in srgb, var(--azul) 10%, var(--bg)), var(--bg) 60%); }
+.instalar-ios .wrap { max-width: 560px; display: grid; gap: 16px; text-align: center; justify-items: center; }
+.ip-logo { width: 84px; height: 84px; border-radius: 20px; box-shadow: 0 8px 24px rgba(0, 0, 0, .12); background: #fff; }
+.instalar-ios h1 { font-size: clamp(1.6rem, 6vw, 2.2rem); line-height: 1.1; }
+.ip-lead { color: var(--muted); margin: 0; }
+.ip-aviso { margin: 0; padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--naranja) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--naranja) 45%, var(--line)); font-weight: 600; }
+.ip-pasos { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 12px; width: 100%; text-align: left; }
+.ip-paso { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; }
+.ip-n { width: 36px; height: 36px; border-radius: 50%; background: var(--azul); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 1.1rem; }
+.ip-paso b { display: flex; align-items: center; gap: 8px; font-size: 1.05rem; }
+.ip-paso p { margin: 4px 0 0; color: var(--muted); font-size: .95rem; }
+.ip-ico { display: inline-grid; width: 28px; height: 28px; place-items: center; border-radius: 8px; background: color-mix(in srgb, var(--azul) 12%, var(--surface)); color: #0a7aff; }
+.ip-ico svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.ip-flecha { font-size: 2rem; color: var(--azul); animation: cue 1.6s ease-in-out infinite; }
+.ip-acts { justify-content: center; }
+body.in-area .instalar-ios { margin-top: 0; }
+.ip-instalar { font-size: 1.05rem; padding: 14px 22px; }
+.ip-ok { margin: 0; padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--verde) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--verde) 45%, var(--line)); font-weight: 700; }
