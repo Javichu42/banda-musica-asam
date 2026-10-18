@@ -76,7 +76,8 @@ Deno.serve(async (req: Request) => {
       const password = String(body.password || "");
       const formacion = String(body.formacion || "");
       const instrumento = String(body.instrumento || "").trim();
-      const cargo = body.cargo === "Jefe de sección" ? "Jefe de sección" : "Músico";
+      const cargo = ["Jefe de sección", "Director"].includes(body.cargo) ? body.cargo : "Músico";
+      const voz = String(body.voz || "").trim().slice(0, 20);
       if (!nombre) return json({ error: "Falta el nombre." }, 400);
       if (!USUARIO_RE.test(usuario)) return json({ error: "El usuario debe tener entre 3 y 30 caracteres: letras minúsculas, números, punto, guion o guion bajo." }, 400);
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "El correo no es válido." }, 400);
@@ -93,7 +94,8 @@ Deno.serve(async (req: Request) => {
         return json({ error: ce.message }, 400);
       }
       const uid = created.user.id;
-      const datos = { nombre, usuario, formacion, instrumento, cargo, user_id: uid };
+      const datos: Record<string, string> = { nombre, usuario, formacion, instrumento, cargo, user_id: uid };
+      if (voz) datos.voz = voz;
       const { error: ie } = await admin.from("contenido").insert({ coleccion: "musicos", id: uid, datos });
       if (ie) { await admin.auth.admin.deleteUser(uid); throw ie; }
       return json({ ok: true, id: uid });

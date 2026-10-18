@@ -12,11 +12,16 @@ Web de la **Asociación Sierense Amigos de la Música**: portada, quiénes somos
 index.html                     Página única: cabecera, contenido y pie
 css/estilos.css                Estilos (colores del logo, modo claro y oscuro)
 js/config.js                   Dirección y clave pública de Supabase  ← hay que rellenarlo
-js/app.js                      Páginas, panel de administración y conexión con Supabase
+js/app.js                      Páginas, panel de administración, Área de músicos y conexión con Supabase
+js/instrumentos.js             Reconocer el instrumento y la voz de una partitura
+js/ast.js                      Textos de la web en asturiano (botón AST)
+js/vendor/                     PDF.js, pdf-lib y JSZip (leer, dividir y comprimir partituras)
 img/                           Logo y favicon
 supabase/esquema.sql           Tablas, reglas de seguridad y almacenamiento de fotos
 supabase/datos-iniciales.sql   Contenido de partida (directores, noticias, conciertos…)
 supabase/anadir-administrador.sql  Para dar permiso de edición a una persona
+supabase/area-musicos.sql      Área de músicos: asistencia, anuncios y partituras privadas
+supabase/repertorio.sql        Valoraciones de obras y peticiones de partituras
 vercel.json                    Ajustes de Vercel
 ```
 
@@ -134,12 +139,18 @@ supabase functions deploy administradores --no-verify-jwt
 
 ## Área de músicos
 
-En el menú, **Área de músicos** lleva a la zona privada de la Banda y el Bandín. Cada músico entra con su **usuario** (o su correo) y su contraseña.
+Desde **🔒 Acceso privado** cada músico entra con su **usuario** (o su correo) y su contraseña. Funciona igual en el móvil (con una barra de pestañas abajo, como una app) y en el ordenador.
 
-- **Cuentas:** las crean los administradores en Administración → **Cuentas de músicos** (nombre, usuario, correo, contraseña, si toca en Banda, Bandín o ambas, instrumento y cargo). Al crearla, el músico aparece solo en la plantilla de su formación.
-- **Calendario y asistencia:** los eventos de Administración → Eventos aparecen aquí para los músicos convocados. Cada músico responde *Asistiré*, *No asistiré* o *Duda* (con motivo). Los administradores ven el recuento por instrumento y pasan lista. Un evento marcado como "Solo en el Área de músicos" (por ejemplo, un ensayo) no sale en la web pública.
-- **Partituras:** los administradores suben PDF, imágenes o audios por obra. Si el archivo se llama como el instrumento ("Clarinete 1.pdf"), se reparte solo. Cada músico ve las de su instrumento y las comunes. Los archivos son privados.
-- **Anuncios:** tablón para todos, solo Banda o solo Bandín, con comentarios.
-- **Mi cuenta:** cada músico puede cambiar su contraseña.
+- **Cuentas:** las crean los administradores en Administración → **Cuentas de músicos**: nombre, usuario, correo, contraseña, formación (Banda, Bandín o ambas), **instrumento**, **voz** (1, 2, 3…) y cargo (*Músico*, *Jefe de sección* o *Director*). El instrumento y la voz deciden qué partituras le llegan; se pueden cambiar después en Administración → Músicos.
+- **Agenda:** semana o mes con puntos en los días con eventos, *Anteriores / Próximos* y filtros *Todos, Actuaciones, Ensayos, Otros*. Cada tarjeta muestra quién ha confirmado y los botones ✗ / ✓ para responder. Los eventos se crean en Administración → Eventos (con hora de fin y dirección para el mapa, opcionales).
+- **Ficha del evento:** pestañas *Detalles* (convocatoria, fecha con botón **Añadir** al calendario del móvil, horario, lugar con **Cómo llegar** y mapa, indumentaria e indicaciones), *Repertorio* (las obras en el orden del concierto y botón para descargarlas) y *Miembros* (quién va, quién no y quién no ha respondido, por instrumento; los administradores pasan lista). Cada músico responde *Asistiré / Duda / No asistiré* y puede añadir una nota.
+- **Repertorio:** el próximo evento con sus portadas y el botón **Descargar** (un .zip con las partituras de tu instrumento), y todas las obras con buscador, orden y filtros. Cada obra tiene vídeo de referencia, notas de la dirección, **solo los archivos de tu instrumento y tu voz** (con las otras voces de tu instrumento aparte, por si tienes que doblar), valoración con estrellas, los eventos en los que se toca y un botón para **reclamar** la partitura si falta.
+- **Partituras (solo administradores):** se crea la obra y se suben las particellas:
+  - varios archivos sueltos («Clarinete 1.pdf», «Trumpet in Bb 2.pdf», «Saxo alto 1º.pdf»…): el instrumento y la voz salen del nombre, o de la cabecera del PDF si el nombre no dice nada;
+  - **un solo PDF con todas las particellas**: la web lee la cabecera de cada página, encuentra dónde empieza cada particella y lo divide. Si el PDF está escaneado (sin texto), se marcan los cortes a mano sobre las miniaturas de las páginas.
+  
+  Antes de guardar se ve a quién llega cada archivo y qué músicos se quedarían sin partitura. Reconoce los nombres en castellano, asturiano, inglés, italiano, francés y alemán, y las abreviaturas habituales (Cl., Tpt., Hn., Tbn.…). La percusión recibe todas las partes de percusión y quien tiene el cargo *Director* recibe el guion.
+- **Avisos:** partituras nuevas y el tablón de anuncios (para todos, solo Banda o solo Bandín) con comentarios. La campana muestra cuántos avisos no has visto.
+- **Perfil:** tus datos, tu porcentaje de asistencia, las convocatorias respondidas y el cambio de contraseña.
 
-Archivos: `supabase/area-musicos.sql` (tablas y seguridad) y `supabase/functions/musicos/index.ts` (crear cuentas y entrar con usuario).
+Archivos: `supabase/area-musicos.sql` y `supabase/repertorio.sql` (tablas y seguridad: ejecuta los dos en el SQL Editor, en ese orden), `supabase/functions/musicos/index.ts` (crear cuentas y entrar con usuario), `js/instrumentos.js` (reconocimiento de instrumentos y voces) y `js/vendor/` (librerías para leer y dividir PDF y hacer los .zip).
