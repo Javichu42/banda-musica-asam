@@ -1610,6 +1610,7 @@ function render() {
   var page = h("div", { class: "page" });
   add(page, PAGES[r.page](r.sub));
   app.appendChild(page);
+  document.body.classList.toggle("in-area", r.page === "musicos");
   var navPage = (r.page === "admin" || r.page === "musicos") ? "privado" : r.page;
   Array.prototype.forEach.call(navEl.querySelectorAll("a"), function (a) { a.setAttribute("aria-current", a.getAttribute("data-p") === navPage ? "page" : "false"); });
   renderFooter();
@@ -1871,7 +1872,6 @@ function areaShell(tab, body, crumbs) {
   var pend = PRIV.loaded ? pendientes().length : 0;
   return h("section", { class: "area-app" },
     h("header", { class: "area-top" }, h("div", { class: "wrap" },
-      h("a", { class: "area-brand", href: "#musicos-agenda", "aria-label": "Área de músicos" }, h("img", { src: "img/logo/logo-asam-simbolo-liso.svg", alt: "" })),
       h("nav", { class: "crumbs", "aria-label": "Estás en" }, h("span", { class: "crumb-root", text: "Área de músicos" }),
         crumbs.map(function (c) { return [h("span", { class: "sep", "aria-hidden": "true", text: "›" }), c[0] ? h("a", { href: "#musicos-" + c[0], text: c[1] }) : h("span", { class: "here", text: c[1] })]; })),
       h("a", { class: "area-user", href: "#musicos-perfil", title: "Tu perfil" },
@@ -1882,7 +1882,9 @@ function areaShell(tab, body, crumbs) {
       return h("a", { href: "#musicos-" + t[0], "aria-current": t[0] === tab ? "page" : null },
         icon(t[0]), h("span", { class: "t-label", text: t[1] }), badge ? h("span", { class: "badge-n", "aria-label": badge + " pendientes", text: badge > 99 ? "99+" : String(badge) }) : null);
     }))),
-    h("div", { class: "area-main" }, h("div", { class: "wrap" }, PRIV.error ? h("p", { class: "status err", text: PRIV.error }) : null, body)));
+    h("div", { class: "area-main" }, h("div", { class: "wrap" }, PRIV.error ? h("p", { class: "status err", text: PRIV.error }) : null,
+      IS_ADMIN && !me && tab !== "perfil" ? h("a", { class: "ag-pend admin-mus", href: "#musicos-perfil" }, icon("perfil"), "Para contar como un músico más (responder convocatorias, salir en la lista y recibir tus partituras), completa tu perfil de músico →") : null,
+      body)));
 }
 
 /* =====================================================================
@@ -2028,7 +2030,8 @@ function eventCard(e, past) {
   else if (me && past) {
     var pres = (PRIV.pase[e.id] || {})[SESSION.user.id];
     add(foot, h("span", { class: "ans-past", text: (ans ? ESTADOS[ans.estado] : "Sin responder") + (pres === true ? " · Asististe" : pres === false ? " · No asististe" : "") }));
-  } else if (IS_ADMIN) add(foot, asistMini(e));
+  }
+  if (IS_ADMIN) add(foot, asistMini(e));
   add(card, link, foot);
   return card;
 }
@@ -2290,7 +2293,7 @@ function areaRepertorio() {
         : h("div", { class: "empty" }, h("p", { text: obras.length ? "Ninguna obra coincide con la búsqueda." : (IS_ADMIN ? "Todavía no hay obras. Crea la primera con «+ Nueva obra»." : "Todavía no hay obras en el repertorio.") }))));
 }
 function obraRow(o, me) {
-  var fut = eventosFuturos(o), mine = IS_ADMIN ? [] : misPartes(o.id, me);
+  var fut = eventosFuturos(o), mine = me ? misPartes(o.id, me) : [];
   var nPartes = PRIV.partes.filter(function (p) { return p.obra_id === o.id; }).length;
   return h("a", { class: "obra-row", href: "#musicos-obra~" + o.id },
     obraCover(o, "sm"),
@@ -2299,16 +2302,17 @@ function obraRow(o, me) {
       o.compositor || o.arreglista ? h("p", { class: "or-comp", text: [o.compositor, o.arreglista ? "arr. " + o.arreglista : ""].filter(Boolean).join(" · ") }) : null,
       h("div", { class: "or-tags" },
         fut.length ? h("span", { class: "pill-soft", text: "Disponible en " + fut.length + (fut.length === 1 ? " evento" : " eventos") }) : null,
-        IS_ADMIN ? h("span", { class: "pill-soft", text: nPartes + (nPartes === 1 ? " particella" : " particellas") })
-          : (mine.length ? h("span", { class: "pill-ok" }, icon("pdf"), mine.map(parteNombre).join(", ")) : h("span", { class: "pill-warn", text: "Sin partitura para ti" })))));
+        me ? (mine.length ? h("span", { class: "pill-ok" }, icon("pdf"), mine.map(parteNombre).join(", ")) : h("span", { class: "pill-warn", text: "Sin partitura para ti" })) : null,
+        IS_ADMIN ? h("span", { class: "pill-soft", text: nPartes + (nPartes === 1 ? " particella" : " particellas") }) : null)));
 }
 
 /* ---------- Ficha de la obra ---------- */
 function areaObra(o) {
   var me = myMusico(), evs = eventosDeObra(o), t = todayStr(), next = evs.filter(function (e) { return e.fecha >= t; })[0];
   var yt = youtubeId(o.youtube);
-  var mine = IS_ADMIN ? PRIV.partes.filter(function (p) { return p.obra_id === o.id; }).sort(parteSort) : misPartes(o.id, me);
-  var otras = IS_ADMIN ? [] : otrasVoces(o.id, me);
+  var todas = PRIV.partes.filter(function (p) { return p.obra_id === o.id; }).sort(parteSort);
+  var mine = me ? misPartes(o.id, me) : (IS_ADMIN ? todas : []);
+  var otras = me ? otrasVoces(o.id, me) : [];
   var misPet = PRIV.peticiones.filter(function (p) { return p.obra_id === o.id && SESSION && p.user_id === SESSION.user.id; });
   return h("div", { class: "obra-page" },
     h("a", { class: "back", href: "#musicos-repertorio" }, icon("atras"), "Repertorio"),
@@ -2325,9 +2329,11 @@ function areaObra(o) {
     h("section", { class: "op-sec" },
       h("div", { class: "row-head" }, h("h2", { text: "Archivos" }), mine.length > 1 ? descargarBtn([o], o.titulo, mine) : null),
       mine.length ? h("div", { class: "files" }, mine.map(fileRow)) : h("div", { class: "empty" }, h("p", { text: "Todavía no hay ningún archivo para tu instrumento" + (me && me.voz ? " y tu voz." : ".") })),
-      IS_ADMIN ? null : h("p", { class: "muted small", text: "Se muestran los archivos de tu instrumento" + (me && me.voz ? " y tu voz" : "") + ". Si falta el tuyo, puedes reclamarlo." }),
+      me ? h("p", { class: "muted small", text: "Se muestran los archivos de tu instrumento" + (me.voz ? " y tu voz" : "") + ". Si falta el tuyo, puedes reclamarlo." }) : null,
       otras.length ? h("details", { class: "otras" }, h("summary", { text: "Otras voces de " + INST.canonical(me.instrumento) + " (" + otras.length + ")" }), h("div", { class: "files" }, otras.map(fileRow))) : null,
-      IS_ADMIN ? obraPeticiones(o) : reclamarBox(o, me, misPet)),
+      me ? reclamarBox(o, me, misPet) : null,
+      IS_ADMIN && me && todas.length ? h("details", { class: "otras" }, h("summary", { text: "Todas las particellas de la obra (" + todas.length + ")" }), h("div", { class: "files" }, todas.map(fileRow))) : null,
+      IS_ADMIN ? obraPeticiones(o) : null),
     h("section", { class: "op-sec" },
       h("h2", { text: "Eventos" }),
       evs.length ? h("div", { class: "op-events" },
@@ -2373,7 +2379,7 @@ function loadScript(src) {
 function descargarBtn(obras, nombre, partes) {
   var me = myMusico();
   var list = partes || [];
-  if (!partes) obras.forEach(function (o) { list = list.concat(IS_ADMIN ? PRIV.partes.filter(function (p) { return p.obra_id === o.id; }) : misPartes(o.id, me)); });
+  if (!partes) obras.forEach(function (o) { list = list.concat(me ? misPartes(o.id, me) : PRIV.partes.filter(function (p) { return p.obra_id === o.id; })); });
   if (!list.length) return null;
   var b = h("button", { type: "button", class: "btn ghost small dl-btn" }, icon("descarga"), list.length === 1 ? "Descargar" : "Descargar (" + list.length + ")");
   b.addEventListener("click", function () {
@@ -2388,7 +2394,7 @@ function descargarBtn(obras, nombre, partes) {
         });
       }, Promise.resolve()).then(function () { return zip.generateAsync({ type: "blob" }); });
     }).then(function (blob) {
-      saveBlob(blob, String(nombre || "partituras").replace(/[\\/:*?"<>|]/g, "-") + (me && !IS_ADMIN ? " - " + INST.canonical(me.instrumento) : "") + ".zip");
+      saveBlob(blob, String(nombre || "partituras").replace(/[\\/:*?"<>|]/g, "-") + (me ? " - " + INST.canonical(me.instrumento) : "") + ".zip");
       b.disabled = false; lbl.textContent = "Descargar (" + list.length + ")";
     }, function (e) { b.disabled = false; lbl.textContent = "Descargar (" + list.length + ")"; alert2(b, e.message || "No se ha podido descargar."); });
   });
@@ -2911,6 +2917,7 @@ function areaPerfil() {
       h("div", { class: "stat" }, h("b", { text: String(nObras) }), h("span", { text: "Obras" }), h("small", { text: "con tu partitura" })));
   }
   function kv(k, v) { return v ? h("div", { class: "kv" }, h("span", { class: "k", text: k }), h("span", { class: "v", text: v })) : null; }
+  var musForm = IS_ADMIN ? perfilMusicoForm(me) : null;
   return h("div", { class: "perfil" },
     h("div", { class: "pf-head" }, me ? personAvatar(me, "azul", "pf-av") : h("span", { class: "pf-av", text: initials(displayName()) }),
       h("div", null, h("h1", { text: me ? me.nombre : displayName() }),
@@ -2921,8 +2928,37 @@ function areaPerfil() {
       h("div", { class: "cbox" },
         kv("Usuario", me && me.usuario), kv("Correo", SESSION.user && SESSION.user.email), kv("Formación", me && me.formacion),
         kv("Instrumento", me && me.instrumento), kv("Voz", me && me.voz ? vocesTxt([INST.normVoz(me.voz)]) : (me ? "Todas las de tu instrumento" : "")),
-        h("p", { class: "muted small", text: "Tu instrumento y tu voz deciden qué partituras ves. Si algo no es correcto, pídeselo a la junta." })),
+        IS_ADMIN ? null : h("p", { class: "muted small", text: "Tu instrumento y tu voz deciden qué partituras ves. Si algo no es correcto, pídeselo a la junta." }),
+        musForm),
       form));
+}
+/* Un administrador también es músico: puede crear o cambiar su propia ficha */
+function perfilMusicoForm(me) {
+  var st = statusEl();
+  var nombre = h("input", { id: "pm-nombre", type: "text", value: (me && me.nombre) || "" });
+  var formSel = h("select", { id: "pm-form" }, ["Banda", "Bandín", "Banda y Bandín"].map(function (f) { return h("option", { value: f, text: f, selected: (me ? me.formacion === f : f === "Banda") || null }); }));
+  var inst = h("input", { id: "pm-inst", type: "text", list: "pm-insts", autocomplete: "off", value: (me && me.instrumento) || "", placeholder: "Clarinete, Trompeta, Flauta…" });
+  var dl = h("datalist", { id: "pm-insts" }, INSTRUMENTOS.map(function (o) { return h("option", { value: o }); }));
+  var voz = h("input", { id: "pm-voz", type: "text", value: (me && me.voz) || "", placeholder: "1, 2, 3… (opcional)" });
+  var cargo = h("select", { id: "pm-cargo" }, ["Músico", "Jefe de sección", "Director"].map(function (c) { return h("option", { value: c, text: c === "Director" ? "Director (recibe el guion)" : c, selected: (me && (me.cargo || "Músico") === c) || null }); }));
+  var btn = h("button", { class: "btn primary", type: "submit", text: me ? "Guardar mi ficha de músico" : "Crear mi ficha de músico" });
+  var form = h("form", { class: "pm-form" }, h("h3", { text: me ? "Tu ficha de músico" : "Cuenta también como músico" }),
+    me ? null : h("p", { class: "muted small", text: "Así podrás responder a las convocatorias, salir en la lista de asistencia y en la plantilla, y recibir las partituras de tu instrumento." }),
+    h("div", { class: "field" }, h("label", { for: "pm-nombre", text: "Nombre y apellidos *" }), nombre),
+    h("div", { class: "two" }, h("div", { class: "field" }, h("label", { for: "pm-form", text: "Toca en" }), formSel), h("div", { class: "field" }, h("label", { for: "pm-cargo", text: "Cargo" }), cargo)),
+    h("div", { class: "two" }, h("div", { class: "field" }, h("label", { for: "pm-inst", text: "Instrumento *" }), inst, dl), h("div", { class: "field" }, h("label", { for: "pm-voz", text: "Voz" }), voz)),
+    h("div", { class: "form-acts" }, btn), st);
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (!nombre.value.trim() || !inst.value.trim()) { setStatus(st, "Escribe tu nombre y tu instrumento.", false); return; }
+    btn.disabled = true;
+    var datos = Object.assign({}, me || {}, { nombre: nombre.value.trim(), formacion: formSel.value, instrumento: inst.value.trim(), voz: voz.value.trim(), cargo: cargo.value, user_id: SESSION.user.id });
+    delete datos.id;
+    if (!datos.voz) delete datos.voz;
+    SB.from("contenido").upsert({ coleccion: "musicos", id: me ? me.id : SESSION.user.id, datos: datos }).then(check)
+      .then(function () { return loadAll(); }).then(function () { return reloadPrivate(); }, function (e) { btn.disabled = false; setStatus(st, errMsg(e), false); });
+  });
+  return form;
 }
 
 /* ---------- Panel: cuentas de músicos ---------- */

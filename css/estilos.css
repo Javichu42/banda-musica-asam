@@ -1212,3 +1212,12 @@ button.mus-av { cursor: zoom-in; }
 }
 .prog-item { display: grid; gap: 4px; justify-items: center; }
 .prog-move { display: flex; gap: 4px; }
+
+/* Dentro del Área de músicos: solo el logo y el nombre arriba, sin menú ni pie */
+body.in-area .top .nav, body.in-area .top .menu-btn { display: none !important; }
+body.in-area #footer { display: none; }
+body.in-area .area-main { padding-bottom: 50px; }
+.admin-mus { text-decoration: none; color: var(--fg); margin: 0 0 18px; }
+.pm-form { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 18px; }
+.pm-form h3 { font-size: 1.15rem; }
+@media (max-width: 760px) { body.in-area .area-main { padding-bottom: 110px; } }
