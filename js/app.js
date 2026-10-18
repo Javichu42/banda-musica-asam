@@ -634,7 +634,7 @@ function musicianSort(a, b) {
 function groupByInstrument(list) {
   var groups = [], map = {};
   list.slice().sort(musicianSort).forEach(function (m) {
-    var k = m.instrumento || "Otros";
+    var k = m.instrumento || (/director/i.test(m.cargo || "") ? "Dirección" : "Otros");
     if (!map[k]) { map[k] = { name: k, items: [] }; groups.push(map[k]); }
     map[k].items.push(m);
   });
@@ -933,7 +933,7 @@ var SCHEMAS = {
   musicos: { label: "Músicos", singular: "músico", fields: [
     { k: "nombre", l: "Nombre y apellidos", req: true },
     { k: "formacion", l: "Formación", type: "select", req: true, options: [["Banda", "Banda"], ["Bandín", "Bandín"], ["Banda y Bandín", "Banda y Bandín"]] },
-    { k: "instrumento", l: "Instrumento", type: "datalist", req: true, list: INSTRUMENTOS, help: "Elige de la lista o escribe otro instrumento." },
+    { k: "instrumento", l: "Instrumento", type: "datalist", list: INSTRUMENTOS, help: "Elige de la lista o escribe otro instrumento. Si es el director de la banda y no toca, déjalo vacío." },
     { k: "voz", l: "Voz", ph: "1, 2, 3…", help: "Opcional. Decide qué particella le llega (por ejemplo, Clarinete 2). Vacío: recibe todas las voces de su instrumento." },
     { k: "cargo", l: "Cargo", type: "select", options: [["Músico", "Músico"], ["Jefe de sección", "Jefe de sección"], ["Director", "Director (recibe el guion)"]] },
     { k: "foto", l: "Foto", type: "images", single: true, help: "Opcional. Mejor una foto en la que se vea bien la cara." },
@@ -1611,6 +1611,7 @@ function render() {
   add(page, PAGES[r.page](r.sub));
   app.appendChild(page);
   document.body.classList.toggle("in-area", r.page === "musicos");
+  if (r.page !== "musicos" && AREA) AREA.verComo = null;
   var navPage = (r.page === "admin" || r.page === "musicos") ? "privado" : r.page;
   Array.prototype.forEach.call(navEl.querySelectorAll("a"), function (a) { a.setAttribute("aria-current", a.getAttribute("data-p") === navPage ? "page" : "false"); });
   renderFooter();
@@ -1644,8 +1645,16 @@ var PRIV = { loaded: false, loading: false, anuncios: [], obras: [], partes: [],
 var AREA = { abiertos: {}, editAnuncio: null, cuando: "proximos", tipo: "todos", semana: null, mesAbierto: false, dia: null,
   buscar: "", orden: "recientes", filtro: "todas", stage: null, valorando: null, nota: null };
 
+var AREA_REAL_ADMIN = false;
+function simulando() { return !!AREA.verComo && AREA_REAL_ADMIN; }
+function simBlock(btn) {
+  if (!simulando()) return false;
+  if (btn) { btn.disabled = false; alert2(btn, "Estás viendo el área como otro músico: no se guardan cambios."); }
+  return true;
+}
 function myMusico() {
   if (!SESSION || !SESSION.user) return null;
+  if (simulando()) return DATA.musicos.filter(function (m) { return m.id === AREA.verComo; })[0] || null;
   var id = SESSION.user.id;
   return DATA.musicos.filter(function (m) { return m.user_id === id; })[0] || null;
 }
@@ -1836,6 +1845,13 @@ function areaTabs() {
   return t;
 }
 PAGES.musicos = function (sub) {
+  var wasAdmin = IS_ADMIN;
+  AREA_REAL_ADMIN = wasAdmin;
+  if (!wasAdmin) AREA.verComo = null;
+  if (wasAdmin && AREA.verComo) IS_ADMIN = false;
+  try { return musicosPage(sub); } finally { IS_ADMIN = wasAdmin; }
+};
+function musicosPage(sub) {
   var parts = String(sub || "").split("~"), tab = parts[0] || "agenda";
   if (tab === "inicio" || tab === "calendario") tab = "agenda";
   if (tab === "partituras") tab = "repertorio";
@@ -1865,15 +1881,25 @@ PAGES.musicos = function (sub) {
   else if (tab === "gestion" && IS_ADMIN) { body = areaGestion(); crumbs = [[null, "Partituras"]]; }
   else { tab = "agenda"; body = areaAgenda(); crumbs = [[null, "Agenda"]]; }
   return [areaShell(tab, body, crumbs)];
-};
+}
 function notFound(msg) { return h("div", { class: "empty" }, h("p", { text: msg })); }
 function areaShell(tab, body, crumbs) {
   var me = myMusico(), nov = PRIV.loaded ? novedades().filter(function (n) { return n.nuevo; }).length : 0;
   var pend = PRIV.loaded ? pendientes().length : 0;
-  return h("section", { class: "area-app" },
+  var verSel = null;
+  if (AREA_REAL_ADMIN && DATA.musicos.length) {
+    verSel = h("label", { class: "ver-como" }, icon("ojo"), h("span", { class: "sr-only", text: "Ver el área como" }),
+      h("select", { id: "ver-como", onchange: function (ev) { AREA.verComo = ev.target.value || null; AREA.stage = null; render(); } },
+        h("option", { value: "", text: "Ver como: administración" }),
+        DATA.musicos.slice().sort(musicianSort).map(function (m) {
+          return h("option", { value: m.id, selected: AREA.verComo === m.id || null, text: "Ver como " + m.nombre + " · " + (m.instrumento || "") + (m.voz ? " " + m.voz + "º" : "") });
+        })));
+  }
+  return h("section", { class: "area-app" + (simulando() ? " simulating" : "") },
     h("header", { class: "area-top" }, h("div", { class: "wrap" },
       h("nav", { class: "crumbs", "aria-label": "Estás en" }, h("span", { class: "crumb-root", text: "Área de músicos" }),
         crumbs.map(function (c) { return [h("span", { class: "sep", "aria-hidden": "true", text: "›" }), c[0] ? h("a", { href: "#musicos-" + c[0], text: c[1] }) : h("span", { class: "here", text: c[1] })]; })),
+      verSel,
       h("a", { class: "area-user", href: "#musicos-perfil", title: "Tu perfil" },
         h("span", { class: "u-txt" }, h("b", { text: displayName() }), h("small", { text: me ? [me.instrumento + (me.voz ? " " + vocesTxt([INST.normVoz(me.voz)]) : ""), me.formacion].filter(Boolean).join(" · ") : "Administración" })),
         me ? personAvatar(me, "azul", "u-av") : h("span", { class: "u-av", text: initials(displayName()) })))),
@@ -1883,7 +1909,9 @@ function areaShell(tab, body, crumbs) {
         icon(t[0]), h("span", { class: "t-label", text: t[1] }), badge ? h("span", { class: "badge-n", "aria-label": badge + " pendientes", text: badge > 99 ? "99+" : String(badge) }) : null);
     }))),
     h("div", { class: "area-main" }, h("div", { class: "wrap" }, PRIV.error ? h("p", { class: "status err", text: PRIV.error }) : null,
-      IS_ADMIN && !me && tab !== "perfil" ? h("a", { class: "ag-pend admin-mus", href: "#musicos-perfil" }, icon("perfil"), "Para contar como un músico más (responder convocatorias, salir en la lista y recibir tus partituras), completa tu perfil de músico →") : null,
+      simulando() && me ? h("div", { class: "sim-banner" }, icon("ojo"), h("span", null, "Estás viendo el área como ", h("b", { text: me.nombre }), " (" + [me.instrumento + (me.voz ? " " + vocesTxt([INST.normVoz(me.voz)]) : ""), me.formacion].filter(Boolean).join(" · ") + "). No se guardan cambios."),
+        h("button", { type: "button", class: "btn small", text: "Volver a mi vista", onclick: function () { AREA.verComo = null; render(); } })) : null,
+      IS_ADMIN && !me && !simulando() && tab !== "perfil" ? h("a", { class: "ag-pend admin-mus", href: "#musicos-perfil" }, icon("perfil"), "Para contar como un músico más (responder convocatorias, salir en la lista y recibir tus partituras), completa tu perfil de músico →") : null,
       body)));
 }
 
@@ -1931,24 +1959,133 @@ function areaAgenda() {
     map[k].items.push(e);
   });
   var pend = pendientes();
-  return h("div", { class: "agenda" },
+  var main = h("div", { class: "agenda" },
     h("div", { class: "ag-head" },
       h("h1", { text: "Agenda" }),
+      IS_ADMIN ? h("button", { type: "button", class: "btn primary small ag-new", "aria-expanded": AREA.nuevoEvento ? "true" : "false", onclick: function () { AREA.nuevoEvento = !AREA.nuevoEvento; render(); } }, AREA.nuevoEvento ? "Cerrar" : "+ Nuevo evento") : null,
       h("div", { class: "seg", role: "tablist", "aria-label": "Qué eventos ver" }, [["anteriores", "Anteriores"], ["proximos", "Próximos"]].map(function (o) {
         return h("button", { type: "button", role: "tab", "aria-selected": AREA.cuando === o[0] ? "true" : "false", text: o[1], onclick: function () { AREA.cuando = o[0]; AREA.dia = null; render(); } });
       }))),
+    flashAgenda(),
+    IS_ADMIN && AREA.nuevoEvento ? eventoForm() : null,
     weekStrip(all),
     h("div", { class: "chips", role: "group", "aria-label": "Filtrar por tipo" }, [["todos", "Todos"], ["actuaciones", "Actuaciones"], ["ensayos", "Ensayos"], ["otros", "Otros"]].map(function (o) {
       return h("button", { type: "button", class: "chip", "aria-pressed": AREA.tipo === o[0] ? "true" : "false", onclick: function () { AREA.tipo = o[0]; render(); } },
         o[1], counts[o[0]] ? h("span", { class: "chip-n", text: String(counts[o[0]]) }) : null);
     })),
     pend.length && AREA.cuando === "proximos" ? h("p", { class: "ag-pend" }, icon("duda"), pend.length === 1 ? "Tienes 1 convocatoria sin responder." : "Tienes " + pend.length + " convocatorias sin responder.") : null,
-    IS_ADMIN ? h("p", { class: "muted small ag-admin" }, "Los eventos se crean en ", h("a", { href: "#admin-eventos", text: "Administración → Eventos" }), ". Los ensayos pueden ser internos para que solo salgan aquí.") : null,
+
     groups.length ? groups.map(function (g) {
       return h("div", { class: "ag-week" },
         h("div", { class: "ag-week-h" }, h("span", { text: semanaLabel(g.mon).toUpperCase() }), h("span", { class: "rng", text: rangoCorto(g.mon) })),
         g.items.map(function (e) { return eventCard(e, AREA.cuando !== "proximos"); }));
     }) : h("div", { class: "empty" }, h("p", { text: AREA.cuando === "proximos" ? "No hay convocatorias próximas." : "No hay eventos anteriores." })));
+  return h("div", { class: "ag-layout" }, h("aside", { class: "ag-side", "aria-label": "Avisos" }, avisosSide()), main);
+}
+function flashAgenda() {
+  if (!FLASH || FLASH.col !== "agenda") return null;
+  var el = h("p", { class: "status ok", role: "status", text: FLASH.msg }); FLASH = null; return el;
+}
+/* Avisos en la columna izquierda de la agenda (solo en pantallas anchas) */
+function avisosSide() {
+  var me = myMusico(), nov = novedades();
+  var anuncios = PRIV.anuncios.filter(function (a) { return IS_ADMIN || anuncioParaMi(a, me); })
+    .sort(function (a, b) { return (b.creado || "") < (a.creado || "") ? -1 : 1; }).slice(0, 4);
+  var obras = nov.filter(function (n) { return n.tipo === "partitura"; }).slice(0, 3);
+  return h("div", { class: "side-box" },
+    h("div", { class: "side-h" }, h("h2", null, icon("avisos"), "Avisos"), h("a", { href: "#musicos-avisos", text: "Ver todos" })),
+    obras.length ? h("div", { class: "side-group" }, h("h3", { text: "Partituras nuevas" }), obras.map(function (n) {
+      return h("a", { class: "side-item" + (n.nuevo ? " nuevo" : ""), href: "#musicos-obra~" + n.o.id }, obraCover(n.o, "xs"),
+        h("span", null, h("b", { text: n.o.titulo }), h("small", { text: fmtLong(String(n.fecha).slice(0, 10)) })));
+    })) : null,
+    h("div", { class: "side-group" }, h("h3", { text: "Anuncios" }),
+      anuncios.length ? anuncios.map(function (a) {
+        var nuevo = nov.some(function (n) { return n.a === a && n.nuevo; }), ncom = (PRIV.coments[a.id] || []).length;
+        return h("a", { class: "side-item an" + (nuevo ? " nuevo" : ""), href: "#musicos-avisos" },
+          h("span", null, h("b", { text: a.titulo }), a.texto ? h("p", { text: excerpt(a.texto, 110) }) : null,
+            h("small", { text: (a.creado ? fmtLong(String(a.creado).slice(0, 10)) : "") + (ncom ? " · " + ncom + (ncom === 1 ? " comentario" : " comentarios") : "") })));
+      }) : h("p", { class: "muted small", text: "Todavía no hay anuncios." })),
+    IS_ADMIN ? h("a", { class: "btn ghost small", href: "#musicos-avisos", text: "+ Publicar un anuncio" }) : null);
+}
+
+/* ---------- Crear eventos desde la agenda (también ensayos que se repiten) ---------- */
+var DIAS_SEM = [["1", "L"], ["2", "M"], ["3", "X"], ["4", "J"], ["5", "V"], ["6", "S"], ["0", "D"]];
+function fechasSerie(f) {
+  var start = dateOf(f.fecha); if (!start) return [];
+  if (f.repetir === "no") return [f.fecha];
+  var hasta = dateOf(f.hasta) || addDays(start, 90), out = [];
+  var dias = f.dias.length ? f.dias : [String(start.getDay())];
+  var step = f.repetir === "quincenal" ? 14 : 7;
+  for (var w = mondayOf(start); w <= hasta && out.length < 150; w = addDays(w, step)) {
+    for (var i = 0; i < 7; i++) {
+      var d = addDays(w, i);
+      if (d < start || d > hasta) continue;
+      if (dias.indexOf(String(d.getDay())) >= 0) out.push(isoOf(d));
+    }
+  }
+  return out.sort();
+}
+function eventoForm() {
+  if (!AREA.evForm) AREA.evForm = { titulo: "Ensayo", tipo: "Ensayo", fecha: todayStr(), hora: "", hora_fin: "", lugar: "", direccion: "", formacion: "Banda", publico: "no", indumentaria: "", notas: "", repetir: "no", hasta: isoOf(addDays(new Date(), 90)), dias: [] };
+  var F = AREA.evForm, st = statusEl();
+  function field(id, k, label, type, ph, opts) {
+    var el;
+    if (opts) { el = h("select", { id: id }, opts.map(function (o) { return h("option", { value: o[0], text: o[1], selected: F[k] === o[0] || null }); })); }
+    else if (type === "textarea") el = h("textarea", { id: id, placeholder: ph || null });
+    else el = h("input", { id: id, type: type || "text", placeholder: ph || null });
+    if (!opts) el.value = F[k] || "";
+    el.addEventListener(opts ? "change" : "input", function () {
+      F[k] = el.value;
+      if (k === "tipo") { F.publico = el.value === "Ensayo" ? "no" : "si"; if (!F.titulo || /^(Ensayo|Concierto|Actuación|Pasacalles)$/.test(F.titulo)) F.titulo = el.value; render(); }
+      if (k === "repetir" || k === "fecha" || k === "hasta") render();
+    });
+    return h("div", { class: "field" }, h("label", { for: id, text: label }), el);
+  }
+  var fechas = fechasSerie(F);
+  var diasBox = F.repetir !== "no" ? h("div", { class: "field" }, h("span", { class: "flabel", text: "Días" }),
+    h("div", { class: "dias" }, DIAS_SEM.map(function (d) {
+      var start = dateOf(F.fecha), on = F.dias.length ? F.dias.indexOf(d[0]) >= 0 : (start && String(start.getDay()) === d[0]);
+      return h("button", { type: "button", class: "dia", "aria-pressed": on ? "true" : "false", "aria-label": DIAS_LARGO[+d[0]], text: d[1], onclick: function () {
+        if (!F.dias.length && start) F.dias = [String(start.getDay())];
+        var i = F.dias.indexOf(d[0]); if (i >= 0) F.dias.splice(i, 1); else F.dias.push(d[0]); render(); } });
+    }))) : null;
+  var btn = h("button", { class: "btn primary", type: "submit", text: fechas.length > 1 ? "Crear " + fechas.length + " eventos" : "Crear evento" });
+  var form = h("form", { class: "ev-form", novalidate: true },
+    h("h2", { text: "Nuevo evento" }),
+    h("div", { class: "grid3" },
+      field("nf-tipo", "tipo", "Tipo", null, null, [["Ensayo", "Ensayo"], ["Concierto", "Concierto"], ["Actuación", "Actuación"], ["Pasacalles", "Pasacalles"], ["Otro", "Otro"]]),
+      field("nf-titulo", "titulo", "Título *", "text", "Ensayo general"),
+      field("nf-form", "formacion", "Convocatoria", null, null, [["Banda", "Banda"], ["Bandín", "Bandín"], ["Banda y Bandín", "Banda y Bandín"], ["Escuela", "Escuela"], ["Asociación", "Toda la asociación"]])),
+    h("div", { class: "grid3" },
+      field("nf-fecha", "fecha", F.repetir === "no" ? "Fecha *" : "Primer día *", "date"),
+      field("nf-hora", "hora", "Hora", "time"),
+      field("nf-fin", "hora_fin", "Hora de fin", "time")),
+    h("div", { class: "grid3" },
+      field("nf-rep", "repetir", "¿Se repite?", null, null, [["no", "No, es un solo día"], ["semanal", "Cada semana"], ["quincenal", "Cada dos semanas"]]),
+      F.repetir !== "no" ? field("nf-hasta", "hasta", "Hasta el", "date") : h("span"),
+      diasBox || h("span")),
+    F.repetir !== "no" ? h("p", { class: "serie-info" + (fechas.length ? "" : " warn") }, fechas.length ? "Se crearán " + fechas.length + " eventos: del " + fmtLong(fechas[0]) + " al " + fmtLong(fechas[fechas.length - 1]) + "." : "Con estas fechas no sale ningún día.") : null,
+    h("div", { class: "grid2" }, field("nf-lugar", "lugar", "Lugar", "text", "Casa de la Música"), field("nf-dir", "direccion", "Dirección para el mapa", "text", "Opcional")),
+    h("div", { class: "grid2" },
+      field("nf-pub", "publico", "¿Dónde se ve?", null, null, [["no", "Solo en el Área de músicos"], ["si", "También en la web pública"]]),
+      field("nf-ind", "indumentaria", "Indumentaria", "text", "Opcional")),
+    field("nf-notas", "notas", "Indicaciones para los músicos", "textarea", "Hora de llegada, atriles, partituras…"),
+    h("div", { class: "form-acts" }, btn, h("button", { class: "btn ghost", type: "button", text: "Cancelar", onclick: function () { AREA.nuevoEvento = false; AREA.evForm = null; render(); } })), st);
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (!String(F.titulo || "").trim()) { setStatus(st, "Escribe el título.", false); return; }
+    if (!fechas.length) { setStatus(st, "Revisa las fechas: no sale ningún día.", false); return; }
+    btn.disabled = true; btn.textContent = "Creando…";
+    var serie = fechas.length > 1 ? newId() : null;
+    var base = { titulo: F.titulo.trim(), tipo: F.tipo, hora: F.hora, hora_fin: F.hora_fin, lugar: F.lugar.trim(), direccion: F.direccion.trim(), formacion: F.formacion, publico: F.publico, indumentaria: F.indumentaria.trim(), notas: F.notas.trim(), descripcion: "" };
+    var rows = fechas.map(function (d) { var o = Object.assign({}, base, { fecha: d }); if (serie) o.serie = serie; return { coleccion: "eventos", id: newId(), datos: o }; });
+    SB.from("contenido").insert(rows).then(check).then(function () {
+      FLASH = { col: "agenda", msg: fechas.length > 1 ? "Creados " + fechas.length + " eventos «" + base.titulo + "»." : "Evento creado." };
+      AREA.nuevoEvento = false; AREA.evForm = null;
+      return loadAll();
+    }).then(render, function (e) { btn.disabled = false; btn.textContent = "Crear evento"; setStatus(st, errMsg(e), false); });
+  });
+  return form;
 }
 
 function weekStrip(all) {
@@ -2054,6 +2191,7 @@ function rsvpControl(e, ans, mode) {
 }
 document.addEventListener("click", function () { Array.prototype.forEach.call(document.querySelectorAll(".ans-menu:not([hidden])"), function (m) { m.hidden = true; }); });
 function setRSVP(evId, estado, motivo, btn) {
+  if (simBlock(btn)) return;
   if (btn) btn.disabled = true;
   SB.from("asistencias").upsert({ evento_id: evId, user_id: SESSION.user.id, estado: estado, motivo: motivo || null })
     .then(check).then(reloadPrivate, function (e) { if (btn) btn.disabled = false; alert2(btn, errMsg(e)); });
@@ -2113,7 +2251,20 @@ function eventoDetalles(e) {
   return h("div", { class: "evd-body" }, rows,
     e.notas ? h("div", { class: "det-notes" }, h("h3", null, icon("nota"), "Indicaciones"), h("p", { text: e.notas })) : null,
     e.descripcion ? h("div", { class: "det-notes" }, h("h3", { text: "Descripción" }), h("p", { text: e.descripcion })) : null,
-    IS_ADMIN ? h("p", { class: "muted small" }, h("a", { href: "#admin-eventos", text: "✎ Editar este evento en Administración" })) : null);
+    IS_ADMIN ? eventoAdminBox(e) : null);
+}
+function eventoAdminBox(e) {
+  var serie = e.serie ? DATA.eventos.filter(function (x) { return x.serie === e.serie && x.fecha >= e.fecha; }) : [];
+  function borrar(ids, b) {
+    ids.reduce(function (p, id) { return p.then(function () { return SB.from("contenido").delete().eq("coleccion", "eventos").eq("id", id).then(check); }); }, Promise.resolve())
+      .then(function () { FLASH = { col: "agenda", msg: ids.length > 1 ? ids.length + " eventos borrados." : "Evento borrado." }; return loadAll(); })
+      .then(function () { location.hash = "#musicos-agenda"; render(); }, function (err) { b.disabled = false; b.textContent = "Borrar"; alert2(b, errMsg(err)); });
+  }
+  var b1 = deleteButton(function (b) { borrar([e.id], b); }); b1.textContent = "Borrar este evento";
+  var b2 = serie.length > 1 ? deleteButton(function (b) { borrar(serie.map(function (x) { return x.id; }), b); }) : null;
+  if (b2) b2.textContent = "Borrar este y los " + (serie.length - 1) + " siguientes de la serie";
+  return h("div", { class: "ev-admin" }, h("a", { class: "btn ghost small", href: "#admin-eventos", text: "✎ Editar en Administración" }), b1, b2,
+    e.serie ? h("p", { class: "muted small", text: "Este evento forma parte de una serie que se repite." }) : null);
 }
 function myAnswerBar(e, ans) {
   var bar = h("div", { class: "answer-bar ans-" + (ans ? ans.estado : "nada") });
@@ -2241,6 +2392,7 @@ function starsWidget(o) {
   return wrap;
 }
 function rate(o, n, btn) {
+  if (simBlock(btn)) return;
   if (btn) btn.disabled = true;
   var q = n ? SB.from("valoraciones").upsert({ obra_id: o.id, user_id: SESSION.user.id, estrellas: n })
     : SB.from("valoraciones").delete().eq("obra_id", o.id).eq("user_id", SESSION.user.id);
@@ -2411,7 +2563,7 @@ function reclamarBox(o, me, misPet) {
   var f = h("form", { class: "claim-form" }, h("label", { for: "claim-msg", text: "Reclamar partitura de " + INST.canonical(me.instrumento) + (me.voz ? " " + vocesTxt([INST.normVoz(me.voz)]) : "") }), msg,
     h("div", { class: "form-acts" }, send, h("button", { class: "btn ghost small", type: "button", text: "Cancelar", onclick: function () { AREA.reclamando = null; render(); } })), st);
   f.addEventListener("submit", function (ev) {
-    ev.preventDefault(); send.disabled = true;
+    ev.preventDefault(); if (simBlock(send)) return; send.disabled = true;
     SB.from("peticiones").insert({ obra_id: o.id, user_id: SESSION.user.id, autor: displayName(), instrumento: INST.canonical(me.instrumento), voz: me.voz || null, mensaje: msg.value.trim() || null })
       .then(check).then(function () { AREA.reclamando = null; return reloadPrivate(); }, function (e) { send.disabled = false; setStatus(st, errMsg(e), false); });
   });
@@ -2842,6 +2994,7 @@ function anuncioCard(a, compact) {
   f.addEventListener("submit", function (ev) {
     ev.preventDefault();
     var t = input.value.trim(); if (!t) return;
+    if (simBlock(send)) return;
     send.disabled = true;
     SB.from("comentarios").insert({ anuncio_id: a.id, user_id: SESSION.user.id, autor: displayName(), texto: t }).then(check)
       .then(reloadPrivate, function (e) { send.disabled = false; alert2(send, errMsg(e)); });
@@ -2937,7 +3090,7 @@ function perfilMusicoForm(me) {
   var st = statusEl();
   var nombre = h("input", { id: "pm-nombre", type: "text", value: (me && me.nombre) || "" });
   var formSel = h("select", { id: "pm-form" }, ["Banda", "Bandín", "Banda y Bandín"].map(function (f) { return h("option", { value: f, text: f, selected: (me ? me.formacion === f : f === "Banda") || null }); }));
-  var inst = h("input", { id: "pm-inst", type: "text", list: "pm-insts", autocomplete: "off", value: (me && me.instrumento) || "", placeholder: "Clarinete, Trompeta, Flauta…" });
+  var inst = h("input", { id: "pm-inst", type: "text", list: "pm-insts", autocomplete: "off", value: (me && me.instrumento) || "", placeholder: "Vacío si diriges y no tocas" });
   var dl = h("datalist", { id: "pm-insts" }, INSTRUMENTOS.map(function (o) { return h("option", { value: o }); }));
   var voz = h("input", { id: "pm-voz", type: "text", value: (me && me.voz) || "", placeholder: "1, 2, 3… (opcional)" });
   var cargo = h("select", { id: "pm-cargo" }, ["Músico", "Jefe de sección", "Director"].map(function (c) { return h("option", { value: c, text: c === "Director" ? "Director (recibe el guion)" : c, selected: (me && (me.cargo || "Músico") === c) || null }); }));
@@ -2946,11 +3099,12 @@ function perfilMusicoForm(me) {
     me ? null : h("p", { class: "muted small", text: "Así podrás responder a las convocatorias, salir en la lista de asistencia y en la plantilla, y recibir las partituras de tu instrumento." }),
     h("div", { class: "field" }, h("label", { for: "pm-nombre", text: "Nombre y apellidos *" }), nombre),
     h("div", { class: "two" }, h("div", { class: "field" }, h("label", { for: "pm-form", text: "Toca en" }), formSel), h("div", { class: "field" }, h("label", { for: "pm-cargo", text: "Cargo" }), cargo)),
-    h("div", { class: "two" }, h("div", { class: "field" }, h("label", { for: "pm-inst", text: "Instrumento *" }), inst, dl), h("div", { class: "field" }, h("label", { for: "pm-voz", text: "Voz" }), voz)),
+    h("div", { class: "two" }, h("div", { class: "field" }, h("label", { for: "pm-inst", text: "Instrumento" }), inst, dl), h("div", { class: "field" }, h("label", { for: "pm-voz", text: "Voz" }), voz)),
     h("div", { class: "form-acts" }, btn), st);
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
-    if (!nombre.value.trim() || !inst.value.trim()) { setStatus(st, "Escribe tu nombre y tu instrumento.", false); return; }
+    if (!inst.value.trim() && cargo.value === "Director") inst.value = "Dirección";
+    if (!nombre.value.trim() || !inst.value.trim()) { setStatus(st, "Escribe tu nombre y tu instrumento (si diriges y no tocas, elige el cargo Director).", false); return; }
     btn.disabled = true;
     var datos = Object.assign({}, me || {}, { nombre: nombre.value.trim(), formacion: formSel.value, instrumento: inst.value.trim(), voz: voz.value.trim(), cargo: cargo.value, user_id: SESSION.user.id });
     delete datos.id;
@@ -3010,7 +3164,7 @@ function adminCuentas() {
     h("div", { class: "field" }, h("label", { for: "cu-pass", text: "Contraseña inicial *" }), pass,
       h("button", { class: "btn ghost small", type: "button", style: "justify-self:start", text: "Generar otra", onclick: function () { pass.value = randomPass(); } })),
     h("div", { class: "field" }, h("label", { for: "cu-form", text: "Toca en *" }), form_),
-    h("div", { class: "field" }, h("label", { for: "cu-inst", text: "Instrumento *" }), inst, dl),
+    h("div", { class: "field" }, h("label", { for: "cu-inst", text: "Instrumento" }), inst, dl, h("small", { text: "Obligatorio salvo para el director de la banda (cargo Director), que puede no tocar ninguno." })),
     h("div", { class: "field" }, h("label", { for: "cu-voz", text: "Voz" }), vozIn, h("small", { text: "Decide qué particella le llega (por ejemplo, Clarinete 2). Vacío: todas las de su instrumento." })),
     h("div", { class: "field" }, h("label", { for: "cu-cargo", text: "Cargo" }), cargo),
     h("div", { class: "form-acts" }, btn), st);
@@ -3018,7 +3172,8 @@ function adminCuentas() {
     ev.preventDefault();
     var body = { action: "create", nombre: nombre.value.trim(), usuario: usuario.value.trim().toLowerCase(), email: email.value.trim(),
       password: pass.value, formacion: form_.value, instrumento: inst.value.trim(), cargo: cargo.value, voz: vozIn.value.trim() };
-    if (!body.nombre || !body.usuario || !body.email || !body.instrumento) { setStatus(st, "Rellena nombre, usuario, correo e instrumento.", false); return; }
+    if (body.cargo === "Director" && !body.instrumento) body.instrumento = "Dirección";
+    if (!body.nombre || !body.usuario || !body.email || !body.instrumento) { setStatus(st, "Rellena nombre, usuario, correo e instrumento (si es el director y no toca, elige el cargo Director).", false); return; }
     btn.disabled = true; btn.textContent = "Creando…";
     musicosFn(body).then(function () {
       FLASH = { col: "cuentas", msg: "Cuenta creada. Pásale a " + body.nombre + " su usuario «" + body.usuario + "» y la contraseña «" + body.password + "»." };
