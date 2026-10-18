@@ -6,8 +6,8 @@
   "lang": "es",
   "start_url": "/#musicos-agenda",
   "scope": "/",
-  "display": "fullscreen",
-  "background_color": "#0e131d",
+  "display": "standalone",
+  "background_color": "#3f7fd6",
   "theme_color": "#3f7fd6",
   "icons": [
     {
@@ -31,9 +31,5 @@
   "categories": [
     "music",
     "education"
-  ],
-  "display_override": [
-    "fullscreen",
-    "standalone"
   ]
 }
