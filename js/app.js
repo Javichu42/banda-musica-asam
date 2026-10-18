@@ -104,7 +104,8 @@ var COLLECTIONS = ["directiva", "directores", "eventos", "noticias", "enlaces", 
 var MAPA_DEFECTO = "https://maps.app.goo.gl/ekUwwADRScStcLzo6";
 var DATA = JSON.parse(JSON.stringify(DEFAULTS));
 var LIVE = false;          // true cuando la base de datos responde
-var DB = null, ASSETS = null, IS_ADMIN = false;
+var DB = null, ASSETS = null, IS_ADMIN = false, PERMS = [], MI_CARGO = "";
+function can(p) { return IS_ADMIN && PERMS.indexOf(p) >= 0; }
 var FOTO_FILTER = "todas";
 var EDITING = {};          // colección -> id en edición
 var app = document.getElementById("app");
@@ -183,7 +184,7 @@ function eventsSplit() {
   return { up: up, past: past };
 }
 function photoSrc(f) { return f.asset ? blobUrl(f.asset) : ""; }
-function adminLink(tab, label) { return IS_ADMIN ? h("a", { class: "admin-hint", href: "#admin-" + tab, text: "✎ " + label }) : null; }
+function adminLink(tab, label) { return can("web") ? h("a", { class: "admin-hint", href: "#admin-" + tab, text: "✎ " + label }) : null; }
 
 /* ---------- Componentes públicos ---------- */
 function headSize(el, c) {
@@ -518,7 +519,7 @@ PAGES.socio = function () {
     pageHead("Hacerse socio", S.titulo || "Hazte socio", S.intro || null, null,
       staffLettering("¡Hazte socio!", { glyphs: MUSIC_CAPS, colors: { 0: "c-azul", 1: "c-verde" }, punct: "c-naranja" })),
     h("section", { class: "block" }, h("div", { class: "wrap" },
-      IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("socio", "Editar esta página")) : null,
+      can("web") ? h("div", { class: "row-head" }, h("span"), adminLink("socio", "Editar esta página")) : null,
       h("div", { class: "socio-grid" },
         h("div", { class: "socio-info" },
           h("h2", { text: "¿Cómo hacerse socio?" }),
@@ -593,7 +594,7 @@ PAGES.historia = function () {
   return [
     pageHead("Historia", "Más de cuatro décadas de compases", "Siero tiene una larga tradición bandística. La ASAM tomó el relevo en los años ochenta y desde entonces no ha dejado de sonar.", "negra", staffLettering(yearsSinceFounding() + " años haciendo música", { glyphs: MUSIC_CAPS, colors: { 0: "c-naranja", 3: "c-azul" }, punct: "c-naranja" })),
     h("section", { class: "block" }, h("div", { class: "wrap" },
-      IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("historia", "Editar historia")) : null,
+      can("web") ? h("div", { class: "row-head" }, h("span"), adminLink("historia", "Editar historia")) : null,
       items.length ? h("div", { class: "trail" }, list) : emptyBox("Todavía no hay hitos en la historia.", "historia")))
   ];
 };
@@ -604,7 +605,7 @@ function personAvatar(p, color, cls) {
 }
 function directorFeature(match, color, label) {
   var d = DATA.directores.filter(function (x) { return match.test(x.cargo || ""); })[0];
-  if (!d) return IS_ADMIN ? emptyBox("Añade al director desde Administración para que aparezca aquí.", "directores") : null;
+  if (!d) return can("web") ? emptyBox("Añade al director desde Administración para que aparezca aquí.", "directores") : null;
   return h("article", { class: "dfeature" },
     h("div", { class: "dphoto" }, d.foto
       ? h("img", { src: blobUrl(d.foto), alt: "Foto de " + d.nombre })
@@ -767,7 +768,7 @@ PAGES.escuela = function () {
   return [
     headSize(pageHead("Escuela de música", E.titulo || "Escuela de música", E.intro || null, null, staffLettering("Anímate a tocar con nosotros", { glyphs: MUSIC_CAPS, colors: { 0: "c-naranja", 2: "c-azul", 4: "c-verde" }, punct: "c-naranja" }), null, "img/fondos/escuela.jpg"), "head-photo"),
     h("section", { class: "block escuela-first" }, h("div", { class: "wrap" },
-      IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("escuela", "Editar la escuela")) : null,
+      can("web") ? h("div", { class: "row-head" }, h("span"), adminLink("escuela", "Editar la escuela")) : null,
       sedes.length ? h("div", { class: "sedes-wide" }, sedesCard(sedes)) : null,
       h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Clases semanales" })),
         E.edad ? h("span", { class: "age-badge", text: E.edad }) : null),
@@ -873,7 +874,7 @@ PAGES.contacto = function () {
   return [
     pageHead("Contacto", "Ven a vernos o escríbenos", null, null, staffLettering("Anímate", { glyphs: MUSIC_CAPS, colors: { 0: "c-azul" }, punct: "c-naranja" })),
     h("section", { class: "block" }, h("div", { class: "wrap" },
-      IS_ADMIN ? h("div", { class: "row-head" }, h("span"), adminLink("contacto", "Editar datos de contacto")) : null,
+      can("web") ? h("div", { class: "row-head" }, h("span"), adminLink("contacto", "Editar datos de contacto")) : null,
       h("div", { class: "contact" },
         h("div", { class: "cbox" }, kv("Sede", c.direccion), kv("Teléfono (WhatsApp)", c.telefono, "c-tel"), kv("Correo electrónico", c.email, "c-mail"),
           h("a", { class: "btn ghost", style: "justify-self:start", href: safeUrl(c.mapa) || MAPA_DEFECTO, target: "_blank", rel: "noopener", text: "Cómo llegar" })),
@@ -944,7 +945,7 @@ var SCHEMAS = {
     filter: { k: "formacion", label: "Formación", options: ["Banda", "Bandín", "Banda y Bandín"] },
     group: function (d) { return (d.formacion || "") + " · " + (d.instrumento || "Otros"); } }
 };
-var TABS_JUNTA = [["tareas", "📋 Tareas de la directiva"], ["cuentas", "🎷 Cuentas de músicos"], ["usuarios", "🔑 Administradores"]];
+var TABS_JUNTA = [["tareas", "📋 Tareas", null], ["reuniones", "🗓️ Reuniones", null], ["personas", "👥 Personas y accesos", "cuentas"], ["cargos", "🏛️ Cargos", "cuentas"]];
 var TABS = [["directiva", "Directiva"], ["directores", "Directores"], ["profesores", "Profesorado"], ["historia", "Historia"], ["musicos", "Músicos"], ["eventos", "Eventos"], ["noticias", "Noticias"], ["enlaces", "Enlaces y redes"], ["fotos", "Galería"], ["escuela", "Escuela"], ["socio", "Hacerse socio"], ["contacto", "Contacto"], ["pie", "Pie de página"]].concat(TABS_JUNTA);
 SCHEMAS.historia = { label: "Historia", singular: "hito", fields: [
     { k: "anio", l: "Año o etiqueta", req: true, ph: "1984" },
@@ -992,7 +993,7 @@ PAGES.privado = function () {
     h("div", { class: "form-acts", style: "margin-top:18px" }, logout)))];
 };
 PAGES.admin = function (tab) {
-  tab = tab || "directiva";
+  if (tab === "cuentas" || tab === "usuarios") tab = "personas";
   var head = pageHead("Administración", "Panel de administración", "Los cambios que guardes aquí se ven en la web para todas las personas que la visitan.", "negra");
   if (!SB) {
     return [head, h("section", { class: "block" }, h("div", { class: "wrap" }, h("div", { class: "notice" },
@@ -1011,25 +1012,36 @@ PAGES.admin = function (tab) {
     return [head, h("section", { class: "block" }, h("div", { class: "wrap" }, h("div", { class: "notice" },
       h("h3", { text: "Cargando datos…" }), h("p", { class: "muted", text: "Si este mensaje no desaparece, recarga la página." }))))];
   }
+  tab = tab || (can("web") ? "directiva" : "tareas");
+  var webTabs = TABS.filter(function (t) { return !TABS_JUNTA.some(function (j) { return j[0] === t[0]; }); });
+  var juntaTabs = TABS_JUNTA.filter(function (t) { return !t[2] || can(t[2]); });
+  var esJunta = TABS_JUNTA.some(function (j) { return j[0] === tab; });
+  var permitido = esJunta ? juntaTabs.some(function (j) { return j[0] === tab; }) : can("web");
   var body;
-  if (tab === "fotos") body = adminFotos();
+  if (!permitido) body = h("div", { class: "notice" }, h("h3", { text: "Tu cargo no tiene acceso a esta sección" }),
+    h("p", { class: "muted", text: (MI_CARGO ? "Tu cargo es «" + MI_CARGO + "». " : "") + (esJunta ? "Para gestionar cuentas y cargos hace falta el permiso «Cuentas y permisos»." : "Para editar el contenido de la web hace falta el permiso «Editar la web».") + " Si lo necesitas, pídeselo a quien gestiona las cuentas." }),
+    h("div", { class: "form-acts" }, h("a", { class: "btn ghost small", href: "#admin-tareas", text: "Ir a las tareas de la directiva" })));
+  else if (tab === "fotos") body = adminFotos();
   else if (tab === "contacto") body = adminContacto();
   else if (tab === "pie") body = adminPie();
   else if (tab === "socio") body = adminSocio();
   else if (tab === "escuela") body = adminEscuela();
-  else if (tab === "usuarios") body = adminUsuarios();
-  else if (tab === "cuentas") body = adminCuentas();
+  else if (tab === "personas") body = adminPersonas();
+  else if (tab === "cargos") body = adminCargos();
   else if (tab === "tareas") body = adminTareas();
+  else if (tab === "reuniones") body = adminReuniones();
   else body = adminCrud(tab);
+  var permsTxt = PERMISOS_DEF.filter(function (p) { return can(p[0]); }).map(function (p) { return p[1].toLowerCase(); });
   return [head, h("section", { class: "block" }, h("div", { class: "wrap" },
-    h("div", { class: "row-head" }, h("p", { class: "muted", text: "Sesión iniciada como " + ((SESSION.user && SESSION.user.email) || "") }), logout),
+    h("div", { class: "row-head" }, h("p", { class: "muted" }, "Sesión iniciada como " + ((SESSION.user && SESSION.user.email) || ""),
+      MI_CARGO ? h("span", { class: "mi-cargo", text: " · " + MI_CARGO + (permsTxt.length ? " (" + permsTxt.join(", ") + ")" : " (directiva)") }) : null), logout),
     h("div", { class: "admin-navs" },
-      h("div", { class: "admin-nav-group" }, h("span", { class: "ang-label", text: "Contenido de la web" }),
-        h("nav", { class: "admin-tabs", "aria-label": "Contenido de la web" }, TABS.filter(function (t) { return !TABS_JUNTA.some(function (j) { return j[0] === t[0]; }); }).map(function (t) {
+      can("web") ? h("div", { class: "admin-nav-group" }, h("span", { class: "ang-label", text: "Contenido de la web" }),
+        h("nav", { class: "admin-tabs", "aria-label": "Contenido de la web" }, webTabs.map(function (t) {
           return h("a", { href: "#admin-" + t[0], class: "tab-" + t[0], "aria-current": t[0] === tab ? "page" : null, text: t[1] });
-        }))),
-      h("div", { class: "admin-nav-group jcuentas" }, h("span", { class: "ang-label", text: "Junta y cuentas" }),
-        h("nav", { class: "admin-tabs", "aria-label": "Junta y cuentas" }, TABS_JUNTA.map(function (t) {
+        }))) : null,
+      h("div", { class: "admin-nav-group jcuentas" + (can("web") ? "" : " solo") }, h("span", { class: "ang-label", text: "Directiva" }),
+        h("nav", { class: "admin-tabs", "aria-label": "Directiva" }, juntaTabs.map(function (t) {
           return h("a", { href: "#admin-" + t[0], class: "tab-" + t[0], "aria-current": t[0] === tab ? "page" : null, text: t[1] });
         }), h("a", { href: "#musicos-agenda", class: "tab-area", text: "🎼 Ir al Área de músicos" })))),
     body))];
@@ -1054,52 +1066,6 @@ function loadAdmins() {
     ADMINS.list = d.admins || []; ADMINS.me = d.me; ADMINS.error = ""; ADMINS.loaded = true; ADMINS.loading = false;
   }, function (e) { ADMINS.error = e.message; ADMINS.loaded = true; ADMINS.loading = false; });
 }
-function adminUsuarios() {
-  if (!ADMINS.loaded && !ADMINS.loading) loadAdmins().then(render);
-  var st = statusEl();
-  var email = h("input", { id: "nu-email", type: "email", autocomplete: "off", placeholder: "nombre@correo.com" });
-  var pass = h("input", { id: "nu-pass", type: "text", autocomplete: "new-password", placeholder: "Mínimo 8 caracteres" });
-  var btn = h("button", { class: "btn primary", type: "submit", text: "Crear administrador" });
-  var form = h("form", { class: "aform", novalidate: true }, h("h3", { text: "Nuevo administrador" }),
-    h("p", { class: "muted", text: "Crea la cuenta y dale acceso al panel. Después pásale el correo y la contraseña; podrá entrar desde Administración en el menú." }),
-    h("div", { class: "field" }, h("label", { for: "nu-email", text: "Correo electrónico *" }), email),
-    h("div", { class: "field" }, h("label", { for: "nu-pass", text: "Contraseña *" }), pass,
-      h("small", { text: "Si el correo ya tiene cuenta, se le da acceso y se mantiene su contraseña actual." })),
-    h("div", { class: "form-acts" }, btn), st);
-  form.addEventListener("submit", function (ev) {
-    ev.preventDefault();
-    var e = email.value.trim(), p = pass.value;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) { setStatus(st, "Escribe un correo válido.", false); return; }
-    if (p.length < 8) { setStatus(st, "La contraseña debe tener al menos 8 caracteres.", false); return; }
-    btn.disabled = true; btn.textContent = "Creando…";
-    adminFn({ action: "create", email: e, password: p }).then(function (d) {
-      FLASH = { col: "usuarios", msg: d && d.existed ? "Ese correo ya tenía cuenta: ahora es administrador." : "Administrador creado: " + e };
-      return loadAdmins();
-    }).then(render, function (err) { btn.disabled = false; btn.textContent = "Crear administrador"; setStatus(st, err.message, false); });
-  });
-  if (FLASH && FLASH.col === "usuarios") { setStatus(st, FLASH.msg, true); FLASH = null; }
-
-  var list;
-  if (!ADMINS.loaded) list = h("div", { class: "empty" }, h("p", { text: "Cargando administradores…" }));
-  else if (ADMINS.error) list = h("div", { class: "notice" }, h("h3", { text: "No se ha podido cargar la lista" }), h("p", { class: "muted", text: ADMINS.error }),
-    h("div", { class: "form-acts" }, h("button", { class: "btn ghost small", type: "button", text: "Reintentar", onclick: function () { ADMINS.loaded = false; render(); } })));
-  else list = h("div", { class: "alist" }, ADMINS.list.map(function (a) {
-    var isMe = a.user_id === ADMINS.me;
-    return h("div", { class: "aitem" },
-      h("div", { class: "t", style: "flex:1" }, h("b", { text: (a.email || "(sin correo)") + (isMe ? " (tú)" : "") }),
-        h("span", { text: a.creado ? "Administrador desde el " + fmtLong(String(a.creado).slice(0, 10)) : "" })),
-      isMe ? null : h("div", { class: "acts" }, deleteButton(function (b) {
-        adminFn({ action: "remove", user_id: a.user_id }).then(function () {
-          FLASH = { col: "usuarios", msg: "Se ha quitado el acceso a " + (a.email || "ese usuario") + "." };
-          return loadAdmins();
-        }).then(render, function (err) { b.disabled = false; b.textContent = "Borrar"; alertInline(b, err.message); });
-      })));
-  }));
-  return h("div", { class: "admin-grid" },
-    h("div", null, h("p", { class: "muted", style: "margin-bottom:12px", text: "Personas que pueden editar la web. Al borrar a alguien se elimina su cuenta y deja de poder entrar." }), list),
-    form);
-}
-
 function loginForm(title) {
   var st = statusEl();
   var email = h("input", { id: "login-email", type: "text", autocomplete: "username", autocapitalize: "none", spellcheck: "false", required: true });
@@ -1849,7 +1815,7 @@ function pendientes() {
 /* ---------- Estructura de la página ---------- */
 function areaTabs() {
   var t = [["agenda", "Agenda"], ["repertorio", "Repertorio"], ["avisos", "Avisos"], ["sugerencias", "Sugerencias"], ["perfil", "Perfil"]];
-  if (IS_ADMIN) t.splice(2, 0, ["gestion", "Partituras"]);
+  if (can("musica")) t.splice(2, 0, ["gestion", "Partituras"]);
   return t;
 }
 PAGES.musicos = function (sub) {
@@ -1882,11 +1848,11 @@ function musicosPage(sub) {
   var body, crumbs = [];
   if (tab === "evento") { var ev = getEvento(parts[1]); body = ev ? areaEvento(ev, parts[2] || "detalles") : notFound("Este evento ya no existe."); crumbs = [["agenda", "Agenda"], [null, ev ? ev.titulo : "Evento"]]; tab = "agenda"; }
   else if (tab === "obra") { var ob = getObra(parts[1]); body = ob ? areaObra(ob) : notFound("Esta obra ya no existe."); crumbs = [["repertorio", "Repertorio"], [null, ob ? ob.titulo : "Obra"]]; tab = "repertorio"; }
-  else if (tab === "editar" && IS_ADMIN) { var eo = parts[1] === "nueva" ? null : getObra(parts[1]); body = obraEditor(eo); crumbs = [["gestion", "Partituras"], [null, eo ? eo.titulo : "Nueva obra"]]; tab = "gestion"; }
+  else if (tab === "editar" && can("musica")) { var eo = parts[1] === "nueva" ? null : getObra(parts[1]); body = obraEditor(eo); crumbs = [["gestion", "Partituras"], [null, eo ? eo.titulo : "Nueva obra"]]; tab = "gestion"; }
   else if (tab === "repertorio") { body = areaRepertorio(); crumbs = [[null, "Repertorio"]]; }
   else if (tab === "avisos") { body = areaAvisos(); crumbs = [[null, "Avisos"]]; }
   else if (tab === "perfil") { body = areaPerfil(); crumbs = [[null, "Perfil"]]; }
-  else if (tab === "gestion" && IS_ADMIN) { body = areaGestion(); crumbs = [[null, "Partituras"]]; }
+  else if (tab === "gestion" && can("musica")) { body = areaGestion(); crumbs = [[null, "Partituras"]]; }
   else if (tab === "sugerencias") { body = areaSugerencias(); crumbs = [[null, "Sugerencias"]]; }
   else { tab = "agenda"; body = areaAgenda(); crumbs = [[null, "Agenda"]]; }
   return [areaShell(tab, body, crumbs)];
@@ -1968,12 +1934,12 @@ function areaAgenda() {
   var main = h("div", { class: "agenda" },
     h("div", { class: "ag-head" },
       h("h1", { text: "Agenda" }),
-      IS_ADMIN ? h("button", { type: "button", class: "btn primary small ag-new", "aria-expanded": AREA.nuevoEvento ? "true" : "false", onclick: function () { AREA.nuevoEvento = !AREA.nuevoEvento; render(); } }, AREA.nuevoEvento ? "Cerrar" : "+ Nuevo evento") : null,
+      can("musica") ? h("button", { type: "button", class: "btn primary small ag-new", "aria-expanded": AREA.nuevoEvento ? "true" : "false", onclick: function () { AREA.nuevoEvento = !AREA.nuevoEvento; render(); } }, AREA.nuevoEvento ? "Cerrar" : "+ Nuevo evento") : null,
       h("div", { class: "seg", role: "tablist", "aria-label": "Qué eventos ver" }, [["anteriores", "Anteriores"], ["proximos", "Próximos"]].map(function (o) {
         return h("button", { type: "button", role: "tab", "aria-selected": AREA.cuando === o[0] ? "true" : "false", text: o[1], onclick: function () { AREA.cuando = o[0]; AREA.dia = null; render(); } });
       }))),
     flashAgenda(),
-    IS_ADMIN && AREA.nuevoEvento ? eventoForm() : null,
+    can("musica") && AREA.nuevoEvento ? eventoForm() : null,
     weekStrip(all),
     h("div", { class: "chips", role: "group", "aria-label": "Filtrar por tipo" }, [["todos", "Todos"], ["actuaciones", "Actuaciones"], ["ensayos", "Ensayos"], ["otros", "Otros"]].map(function (o) {
       return h("button", { type: "button", class: "chip", "aria-pressed": AREA.tipo === o[0] ? "true" : "false", onclick: function () { AREA.tipo = o[0]; render(); } },
@@ -2274,7 +2240,7 @@ function eventoDetalles(e) {
   return h("div", { class: "evd-body" }, rows,
     e.notas ? h("div", { class: "det-notes" }, h("h3", null, icon("nota"), "Indicaciones"), h("p", { text: e.notas })) : null,
     e.descripcion ? h("div", { class: "det-notes" }, h("h3", { text: "Descripción" }), h("p", { text: e.descripcion })) : null,
-    IS_ADMIN ? eventoAdminBox(e) : null);
+    can("musica") ? eventoAdminBox(e) : null);
 }
 function eventoAdminBox(e) {
   var serie = e.serie ? DATA.eventos.filter(function (x) { return x.serie === e.serie && x.fecha >= e.fecha; }) : [];
@@ -2332,17 +2298,17 @@ function saveBlob(blob, name) {
 }
 function eventoRepertorio(e, obras) {
   if (!obras.length) return h("div", { class: "empty" }, h("p", { text: "Todavía no se ha publicado el repertorio de este evento." }),
-    IS_ADMIN ? h("a", { class: "admin-hint", href: "#musicos-gestion", text: "✎ Añadir obras desde Partituras" }) : null);
+    can("musica") ? h("a", { class: "admin-hint", href: "#musicos-gestion", text: "✎ Añadir obras desde Partituras" }) : null);
   return h("div", { class: "evd-body" },
     h("div", { class: "row-head" }, h("p", { class: "muted", text: obras.length + (obras.length === 1 ? " obra" : " obras") + " en el programa" }), descargarBtn(obras, e.titulo)),
     h("div", { class: "covers" }, obras.map(function (o, i) {
       var c = h("div", { class: "prog-item" }, h("a", { class: "cover-link", href: "#musicos-obra~" + o.id }, h("span", { class: "cover-n", text: String(i + 1) }), obraCover(o, "md")));
-      if (IS_ADMIN && obras.length > 1) add(c, h("div", { class: "prog-move" },
+      if (can("musica") && obras.length > 1) add(c, h("div", { class: "prog-move" },
         h("button", { type: "button", class: "ico-btn", "aria-label": "Mover «" + o.titulo + "» antes", title: "Antes", disabled: i === 0 || null, onclick: function (ev) { moverEnPrograma(e.id, obras, i, -1, ev.currentTarget); } }, icon("izq")),
         h("button", { type: "button", class: "ico-btn", "aria-label": "Mover «" + o.titulo + "» después", title: "Después", disabled: i === obras.length - 1 || null, onclick: function (ev) { moverEnPrograma(e.id, obras, i, 1, ev.currentTarget); } }, icon("der"))));
       return c;
     })),
-    IS_ADMIN ? h("p", { class: "muted small", text: obras.length > 1 ? "Usa las flechas para poner las obras en el orden del concierto." : "" }) : null);
+    can("musica") ? h("p", { class: "muted small", text: obras.length > 1 ? "Usa las flechas para poner las obras en el orden del concierto." : "" }) : null);
 }
 function eventoMiembros(e, conv) {
   var a = PRIV.asist[e.id] || {}, pase = PRIV.pase[e.id] || {}, c = cuentaAsist(e);
@@ -2351,7 +2317,7 @@ function eventoMiembros(e, conv) {
     h("div", { class: "asist-sum big" },
       h("span", { class: "st st-si", text: "Asistirán: " + c.si }), h("span", { class: "st st-no", text: "No: " + c.no }),
       h("span", { class: "st st-duda", text: "Duda: " + c.duda }), h("span", { class: "st st-nada", text: "Sin responder: " + c.nada })),
-    IS_ADMIN ? h("p", { class: "muted small", text: "Marca «Presente» el día del evento para pasar lista." }) : null,
+    can("musica") ? h("p", { class: "muted small", text: "Marca «Presente» el día del evento para pasar lista." }) : null,
     h("div", { class: "members" }, groupByInstrument(conv).map(function (g) {
       return h("div", { class: "mem-group" }, h("h4", null, h("span", { text: g.name }), h("small", { text: g.items.filter(function (m) { return a[m.user_id] && a[m.user_id].estado === "si"; }).length + "/" + g.items.length })),
         g.items.map(function (m) {
@@ -2359,7 +2325,7 @@ function eventoMiembros(e, conv) {
           var row = h("div", { class: "mem-row" }, personAvatar(m, "azul", "av-mid"),
             h("div", { class: "mem-txt" }, h("b", { text: m.nombre + (isJefe(m) ? " · jefe" : "") }), r && r.motivo ? h("small", { text: "«" + r.motivo + "»" }) : (m.voz ? h("small", { text: "Voz " + vocesTxt([INST.normVoz(m.voz)]) }) : null)),
             h("span", { class: "mem-st st-" + est, text: est === "nada" ? "Sin responder" : ESTADOS[est] }));
-          if (IS_ADMIN) {
+          if (can("musica")) {
             var cb = h("input", { type: "checkbox", id: "pl-" + e.id + "-" + m.user_id, checked: pase[m.user_id] === true || null });
             cb.addEventListener("change", function () {
               cb.disabled = true;
@@ -2454,8 +2420,8 @@ function areaRepertorio() {
         h("p", { class: "muted" }, h("a", { href: "#musicos-evento~" + prox.id, text: prox.titulo }), " · " + enDias(prox.fecha))), descargarBtn(obrasDeEvento(prox.id), prox.titulo)),
       h("div", { class: "covers scroll" }, obrasDeEvento(prox.id).map(function (o) { return h("a", { class: "cover-link", href: "#musicos-obra~" + o.id }, obraCover(o, "md")); }))) : null,
     h("section", { class: "rep-all" },
-      h("div", { class: "rep-title" }, h("h2", { text: "Todas las obras" }), h("span", { class: "role-badge" }, icon("perfil"), IS_ADMIN ? "DIRECCIÓN" : "MIEMBRO"),
-        IS_ADMIN ? h("a", { class: "btn primary small", href: "#musicos-editar~nueva", style: "margin-left:auto" }, "+ Nueva obra") : null),
+      h("div", { class: "rep-title" }, h("h2", { text: "Todas las obras" }), h("span", { class: "role-badge" }, icon("perfil"), can("musica") ? "DIRECCIÓN" : "MIEMBRO"),
+        can("musica") ? h("a", { class: "btn primary small", href: "#musicos-editar~nueva", style: "margin-left:auto" }, "+ Nueva obra") : null),
       h("p", { class: "muted", text: IS_ADMIN ? "Ves todas las obras y todas las particellas." : "Ves el repertorio de tu formación. En cada obra aparecen solo las partituras de tu instrumento" + (me && me.voz ? " y tu voz." : ".") }),
       h("div", { class: "rep-tools" },
         h("label", { class: "search" }, icon("buscar"), search),
@@ -2465,7 +2431,7 @@ function areaRepertorio() {
         return h("button", { type: "button", class: "chip", "aria-pressed": AREA.filtro === f[0] ? "true" : "false", text: f[1], onclick: function () { AREA.filtro = f[0]; render(); } });
       })),
       list.length ? h("div", { class: "obra-list" }, list.map(function (o) { return obraRow(o, me); }))
-        : h("div", { class: "empty" }, h("p", { text: obras.length ? "Ninguna obra coincide con la búsqueda." : (IS_ADMIN ? "Todavía no hay obras. Crea la primera con «+ Nueva obra»." : "Todavía no hay obras en el repertorio.") }))));
+        : h("div", { class: "empty" }, h("p", { text: obras.length ? "Ninguna obra coincide con la búsqueda." : (can("musica") ? "Todavía no hay obras. Crea la primera con «+ Nueva obra»." : "Todavía no hay obras en el repertorio.") }))));
 }
 function obraRow(o, me) {
   var fut = eventosFuturos(o), mine = me ? misPartes(o.id, me) : [];
@@ -2498,7 +2464,7 @@ function areaObra(o) {
         o.arreglista ? h("p", { class: "muted", text: "Arreglo: " + o.arreglista }) : null,
         h("div", { class: "op-tags" }, h("span", { class: "pill-soft", text: o.formacion || "Banda y Bandín" }), o.duracion ? h("span", { class: "pill-soft", text: "⏱ " + o.duracion }) : null),
         h("div", { class: "op-rate" }, h("span", { class: "muted small", text: "¿Quieres valorar esta obra?" }), starsWidget(o)),
-        IS_ADMIN ? h("a", { class: "btn ghost small", href: "#musicos-editar~" + o.id, text: "✎ Editar obra y partituras" }) : null)),
+        can("musica") ? h("a", { class: "btn ghost small", href: "#musicos-editar~" + o.id, text: "✎ Editar obra y partituras" }) : null)),
     yt ? h("section", { class: "op-sec" }, videoEmbed(yt, o.titulo)) : (safeUrl(o.youtube) ? h("p", null, h("a", { href: o.youtube, target: "_blank", rel: "noopener", text: "↗ Escuchar una grabación de referencia" })) : null),
     o.notas ? h("section", { class: "op-sec det-notes" }, h("h3", null, icon("nota"), "Notas de la dirección"), h("p", { text: o.notas })) : null,
     h("section", { class: "op-sec" },
@@ -2508,7 +2474,7 @@ function areaObra(o) {
       otras.length ? h("details", { class: "otras" }, h("summary", { text: "Otras voces de " + INST.canonical(me.instrumento) + " (" + otras.length + ")" }), h("div", { class: "files" }, otras.map(fileRow))) : null,
       me ? reclamarBox(o, me, misPet) : null,
       IS_ADMIN && me && todas.length ? h("details", { class: "otras" }, h("summary", { text: "Todas las particellas de la obra (" + todas.length + ")" }), h("div", { class: "files" }, todas.map(fileRow))) : null,
-      IS_ADMIN ? obraPeticiones(o) : null),
+      can("musica") ? obraPeticiones(o) : null),
     h("section", { class: "op-sec" },
       h("h2", { text: "Eventos" }),
       evs.length ? h("div", { class: "op-events" },
@@ -3376,7 +3342,6 @@ function adminTareas() {
 }
 
 /* ---------- Panel: cuentas de músicos ---------- */
-var CUENTAS = { loaded: false, loading: false, list: [], error: "" };
 function musicosFn(body) {
   return SB.functions.invoke("musicos", { body: body }).then(function (r) {
     if (!r.error) return r.data;
@@ -3384,11 +3349,6 @@ function musicosFn(body) {
     if (ctx && typeof ctx.json === "function") return ctx.json().then(function (j) { throw new Error((j && j.error) || fb); }, function () { throw new Error(fb); });
     throw new Error(fb);
   });
-}
-function loadCuentas() {
-  CUENTAS.loading = true;
-  return musicosFn({ action: "list" }).then(function (d) { CUENTAS = { loaded: true, loading: false, list: d.cuentas || [], error: "" }; },
-    function (e) { CUENTAS = { loaded: true, loading: false, list: [], error: e.message }; });
 }
 function suggestUser(nombre) {
   var p = norm(nombre).replace(/[^a-z ]/g, "").split(/\s+/).filter(Boolean);
@@ -3400,80 +3360,370 @@ function randomPass() {
   for (var i = 0; i < 10; i++) out += c[arr[i] % c.length];
   return out;
 }
-function adminCuentas() {
-  if (!CUENTAS.loaded && !CUENTAS.loading) loadCuentas().then(render);
+/* ---------- Panel: personas y accesos (cuentas de músicos y de la directiva en un solo sitio) ---------- */
+var PERMISOS_DEF = [["web", "Editar la web", "Textos, noticias, eventos, fotos y demás contenido público."],
+  ["musica", "Área de músicos", "Partituras, agenda y eventos, avisos y pase de lista."],
+  ["cuentas", "Cuentas y permisos", "Crear cuentas, dar accesos y cambiar los cargos."]];
+var CUENTAS = { loaded: false, loading: false, list: [], cargos: [], me: null, error: "", edit: null, filtro: "todos", buscar: "" };
+function loadCuentas() {
+  CUENTAS.loading = true;
+  return musicosFn({ action: "list" }).then(function (d) {
+    // Compatibilidad con la función antigua (solo músicos, sin cargos)
+    var list = (d.cuentas || []).map(function (c) {
+      if ("musico" in c || "directiva" in c) return c;
+      return { user_id: c.user_id, nombre: c.nombre, usuario: c.usuario, email: c.email, ultimo_acceso: c.ultimo_acceso, directiva: null,
+        musico: { id: c.id, formacion: c.formacion, instrumento: c.instrumento, voz: c.voz || "", cargo: c.cargo || "Músico" } };
+    });
+    var cargos = d.cargos || (CARGOS.loaded ? CARGOS.list : []);
+    if (!cargos.length) cargos = [{ id: "admin-general", nombre: "Administrador general", permisos: ["web", "musica", "cuentas"] }];
+    Object.assign(CUENTAS, { loaded: true, loading: false, list: list, cargos: cargos, me: d.me || (SESSION && SESSION.user.id) || null, error: "" });
+  }, function (e) { Object.assign(CUENTAS, { loaded: true, loading: false, list: [], error: e.message }); });
+}
+function cargoNombre(id, cargos) { var c = (cargos || CARGOS.list || []).filter(function (x) { return x.id === id; })[0]; return c ? c.nombre : (id || ""); }
+function permChips(perms) {
+  if (!perms || !perms.length) return h("span", { class: "perm none", text: "Solo directiva" });
+  return PERMISOS_DEF.filter(function (p) { return perms.indexOf(p[0]) >= 0; }).map(function (p) { return h("span", { class: "perm p-" + p[0], text: p[1] }); });
+}
+// Bloque de campos de músico (crear o editar)
+function musicoFields(pre, m) {
+  m = m || {};
+  var form_ = h("select", { id: pre + "-form" }, ["Banda", "Bandín", "Banda y Bandín"].map(function (f) { return h("option", { value: f, text: f, selected: (m.formacion || "Banda") === f || null }); }));
+  var inst = h("input", { id: pre + "-inst", type: "text", list: pre + "-insts", autocomplete: "off", value: m.instrumento && m.instrumento !== "Dirección" ? m.instrumento : "" });
+  var dl = h("datalist", { id: pre + "-insts" }, INSTRUMENTOS.map(function (o) { return h("option", { value: o }); }));
+  var voz = h("input", { id: pre + "-voz", type: "text", placeholder: "1, 2, 3… (opcional)", value: m.voz || "" });
+  var puesto = h("select", { id: pre + "-puesto" }, ["Músico", "Jefe de sección", "Director"].map(function (c) { return h("option", { value: c, text: c === "Director" ? "Director (recibe el guion)" : c, selected: (m.cargo || "Músico") === c || null }); }));
+  var box = h("div", { class: "role-fields" },
+    h("div", { class: "two" }, h("div", { class: "field" }, h("label", { for: pre + "-form", text: "Toca en" }), form_), h("div", { class: "field" }, h("label", { for: pre + "-puesto", text: "Puesto en la banda" }), puesto)),
+    h("div", { class: "two" }, h("div", { class: "field" }, h("label", { for: pre + "-inst", text: "Instrumento" }), inst, dl), h("div", { class: "field" }, h("label", { for: pre + "-voz", text: "Voz" }), voz)),
+    h("small", { class: "muted", text: "El instrumento y la voz deciden qué partituras recibe. El director puede no tocar ninguno." }));
+  return { el: box, value: function () { return { formacion: form_.value, instrumento: inst.value.trim() || (puesto.value === "Director" ? "Dirección" : ""), voz: voz.value.trim(), cargo: puesto.value }; } };
+}
+function cargoSelect(id, value, cargos) {
+  return h("select", { id: id }, cargos.map(function (c) { return h("option", { value: c.id, text: c.nombre + (c.permisos && c.permisos.length ? "" : " (sin permisos de edición)"), selected: (value || "vocal") === c.id || null }); }));
+}
+function roleToggle(id, label, checked, body, onchange) {
+  var cb = h("input", { type: "checkbox", id: id, checked: checked || null });
+  var wrap = h("div", { class: "role-box" + (checked ? " on" : "") }, h("label", { class: "role-head", for: id }, cb, h("span", null, label[0], h("small", { text: label[1] }))), body);
+  cb.addEventListener("change", function () { wrap.classList.toggle("on", cb.checked); if (onchange) onchange(cb.checked); });
+  return { el: wrap, checked: function () { return cb.checked; } };
+}
+function cuentaForm(c) {
+  var nuevo = !c, pre = nuevo ? "pn" : "pe-" + String(c.user_id).replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
   var st = statusEl();
-  var nombre = h("input", { id: "cu-nombre", type: "text" });
-  var usuario = h("input", { id: "cu-usuario", type: "text", autocapitalize: "none", spellcheck: "false", placeholder: "nombre.apellido" });
-  var email = h("input", { id: "cu-email", type: "email", placeholder: "nombre@correo.com" });
-  var pass = h("input", { id: "cu-pass", type: "text", autocomplete: "off", value: randomPass() });
-  var form_ = h("select", { id: "cu-form" }, ["Banda", "Bandín", "Banda y Bandín"].map(function (f) { return h("option", { value: f, text: f }); }));
-  var inst = h("input", { id: "cu-inst", type: "text", list: "cu-insts", autocomplete: "off" });
-  var dl = h("datalist", { id: "cu-insts" }, INSTRUMENTOS.map(function (o) { return h("option", { value: o }); }));
-  var cargo = h("select", { id: "cu-cargo" }, ["Músico", "Jefe de sección", "Director"].map(function (c) { return h("option", { value: c, text: c === "Director" ? "Director (recibe el guion)" : c }); }));
-  var vozIn = h("input", { id: "cu-voz", type: "text", placeholder: "1, 2, 3… (opcional)" });
-  var userTouched = false;
+  var nombre = h("input", { id: pre + "-nombre", type: "text", value: c ? c.nombre : "" });
+  var usuario = h("input", { id: pre + "-usuario", type: "text", autocapitalize: "none", spellcheck: "false", placeholder: "nombre.apellido", value: c ? c.usuario : "" });
+  var email = nuevo ? h("input", { id: pre + "-email", type: "email", placeholder: "nombre@correo.com" }) : null;
+  var pass = nuevo ? h("input", { id: pre + "-pass", type: "text", autocomplete: "off", value: randomPass() }) : null;
+  var userTouched = !nuevo;
   usuario.addEventListener("input", function () { userTouched = true; });
   nombre.addEventListener("input", function () { if (!userTouched) usuario.value = suggestUser(nombre.value); });
-  var btn = h("button", { class: "btn primary", type: "submit", text: "Crear cuenta" });
-  var form = h("form", { class: "aform", novalidate: true }, h("h3", { text: "Nueva cuenta de músico" }),
-    h("p", { class: "muted small", text: "El músico aparecerá solo en la plantilla de la Banda o el Bandín y podrá entrar en el Área de músicos." }),
-    h("div", { class: "field" }, h("label", { for: "cu-nombre", text: "Nombre y apellidos *" }), nombre),
-    h("div", { class: "field" }, h("label", { for: "cu-usuario", text: "Usuario *" }), usuario, h("small", { text: "Minúsculas, números, punto o guion. Con esto entrará." })),
-    h("div", { class: "field" }, h("label", { for: "cu-email", text: "Correo *" }), email),
-    h("div", { class: "field" }, h("label", { for: "cu-pass", text: "Contraseña inicial *" }), pass,
-      h("button", { class: "btn ghost small", type: "button", style: "justify-self:start", text: "Generar otra", onclick: function () { pass.value = randomPass(); } })),
-    h("div", { class: "field" }, h("label", { for: "cu-form", text: "Toca en *" }), form_),
-    h("div", { class: "field" }, h("label", { for: "cu-inst", text: "Instrumento" }), inst, dl, h("small", { text: "Obligatorio salvo para el director de la banda (cargo Director), que puede no tocar ninguno." })),
-    h("div", { class: "field" }, h("label", { for: "cu-voz", text: "Voz" }), vozIn, h("small", { text: "Decide qué particella le llega (por ejemplo, Clarinete 2). Vacío: todas las de su instrumento." })),
-    h("div", { class: "field" }, h("label", { for: "cu-cargo", text: "Cargo" }), cargo),
-    h("div", { class: "form-acts" }, btn), st);
+  var mf = musicoFields(pre + "-m", c && c.musico);
+  var csel = cargoSelect(pre + "-cargo", c && c.directiva ? c.directiva.cargo_id : "vocal", CUENTAS.cargos);
+  var permBox = h("div", { class: "perm-row" });
+  function showPerms() { var cg = CUENTAS.cargos.filter(function (x) { return x.id === csel.value; })[0]; permBox.replaceChildren(h("span", { class: "muted small", text: "Puede: " }), permChips(cg ? cg.permisos : [])); }
+  csel.addEventListener("change", showPerms); showPerms();
+  var rMus = roleToggle(pre + "-esmus", ["🎷 Músico", "Entra en el Área de músicos, responde a las convocatorias y recibe sus partituras."], nuevo ? true : !!c.musico, mf.el);
+  var rDir = roleToggle(pre + "-esdir", ["🏛️ Directiva", "Tareas, reuniones y sugerencias, y lo que permita su cargo."], nuevo ? false : !!c.directiva,
+    h("div", { class: "role-fields" }, h("div", { class: "field" }, h("label", { for: pre + "-cargo", text: "Cargo en la directiva" }), csel), permBox));
+  var btn = h("button", { class: "btn primary", type: "submit", text: nuevo ? "Crear cuenta" : "Guardar cambios" });
+  var form = h("form", { class: "aform cuenta-form", novalidate: true }, h("h3", { text: nuevo ? "Nueva cuenta" : "Editar a " + (c.nombre || c.email) }),
+    nuevo ? h("p", { class: "muted small", text: "Una sola cuenta por persona. Marca lo que es: músico, miembro de la directiva o las dos cosas." }) : null,
+    h("div", { class: "field" }, h("label", { for: pre + "-nombre", text: "Nombre y apellidos *" }), nombre),
+    h("div", { class: "two" },
+      h("div", { class: "field" }, h("label", { for: pre + "-usuario", text: "Usuario *" }), usuario, h("small", { text: "Con esto (o con el correo) entra en la web." })),
+      nuevo ? h("div", { class: "field" }, h("label", { for: pre + "-email", text: "Correo *" }), email) : h("div", { class: "field" }, h("span", { class: "flabel", text: "Correo" }), h("p", { class: "plain", text: c.email || "—" }))),
+    nuevo ? h("div", { class: "field" }, h("label", { for: pre + "-pass", text: "Contraseña inicial *" }), pass,
+      h("button", { class: "btn ghost small", type: "button", style: "justify-self:start", text: "Generar otra", onclick: function () { pass.value = randomPass(); } })) : null,
+    h("span", { class: "flabel", text: "Accesos" }), rMus.el, rDir.el,
+    h("div", { class: "form-acts" }, btn, nuevo ? null : h("button", { class: "btn ghost", type: "button", text: "Cancelar", onclick: function () { CUENTAS.edit = null; render(); } })), st);
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
-    var body = { action: "create", nombre: nombre.value.trim(), usuario: usuario.value.trim().toLowerCase(), email: email.value.trim(),
-      password: pass.value, formacion: form_.value, instrumento: inst.value.trim(), cargo: cargo.value, voz: vozIn.value.trim() };
-    if (body.cargo === "Director" && !body.instrumento) body.instrumento = "Dirección";
-    if (!body.nombre || !body.usuario || !body.email || !body.instrumento) { setStatus(st, "Rellena nombre, usuario, correo e instrumento (si es el director y no toca, elige el cargo Director).", false); return; }
-    btn.disabled = true; btn.textContent = "Creando…";
+    var body = { action: nuevo ? "create" : "update", nombre: nombre.value.trim(), usuario: usuario.value.trim().toLowerCase(),
+      musico: rMus.checked() ? mf.value() : null, directiva: rDir.checked() ? { cargo_id: csel.value } : null };
+    if (nuevo) { body.email = email.value.trim(); body.password = pass.value; } else body.user_id = c.user_id;
+    if (body.musico) Object.assign(body, { formacion: body.musico.formacion, instrumento: body.musico.instrumento, voz: body.musico.voz, cargo: body.musico.cargo }); // función antigua
+    if (!body.nombre || !body.usuario || (nuevo && !body.email)) { setStatus(st, "Rellena el nombre, el usuario" + (nuevo ? " y el correo." : "."), false); return; }
+    if (!body.musico && !body.directiva) { setStatus(st, "Marca al menos un acceso: músico o directiva.", false); return; }
+    if (body.musico && !body.musico.instrumento) { setStatus(st, "Escribe el instrumento (o elige el puesto Director si no toca).", false); return; }
+    btn.disabled = true; btn.textContent = nuevo ? "Creando…" : "Guardando…";
     musicosFn(body).then(function () {
-      FLASH = { col: "cuentas", msg: "Cuenta creada. Pásale a " + body.nombre + " su usuario «" + body.usuario + "» y la contraseña «" + body.password + "»." };
-      return Promise.all([loadCuentas(), loadAll()]);
-    }).then(render, function (e) { btn.disabled = false; btn.textContent = "Crear cuenta"; setStatus(st, e.message, false); });
+      FLASH = { col: "personas", msg: nuevo ? "Cuenta creada. Pásale a " + body.nombre + " su usuario «" + body.usuario + "» y la contraseña «" + body.password + "»." : "Cambios guardados." };
+      CUENTAS.edit = null;
+      return Promise.all([loadCuentas(), loadAll(), refreshAdmin()]);
+    }).then(render, function (e) { btn.disabled = false; btn.textContent = nuevo ? "Crear cuenta" : "Guardar cambios"; setStatus(st, e.message, false); });
   });
-  if (FLASH && FLASH.col === "cuentas") { setStatus(st, FLASH.msg, true); FLASH = null; }
-
+  return form;
+}
+function cuentaRow(c) {
+  var isMe = c.user_id === CUENTAS.me;
+  var pw = h("input", { type: "text", id: "npw-" + c.user_id, placeholder: "Nueva contraseña", "aria-label": "Nueva contraseña para " + c.nombre });
+  var pwBtn = h("button", { class: "btn ghost small", type: "button", text: "Cambiar" });
+  pwBtn.addEventListener("click", function () {
+    if (pw.value.length < 8) { alert2(pwBtn, "Mínimo 8 caracteres."); return; }
+    pwBtn.disabled = true;
+    musicosFn({ action: "password", user_id: c.user_id, password: pw.value }).then(function () { pwBtn.disabled = false; pwBtn.textContent = "Cambiada ✓"; },
+      function (e) { pwBtn.disabled = false; alert2(pwBtn, e.message); });
+  });
+  var m = c.musico, d = c.directiva, cg = d ? CUENTAS.cargos.filter(function (x) { return x.id === d.cargo_id; })[0] : null;
+  return h("article", { class: "persona" + (CUENTAS.edit === c.user_id ? " editing" : "") },
+    h("div", { class: "p-main" },
+      h("span", { class: "u-av", text: initials(c.nombre || c.email) }),
+      h("div", { class: "p-txt" },
+        h("b", { text: (c.nombre || "(sin nombre)") + (isMe ? " (tú)" : "") }),
+        h("small", { text: [c.usuario, c.email].filter(Boolean).join(" · ") }),
+        h("div", { class: "p-roles" },
+          m ? h("span", { class: "role r-mus", text: "🎷 " + [m.instrumento === "Dirección" ? "Dirección musical" : m.instrumento, m.voz ? vocesTxt([INST.normVoz(m.voz)]) : "", m.formacion].filter(Boolean).join(" · ") + (m.cargo && m.cargo !== "Músico" ? " · " + m.cargo : "") }) : null,
+          d ? h("span", { class: "role r-dir", text: "🏛️ " + (cg ? cg.nombre : d.cargo_id) }) : null,
+          d && cg ? permChips(cg.permisos) : null),
+        h("small", { class: "muted", text: c.ultimo_acceso ? "Último acceso: " + fmtLong(String(c.ultimo_acceso).slice(0, 10)) : "Todavía no ha entrado" }))),
+    h("div", { class: "p-acts" },
+      h("button", { class: "btn ghost small", type: "button", text: "Editar accesos", onclick: function () { CUENTAS.edit = c.user_id; render(); } }),
+      h("span", { class: "pw-mini" }, pw, pwBtn),
+      isMe ? null : deleteButton(function (b) {
+        musicosFn({ action: "remove", user_id: c.user_id }).then(function () {
+          FLASH = { col: "personas", msg: "Cuenta de " + (c.nombre || c.email) + " borrada." };
+          return Promise.all([loadCuentas(), loadAll()]);
+        }).then(render, function (e) { b.disabled = false; b.textContent = "Borrar"; alert2(b, e.message); });
+      })),
+    CUENTAS.edit === c.user_id ? cuentaForm(c) : null);
+}
+function adminPersonas() {
+  if (!CUENTAS.loaded && !CUENTAS.loading) loadCuentas().then(render);
+  var flash = null;
+  if (FLASH && FLASH.col === "personas") { flash = h("p", { class: "status ok", role: "status", text: FLASH.msg }); FLASH = null; }
   var list;
   if (!CUENTAS.loaded) list = h("div", { class: "empty" }, h("p", { text: "Cargando cuentas…" }));
   else if (CUENTAS.error) list = h("div", { class: "notice" }, h("h3", { text: "No se han podido cargar las cuentas" }), h("p", { class: "muted", text: CUENTAS.error }),
     h("div", { class: "form-acts" }, h("button", { class: "btn ghost small", type: "button", text: "Reintentar", onclick: function () { CUENTAS.loaded = false; render(); } })));
-  else if (!CUENTAS.list.length) list = h("div", { class: "empty" }, h("p", { text: "Todavía no hay cuentas de músico." }));
   else {
-    var sorted = CUENTAS.list.slice().sort(function (a, b) { return a.formacion === b.formacion ? musicianSort(a, b) : String(a.formacion).localeCompare(String(b.formacion)); });
-    list = h("div", { class: "alist" }, sorted.map(function (c) {
-      var pw = h("input", { type: "text", id: "npw-" + c.user_id, placeholder: "Nueva contraseña", "aria-label": "Nueva contraseña para " + c.nombre });
-      var pwBtn = h("button", { class: "btn ghost small", type: "button", text: "Cambiar contraseña" });
-      pwBtn.addEventListener("click", function () {
-        if (pw.value.length < 8) { alert2(pwBtn, "Mínimo 8 caracteres."); return; }
-        pwBtn.disabled = true;
-        musicosFn({ action: "password", user_id: c.user_id, password: pw.value }).then(function () { pwBtn.disabled = false; pwBtn.textContent = "Cambiada ✓"; },
-          function (e) { pwBtn.disabled = false; alert2(pwBtn, e.message); });
-      });
-      return h("div", { class: "aitem", style: "flex-wrap:wrap" },
-        h("div", { class: "t", style: "flex:1;min-width:220px" },
-          h("b", { text: c.nombre + (isJefe(c) ? " · jefe de sección" : "") }),
-          h("span", { text: [c.usuario, c.email].filter(Boolean).join(" · ") }),
-          h("span", { text: [c.formacion, c.instrumento].filter(Boolean).join(" · ") + " · " + (c.ultimo_acceso ? "Último acceso: " + fmtLong(String(c.ultimo_acceso).slice(0, 10)) : "Todavía no ha entrado") })),
-        h("div", { class: "acts", style: "flex-wrap:wrap" }, pw, pwBtn, deleteButton(function (b) {
-          musicosFn({ action: "remove", user_id: c.user_id }).then(function () {
-            FLASH = { col: "cuentas", msg: "Cuenta de " + c.nombre + " borrada." };
-            return Promise.all([loadCuentas(), loadAll()]);
-          }).then(render, function (e) { b.disabled = false; b.textContent = "Borrar"; alert2(b, e.message); });
-        })));
-    }));
+    var q = norm(CUENTAS.buscar || "");
+    var items = CUENTAS.list.filter(function (c) {
+      if (CUENTAS.filtro === "musicos" && !c.musico) return false;
+      if (CUENTAS.filtro === "directiva" && !c.directiva) return false;
+      return !q || norm([c.nombre, c.usuario, c.email, c.musico && c.musico.instrumento].join(" ")).indexOf(q) >= 0;
+    }).sort(function (a, b) { return (b.directiva ? 1 : 0) - (a.directiva ? 1 : 0) || String(a.nombre).localeCompare(String(b.nombre)); });
+    var nM = CUENTAS.list.filter(function (c) { return c.musico; }).length, nD = CUENTAS.list.filter(function (c) { return c.directiva; }).length;
+    var search = h("input", { type: "search", id: "pp-buscar", placeholder: "Buscar por nombre, usuario o instrumento", value: CUENTAS.buscar || "", "aria-label": "Buscar cuentas" });
+    search.addEventListener("input", function () { CUENTAS.buscar = search.value; var pos = search.selectionStart; render(); var s = document.getElementById("pp-buscar"); if (s) { s.focus(); try { s.setSelectionRange(pos, pos); } catch (e) {} } });
+    list = h("div", null,
+      h("div", { class: "pp-tools" },
+        h("div", { class: "seg", role: "group", "aria-label": "Filtrar" }, [["todos", "Todas (" + CUENTAS.list.length + ")"], ["musicos", "Músicos (" + nM + ")"], ["directiva", "Directiva (" + nD + ")"]].map(function (f) {
+          return h("button", { type: "button", "aria-pressed": CUENTAS.filtro === f[0] ? "true" : "false", text: f[1], onclick: function () { CUENTAS.filtro = f[0]; render(); } });
+        })), search),
+      items.length ? h("div", { class: "personas" }, items.map(cuentaRow)) : h("div", { class: "empty" }, h("p", { text: "No hay cuentas con ese filtro." })));
   }
-  return h("div", { class: "admin-grid" },
-    h("div", null, h("p", { class: "muted", style: "margin-bottom:12px", text: "Para cambiar la foto, el instrumento o el cargo de un músico, usa la pestaña Músicos." }), list),
-    form);
+  return h("div", { class: "personas-panel" },
+    h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Personas y accesos" }),
+      h("p", { class: "muted", text: "Todas las cuentas en un solo sitio. Una persona puede ser músico, estar en la directiva o las dos cosas; lo que puede hacer en la directiva depende de su cargo (los cargos se cambian en la pestaña Cargos)." }))),
+    flash,
+    h("div", { class: "admin-grid" }, list, CUENTAS.loaded && !CUENTAS.error ? cuentaForm(null) : h("div")));
+}
+
+/* ---------- Panel: cargos de la directiva ---------- */
+var CARGOS = { loaded: false, loading: false, list: [], error: "", edit: null };
+function loadCargos() {
+  CARGOS.loading = true;
+  return SB.from("cargos").select("*").order("orden").then(function (r) {
+    if (r.error) throw r.error;
+    CARGOS.list = r.data || []; CARGOS.loaded = true; CARGOS.loading = false; CARGOS.error = "";
+  }).catch(function (e) { CARGOS.loaded = true; CARGOS.loading = false; CARGOS.error = errMsg(e); });
+}
+function slugCargo(n) { return norm(n).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "cargo"; }
+function cargoForm(c) {
+  var st = statusEl(), pre = c ? "cg-" + c.id : "cg-nuevo";
+  var nombre = h("input", { id: pre + "-n", type: "text", maxlength: "60", value: c ? c.nombre : "" });
+  var desc = h("input", { id: pre + "-d", type: "text", maxlength: "300", value: (c && c.descripcion) || "", placeholder: "Opcional" });
+  var checks = PERMISOS_DEF.map(function (p) {
+    var cb = h("input", { type: "checkbox", id: pre + "-p-" + p[0], checked: c && c.permisos.indexOf(p[0]) >= 0 || null, disabled: c && c.sistema || null });
+    return { k: p[0], cb: cb, el: h("label", { class: "perm-check", for: pre + "-p-" + p[0] }, cb, h("span", null, h("b", { text: p[1] }), h("small", { text: p[2] }))) };
+  });
+  var btn = h("button", { class: "btn primary small", type: "submit", text: c ? "Guardar" : "Añadir cargo" });
+  var f = h("form", { class: c ? "cargo-edit" : "aform", novalidate: true }, c ? null : h("h3", { text: "Nuevo cargo" }),
+    h("div", { class: "field" }, h("label", { for: pre + "-n", text: "Nombre *" }), nombre),
+    h("div", { class: "field" }, h("label", { for: pre + "-d", text: "Descripción" }), desc),
+    h("span", { class: "flabel", text: "Permisos" }), h("div", { class: "perm-checks" }, checks.map(function (x) { return x.el; })),
+    h("small", { class: "muted", text: "Sin ninguna casilla, el cargo solo ve lo de la directiva (tareas, reuniones y sugerencias), como un Vocal." }),
+    h("div", { class: "form-acts" }, btn, c ? h("button", { class: "btn ghost small", type: "button", text: "Cancelar", onclick: function () { CARGOS.edit = null; render(); } }) : null), st);
+  f.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (!nombre.value.trim()) { setStatus(st, "Escribe el nombre del cargo.", false); return; }
+    var datos = { nombre: nombre.value.trim(), descripcion: desc.value.trim() || null };
+    if (!(c && c.sistema)) datos.permisos = checks.filter(function (x) { return x.cb.checked; }).map(function (x) { return x.k; });
+    btn.disabled = true;
+    var q;
+    if (c) q = SB.from("cargos").update(datos).eq("id", c.id);
+    else {
+      var id = slugCargo(datos.nombre);
+      if (CARGOS.list.some(function (x) { return x.id === id; })) id += "-" + Math.random().toString(36).slice(2, 6);
+      q = SB.from("cargos").insert(Object.assign(datos, { id: id, orden: 50 + CARGOS.list.length }));
+    }
+    q.then(check).then(function () { CARGOS.edit = null; CUENTAS.loaded = false; return Promise.all([loadCargos(), refreshAdmin()]); }).then(render, function (e) { btn.disabled = false; setStatus(st, errMsg(e), false); });
+  });
+  return f;
+}
+function adminCargos() {
+  if (!CARGOS.loaded && !CARGOS.loading) loadCargos().then(render);
+  if (!DIRECTIVA.loaded && !DIRECTIVA.loading) loadDirectiva().then(render);
+  if (!CARGOS.loaded) return h("div", { class: "empty" }, h("p", { text: "Cargando cargos…" }));
+  if (CARGOS.error) return h("div", { class: "notice" }, h("h3", { text: "No se han podido cargar los cargos" }), h("p", { class: "muted", text: CARGOS.error + " Si es la primera vez, ejecuta supabase/directiva.sql en Supabase." }));
+  var list = h("div", { class: "cargos" }, CARGOS.list.map(function (c) {
+    var gente = DIRECTIVA.list.filter(function (a) { return a.cargo_id === c.id; });
+    if (CARGOS.edit === c.id) return h("article", { class: "cargo editing" }, cargoForm(c));
+    return h("article", { class: "cargo" + (c.sistema ? " sistema" : "") },
+      h("div", { class: "cg-top" }, h("h3", { text: c.nombre }), c.sistema ? h("span", { class: "pill-soft", text: "Fijo" }) : null),
+      c.descripcion ? h("p", { class: "muted small", text: c.descripcion }) : null,
+      h("div", { class: "perm-row" }, permChips(c.permisos)),
+      h("p", { class: "small cg-people", text: gente.length ? "👤 " + gente.map(function (a) { return a.nombre || a.email; }).join(", ") : "Nadie tiene este cargo." }),
+      h("div", { class: "form-acts" },
+        h("button", { class: "btn ghost small", type: "button", text: "Editar", onclick: function () { CARGOS.edit = c.id; render(); } }),
+        c.sistema ? null : deleteButton(function (b) {
+          if (gente.length) { b.disabled = false; b.textContent = "Borrar"; alert2(b, "Antes cambia de cargo a quien lo tiene."); return; }
+          SB.from("cargos").delete().eq("id", c.id).then(check).then(loadCargos).then(render, function (e) { b.disabled = false; b.textContent = "Borrar"; alert2(b, errMsg(e)); });
+        })));
+  }));
+  return h("div", { class: "cargos-panel" },
+    h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Cargos de la directiva" }),
+      h("p", { class: "muted", text: "Cada cargo decide qué puede hacer quien lo tiene. Para asignar un cargo a alguien, ve a Personas y accesos → Editar accesos." }))),
+    h("div", { class: "admin-grid" }, list, cargoForm(null)));
+}
+
+/* ---------- Lista de la directiva (para reuniones y cargos) ---------- */
+var DIRECTIVA = { loaded: false, loading: false, list: [] };
+function loadDirectiva() {
+  DIRECTIVA.loading = true;
+  return SB.from("administradores").select("user_id,email,nombre,cargo_id").then(function (r) {
+    DIRECTIVA.list = r.error ? [] : (r.data || []); DIRECTIVA.loaded = true; DIRECTIVA.loading = false;
+  }, function () { DIRECTIVA.loaded = true; DIRECTIVA.loading = false; });
+}
+
+/* ---------- Panel: reuniones de la directiva ---------- */
+var REUN = { loaded: false, loading: false, list: [], asist: [], error: "", open: null, edit: null, nueva: false, ver: "proximas" };
+var R_TIPOS = [["ordinaria", "Ordinaria"], ["extraordinaria", "Extraordinaria"], ["asamblea", "Asamblea de socios"]];
+function loadReuniones() {
+  REUN.loading = true;
+  return Promise.all([SB.from("reuniones").select("*").order("fecha"), optional(SB.from("reunion_asistencias").select("*"))]).then(function (rs) {
+    if (rs[0].error) throw rs[0].error;
+    REUN.list = rs[0].data || []; REUN.asist = (rs[1] && rs[1].data) || []; REUN.loaded = true; REUN.loading = false; REUN.error = "";
+  }).catch(function (e) { REUN.loaded = true; REUN.loading = false; REUN.error = errMsg(e); });
+}
+function reunionForm(r) {
+  var st = statusEl(), pre = r ? "re-" + r.id.slice(0, 8) : "re-n";
+  var titulo = h("input", { id: pre + "-t", type: "text", maxlength: "200", value: r ? r.titulo : "Reunión de la directiva" });
+  var tipo = h("select", { id: pre + "-ti" }, R_TIPOS.map(function (t) { return h("option", { value: t[0], text: t[1], selected: (r ? r.tipo : "ordinaria") === t[0] || null }); }));
+  var fecha = h("input", { id: pre + "-f", type: "date", value: r ? r.fecha : "" });
+  var hora = h("input", { id: pre + "-h", type: "time", value: (r && r.hora) || "20:00" });
+  var lugar = h("input", { id: pre + "-l", type: "text", value: r ? (r.lugar || "") : "Casa de la Música", placeholder: "Sede, local…" });
+  var orden = h("textarea", { id: pre + "-o", placeholder: "1. Lectura y aprobación del acta anterior\n2. …\n3. Ruegos y preguntas" }); orden.value = (r && r.orden_dia) || "";
+  var btn = h("button", { class: "btn primary", type: "submit", text: r ? "Guardar" : "Convocar reunión" });
+  var f = h("form", { class: "aform", novalidate: true }, h("h3", { text: r ? "Editar convocatoria" : "Nueva reunión" }),
+    h("div", { class: "field" }, h("label", { for: pre + "-t", text: "Título *" }), titulo),
+    h("div", { class: "two" }, h("div", { class: "field" }, h("label", { for: pre + "-f", text: "Fecha *" }), fecha), h("div", { class: "field" }, h("label", { for: pre + "-h", text: "Hora" }), hora)),
+    h("div", { class: "two" }, h("div", { class: "field" }, h("label", { for: pre + "-ti", text: "Tipo" }), tipo), h("div", { class: "field" }, h("label", { for: pre + "-l", text: "Lugar" }), lugar)),
+    h("div", { class: "field" }, h("label", { for: pre + "-o", text: "Orden del día" }), orden, h("small", { text: "Un punto por línea." })),
+    h("div", { class: "form-acts" }, btn, h("button", { class: "btn ghost", type: "button", text: "Cancelar", onclick: function () { REUN.nueva = false; REUN.edit = null; render(); } })), st);
+  f.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (!titulo.value.trim() || !fecha.value) { setStatus(st, "Pon el título y la fecha.", false); return; }
+    btn.disabled = true;
+    var datos = { titulo: titulo.value.trim(), tipo: tipo.value, fecha: fecha.value, hora: hora.value || null, lugar: lugar.value.trim() || null, orden_dia: orden.value.trim() || null };
+    var q = r ? SB.from("reuniones").update(datos).eq("id", r.id) : SB.from("reuniones").insert(Object.assign(datos, { autor: displayName() })).select();
+    q.then(check).then(function (res) {
+      REUN.nueva = false; REUN.edit = null;
+      if (!r && res && res.data && res.data[0]) REUN.open = res.data[0].id;
+      return loadReuniones();
+    }).then(render, function (e) { btn.disabled = false; setStatus(st, errMsg(e), false); });
+  });
+  return f;
+}
+function reunionAsist(r) { return REUN.asist.filter(function (a) { return a.reunion_id === r.id; }); }
+function rsvpReunion(r) {
+  var uid = SESSION && SESSION.user && SESSION.user.id, mine = reunionAsist(r).filter(function (a) { return a.user_id === uid; })[0];
+  return h("div", { class: "r-rsvp", role: "group", "aria-label": "¿Vas a ir?" }, [["si", "✓ Voy"], ["duda", "? No sé"], ["no", "✗ No puedo"]].map(function (o) {
+    return h("button", { type: "button", class: "rr rr-" + o[0], "aria-pressed": mine && mine.estado === o[0] ? "true" : "false", text: o[1], onclick: function (ev) {
+      ev.currentTarget.disabled = true;
+      SB.from("reunion_asistencias").upsert({ reunion_id: r.id, user_id: uid, nombre: displayName(), estado: o[0], actualizado: new Date().toISOString() }).then(check)
+        .then(loadReuniones).then(render, function (e) { alert2(ev.target, errMsg(e)); });
+    } });
+  }));
+}
+function reunionCard(r) {
+  var as = reunionAsist(r), si = as.filter(function (a) { return a.estado === "si"; }).length;
+  var pasada = r.fecha < todayStr();
+  return h("article", { class: "reunion est-" + r.estado + (pasada ? " pasada" : "") },
+    h("a", { class: "r-date", href: "#admin-reuniones", onclick: function (ev) { ev.preventDefault(); REUN.open = r.id; render(); window.scrollTo(0, 0); } },
+      h("b", { text: String(+r.fecha.slice(8, 10)) }), h("span", { text: MES_CORTO[+r.fecha.slice(5, 7) - 1] })),
+    h("div", { class: "r-body" },
+      h("h4", null, h("a", { href: "#admin-reuniones", text: r.titulo, onclick: function (ev) { ev.preventDefault(); REUN.open = r.id; render(); window.scrollTo(0, 0); } })),
+      h("p", { class: "muted small", text: [fmtLong(r.fecha), r.hora, r.lugar, (R_TIPOS.filter(function (t) { return t[0] === r.tipo; })[0] || [0, ""])[1]].filter(Boolean).join(" · ") }),
+      h("p", { class: "small", text: r.estado === "cancelada" ? "Cancelada" : r.estado === "celebrada" ? (r.acta ? "Celebrada · acta redactada" : "Celebrada · falta el acta") : si + " de " + (DIRECTIVA.list.length || "?") + " confirman que van" })),
+    r.estado === "convocada" && !pasada ? rsvpReunion(r) : null);
+}
+function reunionDetalle(r) {
+  var st = statusEl();
+  var as = reunionAsist(r);
+  var acta = h("textarea", { id: "ra-acta", class: "acta", placeholder: "Asistentes, temas tratados, votaciones…" }); acta.value = r.acta || "";
+  var acuerdos = h("textarea", { id: "ra-acu", placeholder: "Un acuerdo por línea" }); acuerdos.value = r.acuerdos || "";
+  var estado = h("select", { id: "ra-est" }, [["convocada", "Convocada"], ["celebrada", "Celebrada"], ["cancelada", "Cancelada"]].map(function (e) { return h("option", { value: e[0], text: e[1], selected: r.estado === e[0] || null }); }));
+  var save = h("button", { class: "btn primary", type: "button", text: "Guardar acta y acuerdos" });
+  save.addEventListener("click", function () {
+    save.disabled = true;
+    SB.from("reuniones").update({ acta: acta.value.trim() || null, acuerdos: acuerdos.value.trim() || null, estado: estado.value }).eq("id", r.id).then(check)
+      .then(loadReuniones).then(function () { FLASH = { col: "reunion", msg: "Guardado." }; render(); }, function (e) { save.disabled = false; setStatus(st, errMsg(e), false); });
+  });
+  if (FLASH && FLASH.col === "reunion") { setStatus(st, FLASH.msg, true); FLASH = null; }
+  var tareasDe = TAREAS.loaded ? TAREAS.list.filter(function (t) { return t.reunion_id === r.id; }) : [];
+  var lineas = (r.acuerdos || "").split(/\n+/).map(function (x) { return x.replace(/^\s*[-•\d.)]+\s*/, "").trim(); }).filter(Boolean);
+  var personas = DIRECTIVA.list.map(function (d) {
+    var a = as.filter(function (x) { return x.user_id === d.user_id; })[0];
+    return h("li", { class: "ra-" + (a ? a.estado : "nada") }, h("span", { class: "dot", "aria-hidden": "true" }), h("span", { text: (d.nombre || d.email) }), h("small", { text: cargoNombre(d.cargo_id) + " · " + (a ? { si: "Va", no: "No puede", duda: "No lo sabe" }[a.estado] : "Sin responder") }));
+  });
+  return h("div", { class: "reunion-det" },
+    h("button", { class: "back linkish", type: "button", onclick: function () { REUN.open = null; render(); } }, "‹ Todas las reuniones"),
+    REUN.edit === r.id ? reunionForm(r) : h("div", { class: "rd-head" },
+      h("div", null, h("span", { class: "eyebrow-s", text: (R_TIPOS.filter(function (t) { return t[0] === r.tipo; })[0] || [0, ""])[1] + " · " + { convocada: "Convocada", celebrada: "Celebrada", cancelada: "Cancelada" }[r.estado] }),
+        h("h2", { text: r.titulo }), h("p", { class: "muted", text: [fmtLong(r.fecha), r.hora, r.lugar].filter(Boolean).join(" · ") + (r.autor ? " · Convoca " + r.autor : "") })),
+      h("div", { class: "form-acts" }, h("button", { class: "btn ghost small", type: "button", text: "Editar convocatoria", onclick: function () { REUN.edit = r.id; render(); } }),
+        deleteButton(function (b) { SB.from("reuniones").delete().eq("id", r.id).then(check).then(function () { REUN.open = null; return loadReuniones(); }).then(render, function (e) { b.disabled = false; b.textContent = "Borrar"; alert2(b, errMsg(e)); }); }))),
+    h("div", { class: "rd-grid" },
+      h("section", { class: "cbox" }, h("h3", { text: "Orden del día" }),
+        r.orden_dia ? h("ol", { class: "orden" }, r.orden_dia.split(/\n+/).map(function (x) { return x.replace(/^\s*\d+[.)]\s*/, "").trim(); }).filter(Boolean).map(function (x) { return h("li", { text: x }); })) : h("p", { class: "muted", text: "Sin orden del día." }),
+        r.estado === "convocada" && r.fecha >= todayStr() ? h("div", null, h("h3", { text: "¿Vas a ir?" }), rsvpReunion(r)) : null),
+      h("section", { class: "cbox" }, h("h3", { text: "Asistencia" }), personas.length ? h("ul", { class: "ra-list" }, personas) : h("p", { class: "muted", text: "Cargando la directiva…" }))),
+    h("section", { class: "cbox rd-acta" }, h("h3", { text: "Acta y acuerdos" }),
+      h("div", { class: "field" }, h("label", { for: "ra-est", text: "Estado" }), estado),
+      h("div", { class: "field" }, h("label", { for: "ra-acta", text: "Acta" }), acta),
+      h("div", { class: "field" }, h("label", { for: "ra-acu", text: "Acuerdos" }), acuerdos, h("small", { text: "Después de guardar, cada acuerdo se puede convertir en una tarea de la directiva." })),
+      h("div", { class: "form-acts" }, save), st,
+      lineas.length ? h("div", { class: "acuerdos" }, h("h4", { text: "Acuerdos" }), lineas.map(function (l) {
+        var hecha = tareasDe.filter(function (t) { return t.titulo === l; })[0];
+        return h("div", { class: "acuerdo" }, h("span", { text: l }), hecha ? h("a", { class: "pill-soft", href: "#admin-tareas", text: "📋 Tarea: " + (T_ESTADOS.filter(function (e) { return e[0] === hecha.estado; })[0] || [0, ""])[1] })
+          : h("button", { class: "btn ghost small", type: "button", text: "＋ Convertir en tarea", onclick: function (ev) {
+            var b = ev.currentTarget; b.disabled = true;
+            SB.from("tareas").insert({ titulo: l.slice(0, 200), descripcion: "Acuerdo de la reunión «" + r.titulo + "» del " + fmtLong(r.fecha) + ".", estado: "pendiente", prioridad: "media", autor: displayName(), reunion_id: r.id })
+              .then(check).then(loadTareas).then(render, function (e) { b.disabled = false; alert2(b, errMsg(e)); });
+          } }));
+      })) : null));
+}
+function adminReuniones() {
+  if (!REUN.loaded && !REUN.loading) loadReuniones().then(render);
+  if (!DIRECTIVA.loaded && !DIRECTIVA.loading) loadDirectiva().then(render);
+  if (!TAREAS.loaded && !TAREAS.loading) loadTareas().then(render);
+  if (!REUN.loaded) return h("div", { class: "empty" }, h("p", { text: "Cargando reuniones…" }));
+  if (REUN.error) return h("div", { class: "notice" }, h("h3", { text: "No se han podido cargar las reuniones" }), h("p", { class: "muted", text: REUN.error + " Si es la primera vez, ejecuta supabase/directiva.sql en Supabase." }));
+  var open = REUN.open ? REUN.list.filter(function (r) { return r.id === REUN.open; })[0] : null;
+  if (open) return reunionDetalle(open);
+  var hoy = todayStr();
+  var prox = REUN.list.filter(function (r) { return r.fecha >= hoy && r.estado !== "cancelada"; });
+  var past = REUN.list.filter(function (r) { return r.fecha < hoy || r.estado === "cancelada"; }).reverse();
+  var lista = REUN.ver === "proximas" ? prox : past;
+  return h("div", { class: "reuniones" },
+    h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Reuniones de la directiva" }), h("p", { class: "muted", text: "Convoca reuniones con su orden del día, confirma si vas, y después redacta el acta. Los acuerdos se pueden pasar a tareas." })),
+      REUN.nueva ? null : h("button", { class: "btn primary", type: "button", text: "+ Convocar reunión", onclick: function () { REUN.nueva = true; render(); } })),
+    REUN.nueva ? reunionForm(null) : null,
+    h("div", { class: "seg", role: "group", "aria-label": "Ver" }, [["proximas", "Próximas (" + prox.length + ")"], ["pasadas", "Anteriores (" + past.length + ")"]].map(function (v) {
+      return h("button", { type: "button", "aria-pressed": REUN.ver === v[0] ? "true" : "false", text: v[1], onclick: function () { REUN.ver = v[0]; render(); } });
+    })),
+    lista.length ? h("div", { class: "r-list" }, lista.map(reunionCard)) : h("div", { class: "empty" }, h("p", { text: REUN.ver === "proximas" ? "No hay reuniones convocadas." : "Todavía no hay reuniones anteriores." })));
 }
 
 
@@ -3561,12 +3811,13 @@ var ASSETS_ADAPTER = {
 };
 function updateNav() {}
 function refreshAdmin() {
-  if (!SESSION) { IS_ADMIN = false; ASSETS = null; updateNav(); return Promise.resolve(); }
-  return SB.rpc("es_admin").then(function (r) {
-    IS_ADMIN = !r.error && r.data === true;
-    ASSETS = IS_ADMIN ? ASSETS_ADAPTER : null;
-    updateNav();
-  }, function () { IS_ADMIN = false; ASSETS = null; updateNav(); });
+  if (!SESSION) { IS_ADMIN = false; PERMS = []; MI_CARGO = ""; ASSETS = null; updateNav(); return Promise.resolve(); }
+  function done() { ASSETS = can("web") ? ASSETS_ADAPTER : null; updateNav(); }
+  return SB.rpc("mis_permisos").then(function (r) {
+    if (!r.error && r.data) { IS_ADMIN = r.data.admin === true; PERMS = IS_ADMIN ? (r.data.permisos || []) : []; MI_CARGO = r.data.cargo || ""; return done(); }
+    // Base de datos sin cargos todavía (falta supabase/directiva.sql): todo administrador puede todo
+    return SB.rpc("es_admin").then(function (r2) { IS_ADMIN = !r2.error && r2.data === true; PERMS = IS_ADMIN ? ["web", "musica", "cuentas"] : []; MI_CARGO = ""; done(); });
+  }).catch(function () { IS_ADMIN = false; PERMS = []; ASSETS = null; updateNav(); });
 }
 
 if (configured() && window.supabase && window.supabase.createClient) {
@@ -3579,7 +3830,7 @@ if (configured() && window.supabase && window.supabase.createClient) {
   SB.auth.onAuthStateChange(function (event, session) {
     if (event === "INITIAL_SESSION") return;
     SESSION = session || null;
-    ADMINS.loaded = false; ADMINS.list = [];
+    ADMINS.loaded = false; ADMINS.list = []; CUENTAS.loaded = false; CARGOS.loaded = false; REUN.loaded = false; REUN.open = null; DIRECTIVA.loaded = false; TAREAS.loaded = false;
     CUENTAS.loaded = false; CUENTAS.list = [];
     PRIV.loaded = false; PRIV.loading = true;
     // Se sale del callback antes de llamar de nuevo a Supabase

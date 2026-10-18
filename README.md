@@ -22,6 +22,7 @@ supabase/datos-iniciales.sql   Contenido de partida (directores, noticias, conci
 supabase/anadir-administrador.sql  Para dar permiso de edición a una persona
 supabase/area-musicos.sql      Área de músicos: asistencia, anuncios y partituras privadas
 supabase/repertorio.sql        Valoraciones de obras y peticiones de partituras
+supabase/directiva.sql         Cargos con permisos, cuentas unificadas y reuniones de la directiva
 vercel.json                    Ajustes de Vercel
 ```
 
@@ -154,3 +155,17 @@ Desde **🔒 Acceso privado** cada músico entra con su **usuario** (o su correo
 - **Perfil:** tus datos, tu porcentaje de asistencia, las convocatorias respondidas y el cambio de contraseña.
 
 Archivos: `supabase/area-musicos.sql` y `supabase/repertorio.sql` (tablas y seguridad: ejecuta los dos en el SQL Editor, en ese orden), `supabase/functions/musicos/index.ts` (crear cuentas y entrar con usuario), `js/instrumentos.js` (reconocimiento de instrumentos y voces) y `js/vendor/` (librerías para leer y dividir PDF y hacer los .zip).
+
+## Directiva: personas, cargos y reuniones
+
+Ejecuta `supabase/directiva.sql` en el SQL Editor (después de `repertorio.sql`) y despliega de nuevo la función `musicos`.
+
+- **Personas y accesos** (Administración → Directiva): una sola cuenta por persona. Se le marca si es **músico** (instrumento, voz, formación) y/o si está en la **directiva** (con su cargo). Quien está en la directiva y no toca no necesita ficha de músico. Puede entrar con su usuario o con su correo.
+- **Cargos**: cada cargo tiene tres permisos que se marcan desde la web:
+  - *Editar la web*: textos, noticias, eventos, fotos…
+  - *Área de músicos*: partituras, agenda y eventos, avisos y pase de lista.
+  - *Cuentas y permisos*: crear cuentas, dar accesos y cambiar los cargos.
+  Un cargo sin ninguna casilla (por ejemplo **Vocal**) solo ve lo de la directiva: tareas, reuniones y sugerencias. Se pueden crear, cambiar y borrar cargos. El cargo «Administrador general» no se puede borrar, y la base de datos no deja que se quede nadie con el permiso «Cuentas y permisos».
+- **Reuniones**: convocatoria con orden del día, confirmación de asistencia de cada miembro, acta y acuerdos; cada acuerdo se puede convertir en una tarea.
+
+Los permisos se comprueban en la base de datos (reglas de seguridad de Supabase), no solo en la web.
