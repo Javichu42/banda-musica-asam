@@ -1545,3 +1545,80 @@ body.in-area .top .wrap { gap: 22px; }
 body.in-area .instalar-ios { margin-top: 0; }
 .ip-instalar { font-size: 1.05rem; padding: 14px 22px; }
 .ip-ok { margin: 0; padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--verde) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--verde) 45%, var(--line)); font-weight: 700; }
+
+/* ===== Arreglos móvil (octubre) ===== */
+.top-right { display: flex; align-items: center; gap: 10px; margin-left: auto; flex: none; }
+.top-area-in .top-right .ver-como { margin-left: 0; }
+/* Barra de pestañas inferior fija: no se desplaza ni rebota */
+@media (max-width: 760px) {
+  body.in-area { overscroll-behavior-y: none; }
+  html:has(body.in-area) { overscroll-behavior-y: none; }
+  .area-tabs { position: fixed !important; left: 0; right: 0; bottom: 0; top: auto !important; transform: translateZ(0); will-change: transform; touch-action: manipulation; }
+  .area-tabs .wrap { overflow: hidden; flex-wrap: nowrap; padding-left: 0; padding-right: 0; max-width: none; }
+  .area-tabs a { min-width: 0; padding-left: 2px; padding-right: 2px; }
+  .area-tabs a .t-label { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  body.in-area .top { position: sticky; top: 0; }
+}
+/* Foto de perfil */
+.pf-foto { display: grid; justify-items: center; gap: 4px; }
+.pf-foto-btn { position: relative; cursor: pointer; border-radius: 50%; }
+.pf-foto-btn .pf-av { width: 92px; height: 92px; }
+.pf-cam { position: absolute; right: -2px; bottom: -2px; width: 32px; height: 32px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); display: grid; place-items: center; font-size: 16px; box-shadow: var(--shadow); }
+.pf-foto-acts { display: flex; gap: 12px; font-size: .85rem; }
+.pf-foto-acts .linkish { cursor: pointer; }
+.pf-foto-st { color: var(--muted); max-width: 180px; text-align: center; }
+img.u-av.photo, img.pf-av.photo { object-fit: cover; background: var(--surface-2); }
+body.in-area .page, body.in-area #app > * { animation: none !important; transform: none !important; }
+/* Inicio en el móvil: la foto arriba, nítida, y el texto debajo */
+@media (max-width: 760px) {
+  .hero::before { inset: 0 0 auto 0; height: 300px; opacity: .9; background-position: center 35%;
+    -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%); mask-image: linear-gradient(to bottom, #000 55%, transparent 100%); }
+  .hero > .wrap:first-child { padding-top: 230px; }
+  .hero h1 { margin-top: 0; text-shadow: 0 1px 0 var(--surface), 0 0 18px var(--surface); }
+  .hero .logo-card { max-width: 220px; margin-inline: auto; }
+}
+/* Dirección: que nada se salga por los lados en el móvil */
+.directors > *, .junta > * { min-width: 0; }
+.dcard { min-width: 0; }
+.dcard header > div { min-width: 0; }
+.dcard h3, .dcard .role, .dcard p, .dcard li { overflow-wrap: anywhere; }
+@media (max-width: 700px) { .directors { grid-template-columns: minmax(0, 1fr); } .dcard { padding: 20px; } }
+html, body { max-width: 100%; overflow-x: clip; }
+/* Hoja de socio */
+.socio-hoja { border-style: solid; display: grid; gap: 18px; }
+.socio-form { display: grid; gap: 18px; max-width: 820px; }
+.socio-form fieldset { border: 1px solid var(--line); border-radius: 18px; padding: 18px; margin: 0; display: grid; gap: 14px; min-width: 0; background: var(--bg); }
+.socio-form legend { font-family: var(--f-display); font-weight: 800; font-size: 1.1rem; padding: 0 8px; }
+.so-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+.so-grid .span2 { grid-column: 1 / -1; }
+@media (min-width: 760px) { .so-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .so-grid .span2 { grid-column: span 2; } }
+@media (max-width: 480px) { .so-grid { grid-template-columns: 1fr; } .so-grid .span2 { grid-column: auto; } }
+.so-tipos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 560px) { .so-tipos { grid-template-columns: 1fr; } }
+.so-tipo { text-align: left; border: 2px solid var(--line); background: var(--surface); border-radius: 14px; padding: 12px 14px; cursor: pointer; display: grid; gap: 2px; color: var(--fg); font: inherit; }
+.so-tipo small { color: var(--muted); }
+.so-tipo[aria-checked="true"].t-socio { border-color: #e9a46a; background: #fdeee2; }
+.so-tipo[aria-checked="true"].t-amigo { border-color: #f08a3c; background: #fbd3b2; }
+.so-tipo[aria-checked="true"].t-mecenas { border-color: #e2661b; background: #f9b27c; }
+.so-cuota input { max-width: 200px; }
+.so-banco { color: var(--verde); font-weight: 600; }
+#so-iban { font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: .04em; }
+.so-legal { font-size: .88rem; font-style: italic; color: var(--muted); margin: 0; }
+.so-fecha { margin: 0; font-weight: 600; }
+.so-firma-box { position: relative; border: 2px dashed color-mix(in srgb, var(--azul) 55%, var(--line)); border-radius: 14px; background: #fff; max-width: 520px; }
+.so-firma { display: block; width: 100%; height: auto; aspect-ratio: 600 / 260; touch-action: none; cursor: crosshair; border-radius: 12px; }
+.so-firma-ph { position: absolute; inset: 0; display: grid; place-items: center; color: #9aa3b5; pointer-events: none; font-size: .95rem; }
+.so-enviar { font-size: 1.05rem; padding: 13px 22px; }
+.socio-ok { text-align: center; display: grid; gap: 10px; justify-items: center; padding: 10px 0; }
+.so-ok-ico { font-size: 2.6rem; }
+.admin-tabs a.tab-solicitudes { background: color-mix(in srgb, #e2661b 10%, var(--surface)); border-color: color-mix(in srgb, #e2661b 45%, var(--line)); color: #a84a10; }
+.admin-tabs a.tab-solicitudes[aria-current="page"] { background: #e2661b; border-color: #e2661b; color: #fff; }
+.solicitudes .seg { margin: 4px 0 14px; }
+.sl-list { display: grid; gap: 12px; }
+.solicitud { background: var(--surface); border: 1px solid var(--line); border-left: 5px solid #e2661b; border-radius: 16px; padding: 16px; display: grid; gap: 10px; }
+.solicitud.est-tramitada { border-left-color: var(--verde); opacity: .85; }
+.sl-top { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
+.sl-datos { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: .92rem; }
+.sl-datos dt { color: var(--muted); font-weight: 600; }
+.sl-datos dd { margin: 0; overflow-wrap: anywhere; }
+.mono { font-family: ui-monospace, Menlo, Consolas, monospace; }

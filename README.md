@@ -24,6 +24,9 @@ supabase/area-musicos.sql      Área de músicos: asistencia, anuncios y partitu
 supabase/repertorio.sql        Valoraciones de obras y peticiones de partituras
 supabase/directiva.sql         Cargos con permisos, cuentas unificadas y reuniones de la directiva
 supabase/notificaciones.sql    Móviles con los avisos activados (notificaciones push)
+supabase/perfil.sql            Fotos de perfil que sube cada persona
+supabase/socios.sql            Hojas de alta de socio enviadas desde la web
+docs/alta-socio.pdf            Plantilla oficial de la hoja de socio (la web escribe encima)
 sw.js, manifest.webmanifest    La web como app instalable y receptor de notificaciones
 vercel.json                    Ajustes de Vercel
 ```
@@ -198,3 +201,15 @@ Puesta en marcha (una vez):
 3. La función `avisos` (`supabase/functions/avisos/`) es la que envía las notificaciones.
 
 La clave privada no se guarda nunca en el repositorio ni en la web. Si se cambian las claves, los músicos tendrán que volver a activar los avisos.
+
+## Hoja de alta de socio
+
+En «Hacerse socio» cualquiera puede rellenar la hoja oficial, firmarla con el dedo o el ratón y enviarla. La web escribe los datos y la firma sobre `docs/alta-socio.pdf`, la persona se descarga su copia y la directiva la recibe en Administración → Directiva → «📝 Altas de socio» (con el PDF firmado y los datos; el IBAN aparece oculto hasta pulsar «mostrar»). Hay que ejecutar `supabase/socios.sql`.
+
+## Fotos de perfil
+
+Cada persona puede poner su foto desde Área de músicos → Perfil (se recorta en cuadrado y se reduce antes de subirla). Hay que ejecutar `supabase/perfil.sql`.
+
+## Móvil
+
+En el móvil, los músicos tienen que usar el Área de músicos desde la web instalada en la pantalla de inicio y con los avisos activados (la web les guía paso a paso). Cada vez que abren la app se comprueba su suscripción a los avisos, así que reinstalar la app o cambiar de móvil no deja a nadie sin avisos. Al cerrar sesión solo se cierra en ese dispositivo.

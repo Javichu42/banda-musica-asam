@@ -78,8 +78,8 @@ export async function vapidAuth(endpoint: string, publicKey: string, privateKey:
   return "vapid t=" + header + "." + claims + "." + b64uEncode(sig) + ", k=" + publicKey;
 }
 
-/** Envía una notificación. Devuelve el código HTTP (404/410 = la suscripción ya no existe). */
-export async function enviarPush(sub: Suscripcion, datos: unknown, vapid: { publicKey: string; privateKey: string; contacto: string }, ttl = 86400): Promise<number> {
+/** Envía una notificación. Devuelve el código HTTP (404/410 = la suscripción ya no existe) y la respuesta. */
+export async function enviarPush(sub: Suscripcion, datos: unknown, vapid: { publicKey: string; privateKey: string; contacto: string }, ttl = 86400): Promise<{ status: number; texto: string }> {
   const body = await cifrar(JSON.stringify(datos), sub);
   const r = await fetch(sub.endpoint, {
     method: "POST",
@@ -92,6 +92,6 @@ export async function enviarPush(sub: Suscripcion, datos: unknown, vapid: { publ
     },
     body,
   });
-  await r.arrayBuffer().catch(() => null);
-  return r.status;
+  const texto = await r.text().catch(() => "");
+  return { status: r.status, texto: texto.slice(0, 300) };
 }

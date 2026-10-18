@@ -512,6 +512,192 @@ function socioNiveles(S) {
         return h("li", null, h("span", { class: "ven-ico", "aria-hidden": "true", text: vIcons[i % 3] }), h("div", null, h("b", { text: v[0] }), v[1] ? h("p", { text: v[1] }) : null));
       }))) : null);
 }
+/* =====================================================================
+   HOJA DE ALTA DE SOCIO (se rellena y se firma en la web)
+   ===================================================================== */
+var SOCIO_TIPOS = [["socio", "Cuota Socio", 12, 49, "Entre 12 € y 49 € al año"], ["amigo", "Cuota Amigo", 50, 499, "Entre 50 € y 499 € al año"], ["mecenas", "Cuota Mecenas", 500, 100000, "A partir de 500 € al año"]];
+var BANCOS_ES = { "0049": "Banco Santander", "0030": "Banco Santander", "0075": "Banco Santander", "0182": "BBVA", "2100": "CaixaBank", "2038": "CaixaBank", "3059": "Caja Rural de Asturias", "2048": "Unicaja", "2103": "Unicaja", "0081": "Banco Sabadell", "0128": "Bankinter", "1465": "ING", "0073": "Openbank", "0239": "EVO Banco", "3058": "Cajamar", "2085": "Ibercaja", "1491": "Triodos Bank", "0186": "Banco Mediolanum", "0237": "Cajasur", "2095": "Kutxabank", "0061": "Banca March", "0487": "Banco Mare Nostrum", "1583": "Revolut", "0083": "Renta 4", "3025": "Caixa d'Enginyers", "3035": "Laboral Kutxa", "0019": "Deutsche Bank", "0216": "Targobank", "0138": "Bankoa", "0198": "Banco Cooperativo Español", "3183": "Caja de Arquitectos", "0131": "Novo Banco", "0234": "Banco Caminos", "2080": "Abanca", "0238": "Banco Pastor", "1550": "Banca Pueyo" };
+function ibanLimpio(v) { return String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+function ibanValido(v) {
+  var s = ibanLimpio(v);
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(s)) return false;
+  if (s.slice(0, 2) === "ES" && s.length !== 24) return false;
+  var r = s.slice(4) + s.slice(0, 4), resto = 0;
+  for (var i = 0; i < r.length; i++) { var c = r[i], n = c >= "A" ? String(c.charCodeAt(0) - 55) : c; for (var j = 0; j < n.length; j++) resto = (resto * 10 + +n[j]) % 97; }
+  return resto === 1;
+}
+function dniValido(v) {
+  var s = String(v || "").toUpperCase().replace(/[\s-]/g, ""), L = "TRWAGMYFPDXBNJZSQVHLCKE";
+  var m = /^([XYZ]?)(\d{7,8})([A-Z])$/.exec(s);
+  if (!m) return /^[A-Z0-9]{5,15}$/.test(s) && !/^\d+$/.test(s) ? "otro" : false; // pasaporte u otro documento
+  var num = m[1] ? ({ X: "0", Y: "1", Z: "2" }[m[1]] + m[2]) : m[2];
+  return L[+num % 23] === m[3];
+}
+var SOCIO_F = null;
+function socioFormulario() {
+  if (!SOCIO_F) SOCIO_F = { tipo: "socio", cuota: "12", otroTitular: false, enviado: null };
+  var F = SOCIO_F;
+  var st = statusEl();
+  function campo(id, label, attrs, ayuda) {
+    var el = h("input", Object.assign({ id: "so-" + id, type: "text" }, attrs || {}));
+    el.value = F[id] || ""; el.addEventListener("input", function () { F[id] = el.value; });
+    return h("div", { class: "field" }, h("label", { for: "so-" + id, text: label }), el, ayuda ? h("small", { text: ayuda }) : null);
+  }
+  if (F.enviado) {
+    var e = F.enviado;
+    return h("div", { class: "socio-ok" },
+      h("div", { class: "so-ok-ico", "aria-hidden": "true", text: "✅" }),
+      h("h3", { text: e.guardado ? "¡Solicitud enviada! Gracias por hacerte socio/a." : "Tu hoja de socio está lista" }),
+      h("p", { class: "muted", text: e.guardado ? "La directiva la ha recibido y se pondrá en contacto contigo si hace falta. Guarda tu copia en PDF." : "No se ha podido enviar por internet (" + e.error + "). Descarga el PDF y entrégalo en nuestras oficinas o envíalo por correo." }),
+      h("div", { class: "form-acts", style: "justify-content:center" },
+        h("a", { class: "btn primary", href: e.url, download: e.nombre, text: "⬇ Descargar mi hoja en PDF" }),
+        !e.guardado && (DATA.contacto || {}).email ? h("a", { class: "btn ghost", href: "mailto:" + DATA.contacto.email + "?subject=" + encodeURIComponent("Hoja de alta de socio"), text: "✉️ Enviar por correo" }) : null,
+        h("button", { class: "btn ghost", type: "button", text: "Rellenar otra", onclick: function () { SOCIO_F = null; render(); } })));
+  }
+  // Cuota
+  var tipoBox = h("div", { class: "so-tipos", role: "radiogroup", "aria-label": "Tipo de cuota" }, SOCIO_TIPOS.map(function (t) {
+    var on = F.tipo === t[0];
+    return h("button", { type: "button", role: "radio", "aria-checked": on ? "true" : "false", class: "so-tipo t-" + t[0], onclick: function () {
+      F.tipo = t[0]; var c = +F.cuota || 0; if (c < t[2] || c > t[3]) F.cuota = String(t[2]); render(); } }, h("b", { text: t[1] }), h("small", { text: t[4] }));
+  }));
+  var tipo = SOCIO_TIPOS.filter(function (t) { return t[0] === F.tipo; })[0];
+  var cuota = h("input", { id: "so-cuota", type: "number", min: String(tipo[2]), max: tipo[3] < 100000 ? String(tipo[3]) : null, step: "1", inputmode: "numeric" });
+  cuota.value = F.cuota || ""; cuota.addEventListener("input", function () { F.cuota = cuota.value; });
+  // Titular
+  var otro = h("input", { type: "checkbox", id: "so-otro", checked: F.otroTitular || null });
+  otro.addEventListener("change", function () { F.otroTitular = otro.checked; render(); });
+  // IBAN
+  var iban = h("input", { id: "so-iban", type: "text", autocomplete: "off", spellcheck: "false", placeholder: "ES00 0000 0000 00 0000000000", inputmode: "text" });
+  iban.value = F.iban || "";
+  var bancoHint = h("small", { class: "so-banco" });
+  function verIban() {
+    var s = ibanLimpio(iban.value); F.iban = iban.value;
+    if (s.length >= 8 && s.slice(0, 2) === "ES") { var b = BANCOS_ES[s.slice(4, 8)]; if (b) { bancoHint.textContent = "Entidad: " + b; if (!F.entidad) { F.entidad = b; var en = document.getElementById("so-entidad"); if (en) en.value = b; } } else bancoHint.textContent = ""; }
+    if (s.length >= 15) bancoHint.textContent = (ibanValido(s) ? "✓ IBAN correcto" : "⚠ Revisa el IBAN") + (bancoHint.textContent && bancoHint.textContent.indexOf("Entidad") === 0 ? "" : "");
+  }
+  iban.addEventListener("input", function () {
+    var pos = iban.selectionStart, raw = ibanLimpio(iban.value).slice(0, 34), fmt = raw.replace(/(.{4})/g, "$1 ").trim();
+    var antes = iban.value.length; iban.value = fmt; try { iban.setSelectionRange(pos + (fmt.length - antes), pos + (fmt.length - antes)); } catch (e) {}
+    verIban();
+  });
+  // Firma
+  var firma = h("canvas", { class: "so-firma", width: "600", height: "260", "aria-label": "Recuadro para firmar" });
+  var trazos = 0, dibujando = false, ultimo = null;
+  function pos(ev) { var r = firma.getBoundingClientRect(); return { x: (ev.clientX - r.left) * firma.width / r.width, y: (ev.clientY - r.top) * firma.height / r.height }; }
+  var cx = firma.getContext("2d"); cx.lineWidth = 3.2; cx.lineCap = "round"; cx.lineJoin = "round"; cx.strokeStyle = "#0b1f4d";
+  firma.addEventListener("pointerdown", function (ev) { ev.preventDefault(); firma.setPointerCapture(ev.pointerId); dibujando = true; ultimo = pos(ev); cx.beginPath(); cx.arc(ultimo.x, ultimo.y, 1.4, 0, 7); cx.fillStyle = "#0b1f4d"; cx.fill(); });
+  firma.addEventListener("pointermove", function (ev) { if (!dibujando) return; ev.preventDefault(); var p = pos(ev); cx.beginPath(); cx.moveTo(ultimo.x, ultimo.y); cx.lineTo(p.x, p.y); cx.stroke(); ultimo = p; trazos++; });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(function (n) { firma.addEventListener(n, function () { dibujando = false; }); });
+  var borrar = h("button", { type: "button", class: "linkish", text: "Borrar firma", onclick: function () { cx.clearRect(0, 0, firma.width, firma.height); trazos = 0; } });
+  var acepto = h("input", { type: "checkbox", id: "so-acepto" });
+  var aceptoDatos = h("input", { type: "checkbox", id: "so-datos" });
+  var hoy = new Date(), fechaTxt = "En Pola de Siero, a " + hoy.getDate() + " de " + MESES_ES[hoy.getMonth()] + " de " + hoy.getFullYear();
+  var btn = h("button", { class: "btn primary so-enviar", type: "submit", text: "Firmar y enviar mi solicitud" });
+  var form = h("form", { class: "socio-form", novalidate: true },
+    h("fieldset", null, h("legend", { text: "1. Tus datos" }),
+      h("div", { class: "so-grid" },
+        h("div", { class: "span2" }, campo("nombre", "Nombre y apellidos *", { autocomplete: "name" })),
+        campo("dni", "DNI / NIE *", { autocomplete: "off", spellcheck: "false" }),
+        campo("nacimiento", "Fecha de nacimiento", { type: "date", autocomplete: "bday" }),
+        h("div", { class: "span2" }, campo("direccion", "Dirección *", { autocomplete: "street-address" })),
+        campo("cp", "Código postal *", { inputmode: "numeric", autocomplete: "postal-code", maxlength: "5" }),
+        campo("localidad", "Localidad *", { autocomplete: "address-level2" }),
+        h("div", { class: "span2" }, campo("email", "Correo electrónico *", { type: "email", autocomplete: "email" })),
+        campo("fijo", "Teléfono fijo", { type: "tel", autocomplete: "tel" }),
+        campo("movil", "Teléfono móvil *", { type: "tel", autocomplete: "tel" }))),
+    h("fieldset", null, h("legend", { text: "2. Cuota anual" }),
+      tipoBox,
+      h("div", { class: "field so-cuota" }, h("label", { for: "so-cuota", text: "Importe anual (€) *" }), cuota, h("small", { text: tipo[4] + ". Se cobra una vez al año por domiciliación bancaria." }))),
+    h("fieldset", null, h("legend", { text: "3. Domiciliación bancaria" }),
+      h("label", { class: "check", for: "so-otro" }, otro, h("span", { text: "El titular de la cuenta es otra persona" })),
+      F.otroTitular ? h("div", { class: "so-grid" }, h("div", { class: "span2" }, campo("titular", "Nombre y apellidos del titular *")), campo("titular_dni", "DNI del titular *")) : null,
+      h("div", { class: "field" }, h("label", { for: "so-iban", text: "IBAN *" }), iban, bancoHint),
+      campo("entidad", "Nombre de la entidad", { autocomplete: "off" }, "Se rellena sola con la mayoría de bancos.")),
+    h("fieldset", null, h("legend", { text: "4. Autorización y firma" }),
+      h("p", { class: "so-legal", text: "Según lo exigido por la Ley de Servicios de Pago 16/2009, AUTORIZO a la ASOCIACIÓN SIERENSE AMIGOS DE LA MÚSICA, con CIF G-33084294, a girar en el número de cuenta indicado, desde la fecha de la presente y con carácter indefinido, los recibos correspondientes a la cuota anual de socio/a de esta asociación." }),
+      h("label", { class: "check", for: "so-acepto" }, acepto, h("span", { text: "Autorizo la domiciliación de la cuota anual." })),
+      h("label", { class: "check", for: "so-datos" }, aceptoDatos, h("span", { text: "Acepto que mis datos se incluyan en el fichero de socios de la asociación para gestionar mi alta y las cuotas." })),
+      h("p", { class: "so-fecha", text: fechaTxt }),
+      h("div", { class: "field" }, h("span", { class: "flabel", text: "Firma del titular de la cuenta *" }),
+        h("div", { class: "so-firma-box" }, firma, h("span", { class: "so-firma-ph", "aria-hidden": "true", text: "Firma aquí con el dedo o el ratón" })), borrar)),
+    h("div", { class: "form-acts" }, btn), st,
+    h("p", { class: "muted small", text: "Tus datos se envían de forma segura y solo los ve la directiva de la asociación. Puedes ejercer tus derechos de acceso, rectificación, cancelación y oposición escribiendo a C/ Alcalde Parrondo, nº 32, 33510 Pola de Siero (Asturias)." }));
+  firma.addEventListener("pointerdown", function () { var ph = form.querySelector(".so-firma-ph"); if (ph) ph.style.display = "none"; });
+  setTimeout(verIban, 0);
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    function mal(msg, id) { setStatus(st, msg, false); var el = id && document.getElementById(id); if (el) { el.focus(); el.scrollIntoView({ block: "center", behavior: "smooth" }); } }
+    var req = [["nombre", "tu nombre y apellidos"], ["dni", "tu DNI"], ["direccion", "tu dirección"], ["cp", "el código postal"], ["localidad", "la localidad"], ["email", "tu correo"], ["movil", "tu teléfono móvil"]];
+    for (var i = 0; i < req.length; i++) if (!String(F[req[i][0]] || "").trim()) return mal("Falta " + req[i][1] + ".", "so-" + req[i][0]);
+    if (!dniValido(F.dni)) return mal("Revisa el DNI: la letra no coincide.", "so-dni");
+    if (!/^\d{5}$/.test(String(F.cp).trim())) return mal("El código postal tiene que tener 5 números.", "so-cp");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(F.email).trim())) return mal("El correo no es válido.", "so-email");
+    var c = +F.cuota; if (!(c >= tipo[2] && c <= tipo[3])) return mal("La " + tipo[1].toLowerCase() + " tiene que ser " + tipo[4].toLowerCase().replace(" al año", "") + ".", "so-cuota");
+    if (F.otroTitular && (!String(F.titular || "").trim() || !String(F.titular_dni || "").trim())) return mal("Escribe el nombre y el DNI del titular de la cuenta.", "so-titular");
+    if (F.otroTitular && !dniValido(F.titular_dni)) return mal("Revisa el DNI del titular.", "so-titular_dni");
+    if (!ibanValido(F.iban)) return mal("El IBAN no es correcto. Cópialo tal cual aparece en tu libreta o en la app del banco.", "so-iban");
+    if (!acepto.checked) return mal("Tienes que autorizar la domiciliación.", "so-acepto");
+    if (!aceptoDatos.checked) return mal("Tienes que aceptar el tratamiento de tus datos.", "so-datos");
+    if (trazos < 6) return mal("Firma en el recuadro antes de enviar.", null);
+    btn.disabled = true; btn.textContent = "Preparando tu hoja…";
+    var datos = { nombre: F.nombre.trim(), dni: F.dni.trim().toUpperCase(), nacimiento: F.nacimiento || "", direccion: F.direccion.trim(), cp: String(F.cp).trim(), localidad: F.localidad.trim(),
+      email: F.email.trim(), fijo: (F.fijo || "").trim(), movil: F.movil.trim(), tipo: F.tipo, cuota: c, titular: F.otroTitular ? F.titular.trim() : "", titular_dni: F.otroTitular ? F.titular_dni.trim().toUpperCase() : "",
+      iban: ibanLimpio(F.iban), entidad: (F.entidad || "").trim(), fecha: [hoy.getDate(), MESES_ES[hoy.getMonth()], hoy.getFullYear()] };
+    var firmaPng = firma.toDataURL("image/png");
+    generarHojaSocio(datos, firmaPng).then(function (bytes) {
+      var blob = new Blob([bytes], { type: "application/pdf" });
+      var nombre = "Alta socio ASAM - " + datos.nombre.replace(/[^\wÁÉÍÓÚÜÑáéíóúüñ ]+/g, "").trim() + ".pdf";
+      var res = { url: URL.createObjectURL(blob), nombre: nombre, guardado: false, error: "" };
+      btn.textContent = "Enviando…";
+      return enviarHojaSocio(datos, blob).then(function () { res.guardado = true; }, function (e) { res.error = (e && e.message) || "error"; }).then(function () {
+        F.enviado = res; render(); var s = document.getElementById("socio-hoja"); if (s) s.scrollIntoView({ block: "start" });
+      });
+    }).catch(function (e) { btn.disabled = false; btn.textContent = "Firmar y enviar mi solicitud"; setStatus(st, "No se ha podido preparar el PDF: " + ((e && e.message) || e), false); });
+  });
+  return form;
+}
+// Escribe los datos y la firma sobre el PDF original de la asociación
+function generarHojaSocio(d, firmaPng) {
+  return Promise.all([getPdfLib(), fetch("docs/alta-socio.pdf").then(function (r) { if (!r.ok) throw new Error("no se encuentra la plantilla"); return r.arrayBuffer(); })]).then(function (r) {
+    var PDFLib = r[0];
+    return PDFLib.PDFDocument.load(r[1], { ignoreEncryption: true }).then(function (doc) {
+      return Promise.all([doc.embedFont(PDFLib.StandardFonts.Helvetica), doc.embedFont(PDFLib.StandardFonts.HelveticaBold), doc.embedPng(firmaPng)]).then(function (x) {
+        var font = x[0], bold = x[1], img = x[2], page = doc.getPages()[0], H = page.getHeight(), negro = PDFLib.rgb(0.05, 0.08, 0.2);
+        function txt(t, x0, top, w, h, size, f) {
+          t = String(t || ""); if (!t) return; size = size || 9; f = f || font;
+          while (size > 5 && f.widthOfTextAtSize(t, size) > w - 4) size -= 0.5;
+          page.drawText(t, { x: x0 + 2, y: H - top - h + (h - size) / 2 + 1.5, size: size, font: f, color: negro });
+        }
+        function centro(t, x0, top, w, h, size) { t = String(t || ""); var tw = bold.widthOfTextAtSize(t, size); page.drawText(t, { x: x0 + (w - tw) / 2, y: H - top - h + (h - size) / 2 + 1.5, size: size, font: bold, color: negro }); }
+        var nac = d.nacimiento ? d.nacimiento.split("-").reverse().join("/") : "";
+        txt(d.nombre, 82, 218.5, 239, 13.5); txt(d.dni, 321.5, 218.5, 89.5, 13.5); txt(nac, 411.5, 218.5, 102.5, 13.5);
+        txt(d.direccion, 82, 246.5, 239, 14); txt(d.cp, 321.5, 246.5, 89.5, 14); txt(d.localidad, 411.5, 246.5, 102.5, 14);
+        txt(d.email, 82, 275.5, 239, 13.5); txt(d.fijo, 321.5, 275.5, 89.5, 13.5); txt(d.movil, 411.5, 275.5, 102.5, 13.5);
+        txt(d.titular, 226, 329, 288, 23, 10); txt(d.titular_dni, 418.5, 352.5, 95.5, 13.5);
+        var tipo = SOCIO_TIPOS.filter(function (t) { return t[0] === d.tipo; })[0];
+        txt(d.cuota + " € (" + tipo[1].replace("Cuota ", "") + ")", 418.5, 366.5, 95.5, 14);
+        txt(d.entidad, 82, 395.5, 432, 13.5);
+        var chars = d.iban.slice(0, 24).split(""), xs = [82, 100, 118, 136, 154, 172, 190, 208, 226, 244, 262, 280, 298, 316.5, 334, 352.5, 370.5, 388.5, 406.5, 424.5, 442.5, 460.5, 478.5, 496.5];
+        chars.forEach(function (ch, i) { centro(ch, xs[i], 424.5, 17.5, 14, 9.5); });
+        centro(String(d.fecha[0]), 144.5, 494, 30.5, 14, 10); centro(d.fecha[1], 216.5, 494.5, 104, 13.5, 10); centro(String(d.fecha[2]), 356.5, 494.5, 112, 13.5, 10);
+        var bw = 136, bh = 56, esc = Math.min(bw / img.width, bh / img.height);
+        page.drawImage(img, { x: 338.5 + (bw - img.width * esc) / 2, y: H - 514.5 - 4 - bh + (bh - img.height * esc) / 2, width: img.width * esc, height: img.height * esc });
+        doc.setTitle("Alta de socio/a · " + d.nombre); doc.setAuthor(d.nombre); doc.setCreator("Web de la ASAM");
+        return doc.save();
+      });
+    });
+  });
+}
+// Guarda la solicitud para la directiva (tabla socios_solicitudes + PDF en el almacén privado "socios")
+function enviarHojaSocio(d, blob) {
+  if (!SB) return Promise.reject(new Error("la web no está conectada"));
+  var id = newId(), path = "solicitudes/" + id + ".pdf";
+  return SB.storage.from("socios").upload(path, blob, { contentType: "application/pdf", upsert: false }).then(function (r) {
+    if (r.error) throw new Error("no se ha podido subir el PDF");
+    return SB.from("socios_solicitudes").insert({ id: id, nombre: d.nombre, email: d.email, telefono: d.movil, tipo: d.tipo, cuota: d.cuota, datos: d, pdf_path: path });
+  }).then(function (r) { if (r && r.error) throw new Error("no se ha podido guardar la solicitud"); });
+}
+
 PAGES.socio = function () {
   var S = socioData();
   var pasos = String(S.pasos || "").split("\n").map(function (x) { return x.trim(); }).filter(Boolean);
@@ -531,9 +717,10 @@ PAGES.socio = function () {
           h("a", { class: "btn primary", href: "#socio-hoja", onclick: function (ev) { ev.preventDefault(); var t = document.getElementById("socio-hoja"); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); }, text: "Hoja de socio ↓" }))),
       socioNiveles(S),
       h("div", { class: "socio-hoja", id: "socio-hoja" },
-        h("div", null, h("span", { class: "eyebrow", text: "Hoja de socio" }),
-          h("h3", { text: "Muy pronto podrás rellenarla aquí" }),
-          h("p", { class: "muted", text: "Estamos preparando la hoja de inscripción para que puedas completarla desde la web. Mientras tanto, puedes pedirla en nuestras oficinas." }))),
+        h("div", { class: "so-head" }, h("span", { class: "eyebrow", text: "Hoja de socio" }),
+          h("h3", { text: "Hazte socio/a desde aquí" }),
+          h("p", { class: "muted", text: "Rellena la hoja, fírmala con el dedo o con el ratón y envíala. Se genera la misma hoja oficial de la asociación en PDF y te la puedes descargar." })),
+        socioFormulario()),
       S.aviso ? h("p", { class: "socio-aviso" }, h("span", { "aria-hidden": "true", text: "ℹ️ " }), S.aviso + " ", h("a", { href: "#contacto", text: "Ver datos de contacto →" })) : null))
   ];
 };
@@ -677,7 +864,7 @@ PAGES.banda = function () {
 
 PAGES.bandin = function () {
   return [
-    headSize(pageHead("El Bandín", "La cantera: donde se aprende a tocar en grupo", null, null, staffLettering("¡El Bandín de Pola mola!", { glyphs: MUSIC_CAPS, colors: { 1: "c-naranja", 4: "c-verde" }, punct: "c-azul" }), null, "img/fondos/bandin.jpg"), "head-mid"),
+    headSize(pageHead("El Bandín", "La cantera: donde se aprende a tocar en grupo", null, null, staffLettering("¡El Bandín de Pola mola!", { glyphs: MUSIC_CAPS, colors: { 1: "c-naranja", 4: "c-verde" }, punct: "c-azul" }), { src: "img/logo/logo-bandin.webp", alt: "Logotipo del Bandín de Siero" }, "img/fondos/bandin.jpg"), "head-mid"),
     h("section", { class: "block" }, h("div", { class: "wrap" },
       directorFeature(/bandín|bandin/i, "naranja", "Director del Bandín"),
       h("div", { class: "prose" },
@@ -945,7 +1132,7 @@ var SCHEMAS = {
     filter: { k: "formacion", label: "Formación", options: ["Banda", "Bandín", "Banda y Bandín"] },
     group: function (d) { return (d.formacion || "") + " · " + (d.instrumento || "Otros"); } }
 };
-var TABS_JUNTA = [["tareas", "📋 Tareas", null], ["reuniones", "🗓️ Reuniones", null], ["personas", "👥 Personas y accesos", "cuentas"], ["cargos", "🏛️ Cargos", "cuentas"]];
+var TABS_JUNTA = [["tareas", "📋 Tareas", null], ["reuniones", "🗓️ Reuniones", null], ["solicitudes", "📝 Altas de socio", null], ["personas", "👥 Personas y accesos", "cuentas"], ["cargos", "🏛️ Cargos", "cuentas"]];
 var TABS = [["directiva", "Directiva"], ["directores", "Directores"], ["profesores", "Profesorado"], ["historia", "Historia"], ["musicos", "Músicos"], ["eventos", "Eventos"], ["noticias", "Noticias"], ["enlaces", "Enlaces y redes"], ["fotos", "Galería"], ["escuela", "Escuela"], ["socio", "Hacerse socio"], ["contacto", "Contacto"], ["pie", "Pie de página"]].concat(TABS_JUNTA);
 SCHEMAS.historia = { label: "Historia", singular: "hito", fields: [
     { k: "anio", l: "Año o etiqueta", req: true, ph: "1984" },
@@ -981,7 +1168,7 @@ PAGES.privado = function () {
   var esMusico = !!myMusico();
   // Si solo es músico, va directo a su área
   if (esMusico && !IS_ADMIN) { setTimeout(function () { if (location.hash.indexOf("#privado") === 0) location.hash = "#musicos"; }, 0); }
-  var logout = h("button", { class: "btn ghost small", type: "button", text: "Cerrar sesión", onclick: function () { SB.auth.signOut(); } });
+  var logout = h("button", { class: "btn ghost small", type: "button", text: "Cerrar sesión", onclick: function () { cerrarSesion(); } });
   var cards = [];
   if (IS_ADMIN || esMusico) cards.push(h("a", { class: "priv-card", href: "#musicos" }, h("i", { style: "background:var(--azul)" }),
     h("b", { text: "Área de músicos" }), h("span", { text: "Convocatorias, asistencia, partituras y anuncios." })));
@@ -1003,7 +1190,7 @@ PAGES.admin = function (tab) {
       h("p", { class: "muted", text: "Rellena la dirección y la clave pública de Supabase en el archivo js/config.js (lo explica el README del repositorio)." }))))];
   }
   if (!SESSION) return [head, h("section", { class: "block" }, h("div", { class: "wrap" }, loginForm()))];
-  var logout = h("button", { class: "btn ghost small", type: "button", text: "Cerrar sesión", onclick: function () { SB.auth.signOut(); } });
+  var logout = h("button", { class: "btn ghost small", type: "button", text: "Cerrar sesión", onclick: function () { cerrarSesion(); } });
   if (!IS_ADMIN) {
     return [head, h("section", { class: "block" }, h("div", { class: "wrap" }, h("div", { class: "notice" },
       h("h3", { text: "Tu usuario no es administrador" }),
@@ -1032,6 +1219,7 @@ PAGES.admin = function (tab) {
   else if (tab === "cargos") body = adminCargos();
   else if (tab === "tareas") body = adminTareas();
   else if (tab === "reuniones") body = adminReuniones();
+  else if (tab === "solicitudes") body = adminSolicitudes();
   else body = adminCrud(tab);
   var permsTxt = PERMISOS_DEF.filter(function (p) { return can(p[0]); }).map(function (p) { return p[1].toLowerCase(); });
   return [head, h("section", { class: "block" }, h("div", { class: "wrap" },
@@ -1079,7 +1267,7 @@ function cambiarClavePage() {
     h("p", { class: "muted", text: "Has entrado con una contraseña provisional. Elige una tuya para seguir; la provisional dejará de valer." }),
     h("div", { class: "field" }, h("label", { for: "nc-1", text: "Contraseña nueva" }), p1, h("small", { text: "Mínimo 8 caracteres." })),
     h("div", { class: "field" }, h("label", { for: "nc-2", text: "Repítela" }), p2),
-    h("div", { class: "form-acts" }, btn, h("button", { class: "btn ghost", type: "button", text: "Cerrar sesión", onclick: function () { SB.auth.signOut(); } })), st);
+    h("div", { class: "form-acts" }, btn, h("button", { class: "btn ghost", type: "button", text: "Cerrar sesión", onclick: function () { cerrarSesion(); } })), st);
   f.addEventListener("submit", function (ev) {
     ev.preventDefault();
     if (p1.value.length < 8) { setStatus(st, "La contraseña debe tener al menos 8 caracteres.", false); return; }
@@ -1097,6 +1285,32 @@ function cambiarClavePage() {
   });
   return [pageHead("Bienvenido/a", "Elige tu contraseña", "Un último paso antes de entrar.", "negra"), h("section", { class: "block" }, h("div", { class: "wrap" }, f))];
 }
+
+/* Cerrar sesión solo en este dispositivo (sin cerrar las sesiones del móvil o de otros ordenadores).
+   Aunque el servidor no responda, la sesión local se borra igualmente. */
+function cerrarSesion(msg) {
+  var hecho = false;
+  function limpiar() {
+    if (hecho) return; hecho = true;
+    try { Object.keys(localStorage).forEach(function (k) { if (/^sb-.*-auth-token/.test(k)) localStorage.removeItem(k); }); } catch (e) {}
+    SESSION = null; IS_ADMIN = false; PERMS = []; MI_CARGO = ""; PUSH.estado = null;
+    if (msg) FLASH = { col: "login", msg: msg };
+    if (location.hash.indexOf("#musicos") === 0 || location.hash.indexOf("#admin") === 0) location.hash = "#privado";
+    loadPrivate().then(render, render);
+  }
+  var p = SB ? SB.auth.signOut({ scope: "local" }) : Promise.resolve();
+  Promise.resolve(p).then(limpiar, limpiar);
+  setTimeout(limpiar, 2500);
+}
+// Comprueba que la sesión guardada sigue existiendo en el servidor (si se cerró en otro sitio, se limpia)
+function validarSesion() {
+  if (!SB || !SESSION) return Promise.resolve();
+  return SB.auth.getUser().then(function (r) {
+    var e = r && r.error;
+    if (e && (e.status === 401 || e.status === 403 || /session|jwt|token/i.test(e.message || ""))) cerrarSesion("Tu sesión se había cerrado. Vuelve a entrar.");
+    else if (r && r.data && r.data.user && SESSION) SESSION.user = r.data.user;
+  }, function () {});
+}
 function loginForm(title) {
   var st = statusEl();
   var email = h("input", { id: "login-email", type: "text", autocomplete: "username", autocapitalize: "none", spellcheck: "false", required: true });
@@ -1106,6 +1320,7 @@ function loginForm(title) {
     h("div", { class: "field" }, h("label", { for: "login-email", text: "Correo o nombre de usuario" }), email),
     h("div", { class: "field" }, h("label", { for: "login-pass", text: "Contraseña" }), pass),
     h("div", { class: "form-acts" }, btn), st);
+  if (FLASH && FLASH.col === "login") { setStatus(st, FLASH.msg, false); FLASH = null; }
   function fail(msg) { btn.disabled = false; btn.textContent = "Entrar"; setStatus(st, msg, false); }
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
@@ -1851,7 +2066,8 @@ function areaTabs() {
 }
 PAGES.musicos = function (sub) {
   if (debeCambiarClave()) return cambiarClavePage();
-  if (SESSION && !IS_ADMIN && myMusico() && debeInstalar()) return instalarPage();
+  if (SESSION && myMusico() && debeInstalar()) return instalarPage();
+  if (SESSION && myMusico() && debeActivarAvisos()) return avisosObligatoriosPage();
   var wasAdmin = IS_ADMIN;
   AREA_REAL_ADMIN = wasAdmin;
   if (!wasAdmin) AREA.verComo = null;
@@ -1872,7 +2088,7 @@ function musicosPage(sub) {
     return [pageHead("Área de músicos", "Acceso para músicos", null, "verde"), h("section", { class: "block" }, h("div", { class: "wrap" }, h("div", { class: "notice" },
       h("h3", { text: "Esta cuenta no es de músico" }),
       h("p", { class: "muted", text: "Has entrado como " + ((SESSION.user && SESSION.user.email) || "usuario") + ". Pide a un administrador que te cree una cuenta de músico." }),
-      h("div", { class: "form-acts" }, h("button", { class: "btn ghost small", type: "button", text: "Cerrar sesión", onclick: function () { SB.auth.signOut(); } })))))];
+      h("div", { class: "form-acts" }, h("button", { class: "btn ghost small", type: "button", text: "Cerrar sesión", onclick: function () { cerrarSesion(); } })))))];
   }
   if (!PRIV.loaded) {
     if (!PRIV.loading) reloadPrivate();
@@ -1900,11 +2116,11 @@ function areaShell(tab, body, crumbs) {
   var top = h("div", { class: "top-area-in" },
     h("nav", { class: "crumbs", "aria-label": "Estás en" }, h("a", { class: "crumb-root", href: "#musicos-agenda", text: "Área de músicos" }),
       crumbs.map(function (c) { return [h("span", { class: "sep", "aria-hidden": "true", text: "›" }), c[0] ? h("a", { href: "#musicos-" + c[0], text: c[1] }) : h("span", { class: "here", text: c[1] })]; })),
-    verBtn,
-    AREA_REAL_ADMIN && !simulando() ? h("a", { class: "adm-btn", href: "#admin", title: "Panel de administración" }, icon("ajustes"), h("span", { text: "Administración" })) : null,
-    h("a", { class: "area-user", href: "#musicos-perfil", title: "Tu perfil" },
-      h("span", { class: "u-txt" }, h("b", { text: displayName() }), h("small", { text: me ? [me.instrumento + (me.voz ? " " + vocesTxt([INST.normVoz(me.voz)]) : ""), me.formacion].filter(Boolean).join(" · ") : "Administración" })),
-      me ? personAvatar(me, "azul", "u-av") : h("span", { class: "u-av", text: initials(displayName()) })));
+    h("div", { class: "top-right" }, verBtn,
+      AREA_REAL_ADMIN && !simulando() ? h("a", { class: "adm-btn", href: "#admin", title: "Panel de administración" }, icon("ajustes"), h("span", { text: "Administración" })) : null,
+      h("a", { class: "area-user", href: "#musicos-perfil", title: "Tu perfil" },
+        h("span", { class: "u-txt" }, h("b", { text: displayName() }), h("small", { text: me ? [me.instrumento + (me.voz ? " " + vocesTxt([INST.normVoz(me.voz)]) : ""), me.formacion].filter(Boolean).join(" · ") : "Administración" })),
+        miAvatar(me, "u-av"))));
   var slot = document.getElementById("top-area"); if (slot) slot.replaceChildren(top);
   return h("section", { class: "area-app" + (simulando() ? " simulating" : "") },
     h("nav", { class: "area-tabs", "aria-label": "Secciones del área de músicos" }, h("div", { class: "wrap" }, areaTabs().map(function (t) {
@@ -2036,19 +2252,31 @@ function fechasSerie(f) {
    ===================================================================== */
 var PUSH = { estado: null, ocupado: false, msg: "", ok: true, clave: undefined };
 // La clave pública la da la función "avisos" (secreto VAPID_PUBLIC_KEY de Supabase)
+var PUSH_CLAVE_P = null;
 function pushClave() {
   if (PUSH.clave !== undefined) return Promise.resolve(PUSH.clave);
-  return avisosFn({ action: "clave" }).then(function (d) { PUSH.clave = (d && d.publicKey) || null; return PUSH.clave; }, function () { return null; });
+  if (!PUSH_CLAVE_P) PUSH_CLAVE_P = avisosFn({ action: "clave" }).then(function (d) { PUSH.clave = (d && d.publicKey) || null; return PUSH.clave; },
+    function () { PUSH.clave = null; setTimeout(function () { PUSH.clave = undefined; PUSH_CLAVE_P = null; }, 60000); return null; });
+  return PUSH_CLAVE_P;
 }
 function esIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
 function instalada() { return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true; }
 function swReg() {
   if (!("serviceWorker" in navigator)) return Promise.reject(new Error("sin service worker"));
-  return navigator.serviceWorker.register("sw.js").then(function () { return navigator.serviceWorker.ready; });
+  return Promise.race([
+    navigator.serviceWorker.register("sw.js").then(function () { return navigator.serviceWorker.ready; }),
+    new Promise(function (res, rej) { setTimeout(function () { rej(new Error("El navegador no responde.")); }, 10000); })
+  ]);
 }
 function b64uToBytes(s) { var b = atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
 // "nosoporta" | "ios-instalar" | "bloqueado" | "activo" | "inactivo"
+var PUSH_COMP_P = null;
 function comprobarPush() {
+  if (PUSH_COMP_P) return PUSH_COMP_P;
+  PUSH_COMP_P = comprobarPush_().then(function (v) { PUSH_COMP_P = null; return v; }, function () { PUSH_COMP_P = null; PUSH.estado = "nosoporta"; return PUSH.estado; });
+  return PUSH_COMP_P;
+}
+function comprobarPush_() {
   if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
     PUSH.estado = esIOS() && !instalada() ? "ios-instalar" : "nosoporta"; return Promise.resolve(PUSH.estado);
   }
@@ -2096,6 +2324,7 @@ function avisosFn(body) {
   return SB.functions.invoke("avisos", { body: body }).then(function (r) {
     if (!r.error) return r.data;
     var ctx = r.error.context, fb = "No se ha podido enviar la notificación.";
+    if (ctx && ctx.status === 401) validarSesion();
     if (ctx && typeof ctx.json === "function") return ctx.json().then(function (j) { throw new Error((j && j.error) || fb); }, function () { throw new Error(fb); });
     throw new Error(fb);
   });
@@ -2103,7 +2332,11 @@ function avisosFn(body) {
 function probarPush() {
   PUSH.ocupado = true; render();
   avisosFn({ action: "prueba" }).then(function (d) {
-    PUSH.ok = !!(d && d.enviados); PUSH.msg = d && d.enviados ? "Notificación de prueba enviada. Debería llegarte en unos segundos." : "No hay ningún móvil tuyo con los avisos activados.";
+    PUSH.ok = !!(d && d.enviados);
+    PUSH.msg = d && d.enviados ? "Notificación de prueba enviada a " + d.enviados + (d.enviados === 1 ? " móvil" : " móviles") + ". Debería llegarte en unos segundos."
+      : d && d.errores && d.errores.length ? "El servicio de notificaciones no la ha aceptado (" + d.errores.map(function (x) { return x.servicio.replace(/^.*?(apple|google|mozilla|windows).*$/, "$1") + " " + x.estado; }).join(", ") + ")."
+      : "No hay ningún móvil tuyo con los avisos activados." + (d && d.caducados ? " (Se han quitado " + d.caducados + " que ya no existían: vuelve a activarlos.)" : "");
+    if (d && !d.enviados && d.caducados) { PUSH.estado = null; PUSH_SYNC = false; sincronizarPush(); }
   }, function (e) { PUSH.ok = false; PUSH.msg = e.message; }).then(function () { PUSH.ocupado = false; render(); });
 }
 // Tarjeta para activar los avisos (perfil y aviso en la agenda)
@@ -2209,7 +2442,58 @@ function instalarPage() {
     h("ol", { class: "ip-pasos" }, pasos),
     ios ? h("div", { class: "ip-flecha", "aria-hidden": "true", text: "⬇" }) : null,
     h("div", { class: "form-acts ip-acts" }, h("a", { class: "btn ghost small", href: "#inicio", text: "Volver a la web" }),
-      h("button", { class: "btn ghost small", type: "button", text: "Cerrar sesión", onclick: function () { SB.auth.signOut(); location.hash = "#inicio"; } }))))];
+      h("button", { class: "btn ghost small", type: "button", text: "Cerrar sesión", onclick: function () { cerrarSesion(); } }))))];
+}
+// Al abrir la web: si este móvil ya dio permiso, se asegura de que su suscripción está guardada
+// (cubre reinstalar la app, cambiar de cuenta en el mismo móvil o que el navegador renueve la suscripción)
+var PUSH_SYNC = false;
+function sincronizarPush() {
+  if (PUSH_SYNC || !SB || !SESSION || !(myMusico() || IS_ADMIN)) return;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window) || Notification.permission !== "granted") return;
+  PUSH_SYNC = true;
+  pushClave().then(function (k) {
+    if (!k) { PUSH_SYNC = false; return; }
+    return swReg().then(function (reg) {
+      return reg.pushManager.getSubscription().then(function (sub) {
+        if (sub) {
+          // Si la suscripción se hizo con otra clave (se regeneraron), se rehace
+          var opt = sub.options && sub.options.applicationServerKey;
+          if (opt) { var a = new Uint8Array(opt), b = b64uToBytes(k); if (a.length !== b.length || a.some(function (x, i) { return x !== b[i]; })) return sub.unsubscribe().then(function () { return null; }); }
+        }
+        return sub;
+      }).then(function (sub) { return sub || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(k) }); });
+    }).then(function (sub) {
+      var j = sub.toJSON();
+      return SB.rpc("registrar_push", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_dispositivo: navigator.userAgent.slice(0, 200) });
+    }).then(function () { PUSH.estado = "activo"; });
+  }).catch(function () { PUSH_SYNC = false; });
+}
+// Los músicos, en el móvil y con la app instalada, tienen que tener los avisos activados
+function debeActivarAvisos() {
+  if (!(esIOS() || esAndroid()) || !instalada()) return false;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return false; // sistema antiguo: no se puede
+  if (PUSH.clave === undefined || PUSH.estado === null) { Promise.all([pushClave(), comprobarPush()]).then(function () { render(); }); return false; }
+  if (!PUSH.clave) return false; // la directiva aún no lo ha configurado
+  return PUSH.estado !== "activo";
+}
+function avisosObligatoriosPage() {
+  var bloq = PUSH.estado === "bloqueado" || (window.Notification && Notification.permission === "denied");
+  var msg = PUSH.msg && !PUSH.ok ? h("p", { class: "status err", role: "status", text: PUSH.msg }) : null;
+  var cuerpo = bloq
+    ? [h("p", { class: "ip-lead", text: "Has bloqueado las notificaciones de la app. Para seguir, vuelve a permitirlas:" }),
+      h("ol", { class: "ip-pasos" }, esIOS()
+        ? [h("li", { class: "ip-paso" }, h("span", { class: "ip-n", text: "1" }), h("div", null, h("b", { text: "Abre Ajustes del iPhone" }), h("p", { text: "Ve a Notificaciones y busca «Banda Siero»." }))),
+          h("li", { class: "ip-paso" }, h("span", { class: "ip-n", text: "2" }), h("div", null, h("b", { text: "Activa «Permitir notificaciones»" }), h("p", { text: "Después vuelve a la app y pulsa «Ya lo he hecho»." })))]
+        : [h("li", { class: "ip-paso" }, h("span", { class: "ip-n", text: "1" }), h("div", null, h("b", { text: "Mantén pulsado el icono de la app" }), h("p", { text: "Toca «Información de la aplicación» (ⓘ) → Notificaciones." }))),
+          h("li", { class: "ip-paso" }, h("span", { class: "ip-n", text: "2" }), h("div", null, h("b", { text: "Activa las notificaciones" }), h("p", { text: "Después vuelve a la app y pulsa «Ya lo he hecho»." })))]),
+      h("button", { class: "btn primary ip-instalar", type: "button", text: "Ya lo he hecho", onclick: function () { PUSH.estado = null; PUSH.msg = ""; render(); } })]
+    : [h("p", { class: "ip-lead", text: "Para usar el Área de músicos tienes que activar los avisos. Te llegarán las convocatorias nuevas, los cambios y los avisos de la banda." }),
+      h("button", { class: "btn primary ip-instalar", type: "button", disabled: PUSH.ocupado || null, text: PUSH.ocupado ? "Activando…" : "🔔 Activar los avisos", onclick: activarPush }),
+      h("p", { class: "muted small", text: "Cuando el móvil te pregunte, pulsa «Permitir»." })];
+  return [h("section", { class: "instalar-ios" }, h("div", { class: "wrap" },
+    h("img", { class: "ip-logo", src: "img/app/icono-192.png", alt: "" }),
+    h("h1", { text: "Activa los avisos" }), cuerpo, msg,
+    h("div", { class: "form-acts ip-acts" }, h("button", { class: "btn ghost small", type: "button", text: "Cerrar sesión", onclick: function () { cerrarSesion(); } }))))];
 }
 function pushBanner() {
   var oculto = false; try { oculto = localStorage.getItem("asam-push-oculto") === "1"; } catch (e) {}
@@ -2293,7 +2577,9 @@ function eventoForm() {
       if (F.avisar !== false) {
         var flashRef = FLASH;
         avisosFn({ action: "evento", ids: newIds }).then(function (d) {
-          flashRef.msg += d && d.enviados ? " 🔔 Notificación enviada a " + d.personas + (d.personas === 1 ? " músico." : " músicos.") : " (Nadie de los convocados tiene todavía los avisos del móvil activados.)";
+          flashRef.msg += d && d.enviados ? " 🔔 Notificación enviada a " + d.personas + (d.personas === 1 ? " músico." : " músicos.")
+            : d && d.errores && d.errores.length ? " (El servicio de notificaciones ha rechazado el aviso: " + d.errores[0].estado + ".)"
+            : " (Nadie de los convocados tiene todavía los avisos del móvil activados.)";
           var el = document.querySelector(".agenda .status.ok"); if (el) el.textContent = flashRef.msg;
         }, function (e) { var el = document.querySelector(".agenda .status.ok"); if (el) el.textContent = flashRef.msg + " (No se ha podido avisar al móvil: " + e.message + ")"; });
       }
@@ -3393,6 +3679,67 @@ function areaSugerencias() {
 /* =====================================================================
    PERFIL
    ===================================================================== */
+/* ---------- Foto de perfil (cada persona sube la suya) ---------- */
+var MI_FOTO = "";
+function miAvatar(me, cls) {
+  var foto = (me && me.foto) || MI_FOTO;
+  if (foto) return h("img", { class: cls + " photo", src: blobUrl(foto), alt: "Tu foto" });
+  return me ? personAvatar(me, "azul", cls) : h("span", { class: cls, text: initials(displayName()) });
+}
+// Recorta al centro en cuadrado y la deja en 480×480 JPEG
+function prepararFoto(file) {
+  return new Promise(function (res, rej) {
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function () {
+      var lado = Math.min(img.naturalWidth, img.naturalHeight), N = 480, c = document.createElement("canvas");
+      c.width = N; c.height = N;
+      var x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, N, N);
+      x.drawImage(img, (img.naturalWidth - lado) / 2, (img.naturalHeight - lado) / 2, lado, lado, 0, 0, N, N);
+      URL.revokeObjectURL(url);
+      c.toBlob(function (b) { b ? res(b) : rej(new Error("No se ha podido preparar la foto.")); }, "image/jpeg", 0.86);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); rej(new Error("Ese archivo no es una imagen válida.")); };
+    img.src = url;
+  });
+}
+function fotoPerfilBox(me) {
+  var st = h("small", { class: "pf-foto-st", role: "status" });
+  var anterior = (me && me.foto) || MI_FOTO;
+  var input = h("input", { type: "file", accept: "image/*", id: "pf-foto-in", class: "sr-only" });
+  input.addEventListener("change", function () {
+    var f = input.files && input.files[0]; if (!f) return;
+    if (f.size > 15 * 1024 * 1024) { st.textContent = "La foto pesa demasiado (máximo 15 MB)."; return; }
+    st.textContent = "Subiendo…";
+    var path = "perfiles/" + SESSION.user.id + "/" + Date.now() + ".jpg";
+    prepararFoto(f).then(function (blob) {
+      return SB.storage.from("fotos").upload(path, blob, { contentType: "image/jpeg", upsert: true });
+    }).then(function (r) {
+      if (r.error) throw r.error;
+      return SB.rpc("cambiar_mi_foto", { p_path: path });
+    }).then(function (r) {
+      if (r && r.error) throw r.error;
+      if (anterior && anterior.indexOf("perfiles/" + SESSION.user.id + "/") === 0) SB.storage.from("fotos").remove([anterior]);
+      MI_FOTO = path; if (me) me.foto = path;
+      try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+      return loadAll();
+    }).then(render, function (e) {
+      st.textContent = /function|cambiar_mi_foto|row-level|policy|security/i.test((e && e.message) || "") ? "Todavía no se pueden subir fotos: falta ejecutar supabase/perfil.sql en Supabase." : ((e && e.message) || "No se ha podido subir la foto.");
+    });
+  });
+  var quitar = anterior ? h("button", { type: "button", class: "linkish", text: "Quitar foto", onclick: function () {
+    st.textContent = "Quitando…";
+    SB.rpc("cambiar_mi_foto", { p_path: null }).then(function (r) {
+      if (r && r.error) throw r.error;
+      if (anterior.indexOf("perfiles/") === 0) SB.storage.from("fotos").remove([anterior]);
+      MI_FOTO = ""; if (me) me.foto = "";
+      try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+      return loadAll();
+    }).then(render, function (e) { st.textContent = (e && e.message) || "No se ha podido quitar."; });
+  } }) : null;
+  return h("div", { class: "pf-foto" },
+    h("label", { class: "pf-foto-btn", for: "pf-foto-in", title: "Cambiar tu foto" }, miAvatar(me, "pf-av"), h("span", { class: "pf-cam", "aria-hidden": "true", text: "📷" })),
+    input, h("div", { class: "pf-foto-acts" }, h("label", { class: "linkish", for: "pf-foto-in", text: anterior ? "Cambiar foto" : "Poner foto" }), quitar), st);
+}
 function areaPerfil() {
   var me = myMusico(), st = statusEl(), t = todayStr();
   var p1 = h("input", { id: "pw1", type: "password", autocomplete: "new-password" });
@@ -3428,10 +3775,10 @@ function areaPerfil() {
   function kv(k, v) { return v ? h("div", { class: "kv" }, h("span", { class: "k", text: k }), h("span", { class: "v", text: v })) : null; }
   var musForm = IS_ADMIN ? perfilMusicoForm(me) : null;
   return h("div", { class: "perfil" },
-    h("div", { class: "pf-head" }, me ? personAvatar(me, "azul", "pf-av") : h("span", { class: "pf-av", text: initials(displayName()) }),
+    h("div", { class: "pf-head" }, fotoPerfilBox(me),
       h("div", null, h("h1", { text: me ? me.nombre : displayName() }),
         h("p", { class: "muted", text: me ? [INST.canonical(me.instrumento) + (me.voz ? " " + vocesTxt([INST.normVoz(me.voz)]) : ""), me.formacion, isJefe(me) ? "Jefe de sección" : isDirectorM(me) ? "Dirección" : ""].filter(Boolean).join(" · ") : "Administración: ves todas las convocatorias y partituras" })),
-      h("button", { class: "btn ghost small", type: "button", style: "margin-left:auto", text: "Cerrar sesión", onclick: function () { SB.auth.signOut(); } })),
+      h("button", { class: "btn ghost small", type: "button", style: "margin-left:auto", text: "Cerrar sesión", onclick: function () { cerrarSesion(); } })),
     stats,
     h("div", { class: "admin-grid" },
       h("div", { class: "cbox" },
@@ -3580,6 +3927,7 @@ function musicosFn(body) {
   return SB.functions.invoke("musicos", { body: body }).then(function (r) {
     if (!r.error) return r.data;
     var ctx = r.error.context, fb = "No se ha podido completar. Inténtalo de nuevo.";
+    if (ctx && ctx.status === 401) validarSesion();
     if (ctx && typeof ctx.json === "function") return ctx.json().then(function (j) { throw new Error((j && j.error) || fb); }, function () { throw new Error(fb); });
     throw new Error(fb);
   });
@@ -3856,6 +4204,57 @@ function adminCargos() {
     h("div", { class: "admin-grid" }, list, cargoForm(null)));
 }
 
+/* ---------- Panel: hojas de alta de socio recibidas ---------- */
+var SOL = { loaded: false, loading: false, list: [], error: "", ver: "nuevas" };
+function loadSolicitudes() {
+  SOL.loading = true;
+  return SB.from("socios_solicitudes").select("*").order("creado", { ascending: false }).then(function (r) {
+    if (r.error) throw r.error;
+    SOL.list = r.data || []; SOL.loaded = true; SOL.loading = false; SOL.error = "";
+  }).catch(function (e) { SOL.loaded = true; SOL.loading = false; SOL.error = errMsg(e); });
+}
+function ibanBonito(s) { s = String(s || ""); return s.replace(/(.{4})/g, "$1 ").trim(); }
+function ibanOculto(s) { s = String(s || ""); return s.length > 8 ? s.slice(0, 4) + " •••• •••• " + s.slice(-4) : s; }
+function solicitudCard(x) {
+  var d = x.datos || {}, tipo = SOCIO_TIPOS.filter(function (t) { return t[0] === x.tipo; })[0];
+  var verIban = false, ibanEl = h("span", { class: "mono", text: ibanOculto(d.iban) });
+  var st = h("small", { class: "status" });
+  function estado(e, b) { b.disabled = true; SB.from("socios_solicitudes").update({ estado: e }).eq("id", x.id).then(check).then(loadSolicitudes).then(render, function (er) { b.disabled = false; st.textContent = errMsg(er); }); }
+  return h("article", { class: "solicitud est-" + x.estado },
+    h("div", { class: "sl-top" }, h("div", null, h("h4", { text: x.nombre }), h("small", { class: "muted", text: "Recibida el " + fmtLong(String(x.creado).slice(0, 10)) })),
+      h("span", { class: "pill-soft sl-tipo t-" + x.tipo, text: (tipo ? tipo[1] : "Cuota") + " · " + x.cuota + " €/año" })),
+    h("dl", { class: "sl-datos" },
+      h("dt", { text: "DNI" }), h("dd", { text: d.dni || "—" }),
+      h("dt", { text: "Nacimiento" }), h("dd", { text: d.nacimiento ? d.nacimiento.split("-").reverse().join("/") : "—" }),
+      h("dt", { text: "Dirección" }), h("dd", { text: [d.direccion, d.cp, d.localidad].filter(Boolean).join(", ") }),
+      h("dt", { text: "Correo" }), h("dd", null, h("a", { href: "mailto:" + (d.email || ""), text: d.email || "—" })),
+      h("dt", { text: "Teléfonos" }), h("dd", { text: [d.movil, d.fijo].filter(Boolean).join(" · ") || "—" }),
+      d.titular ? h("dt", { text: "Titular" }) : null, d.titular ? h("dd", { text: d.titular + " (" + (d.titular_dni || "") + ")" }) : null,
+      h("dt", { text: "Cuenta" }), h("dd", null, ibanEl, " ", h("button", { class: "linkish", type: "button", text: "mostrar", onclick: function (ev) { verIban = !verIban; ibanEl.textContent = verIban ? ibanBonito(d.iban) : ibanOculto(d.iban); ev.currentTarget.textContent = verIban ? "ocultar" : "mostrar"; } }), d.entidad ? " · " + d.entidad : "")),
+    h("div", { class: "form-acts" },
+      x.pdf_path ? h("button", { class: "btn primary small", type: "button", text: "📄 Ver hoja firmada", onclick: function (ev) {
+        var b = ev.currentTarget, w = window.open("", "_blank"); b.disabled = true;
+        SB.storage.from("socios").createSignedUrl(x.pdf_path, 300).then(function (r) { b.disabled = false; if (r.error) throw r.error; if (w) w.location = r.data.signedUrl; else location.href = r.data.signedUrl; }).catch(function (e) { if (w) w.close(); b.disabled = false; st.textContent = errMsg(e); });
+      } }) : null,
+      x.estado !== "tramitada" ? h("button", { class: "btn ghost small", type: "button", text: "✓ Marcar como tramitada", onclick: function (ev) { estado("tramitada", ev.currentTarget); } })
+        : h("button", { class: "btn ghost small", type: "button", text: "Volver a pendiente", onclick: function (ev) { estado("nueva", ev.currentTarget); } }),
+      deleteButton(function (b) {
+        (x.pdf_path ? SB.storage.from("socios").remove([x.pdf_path]) : Promise.resolve()).then(function () { return SB.from("socios_solicitudes").delete().eq("id", x.id); }).then(check).then(loadSolicitudes).then(render, function (e) { b.disabled = false; b.textContent = "Borrar"; alert2(b, errMsg(e)); });
+      })), st);
+}
+function adminSolicitudes() {
+  if (!SOL.loaded && !SOL.loading) loadSolicitudes().then(render);
+  if (!SOL.loaded) return h("div", { class: "empty" }, h("p", { text: "Cargando…" }));
+  if (SOL.error) return h("div", { class: "notice" }, h("h3", { text: "No se han podido cargar las solicitudes" }), h("p", { class: "muted", text: SOL.error + " Si es la primera vez, ejecuta supabase/socios.sql en Supabase." }));
+  var nuevas = SOL.list.filter(function (x) { return x.estado === "nueva"; }), lista = SOL.ver === "nuevas" ? nuevas : SOL.list;
+  return h("div", { class: "solicitudes" },
+    h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Altas de socio" }), h("p", { class: "muted", text: "Hojas de socio que la gente ha rellenado y firmado en la web (página Hacerse socio). Los datos bancarios solo los ve la directiva." }))),
+    h("div", { class: "seg", role: "group", "aria-label": "Ver" }, [["nuevas", "Pendientes (" + nuevas.length + ")"], ["todas", "Todas (" + SOL.list.length + ")"]].map(function (v) {
+      return h("button", { type: "button", "aria-pressed": SOL.ver === v[0] ? "true" : "false", text: v[1], onclick: function () { SOL.ver = v[0]; render(); } });
+    })),
+    lista.length ? h("div", { class: "sl-list" }, lista.map(solicitudCard)) : h("div", { class: "empty" }, h("p", { text: SOL.ver === "nuevas" ? "No hay altas pendientes." : "Todavía no ha llegado ninguna hoja de socio." })));
+}
+
 /* ---------- Lista de la directiva (para reuniones y cargos) ---------- */
 var DIRECTIVA = { loaded: false, loading: false, list: [] };
 function loadDirectiva() {
@@ -4002,9 +4401,17 @@ function newId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 }
 function check(res) { if (res && res.error) throw res.error; return res; }
+var CACHE_KEY = "asam-contenido-v1";
+function cacheContenido() { try { var c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); if (c && c.rows) { aplicarContenido(c.rows); return true; } } catch (e) {} return false; }
 function loadAll() {
   return SB.from("contenido").select("coleccion,id,datos").then(function (res) {
     check(res);
+    aplicarContenido(res.data || []);
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), rows: res.data || [] })); } catch (e) {}
+  });
+}
+function aplicarContenido(rows) {
+  (function (res) {
     var next = {};
     COLLECTIONS.forEach(function (c) { next[c] = []; });
     (res.data || []).forEach(function (r) {
@@ -4019,7 +4426,7 @@ function loadAll() {
     });
     COLLECTIONS.forEach(function (c) { DATA[c] = next[c]; });
     LIVE = true;
-  });
+  })({ data: rows });
 }
 function docRef(col, id) {
   var ref = {
@@ -4083,7 +4490,7 @@ function refreshAdmin() {
   if (!SESSION) { IS_ADMIN = false; PERMS = []; MI_CARGO = ""; ASSETS = null; updateNav(); return Promise.resolve(); }
   function done() { ASSETS = can("web") ? ASSETS_ADAPTER : null; updateNav(); }
   return SB.rpc("mis_permisos").then(function (r) {
-    if (!r.error && r.data) { IS_ADMIN = r.data.admin === true; PERMS = IS_ADMIN ? (r.data.permisos || []) : []; MI_CARGO = r.data.cargo || ""; return done(); }
+    if (!r.error && r.data) { IS_ADMIN = r.data.admin === true; PERMS = IS_ADMIN ? (r.data.permisos || []) : []; MI_CARGO = r.data.cargo || ""; MI_FOTO = r.data.foto || ""; return done(); }
     // Base de datos sin cargos todavía (falta supabase/directiva.sql): todo administrador puede todo
     return SB.rpc("es_admin").then(function (r2) { IS_ADMIN = !r2.error && r2.data === true; PERMS = IS_ADMIN ? ["web", "musica", "cuentas"] : []; MI_CARGO = ""; done(); });
   }).catch(function () { IS_ADMIN = false; PERMS = []; ASSETS = null; updateNav(); });
@@ -4095,18 +4502,20 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") window.addEve
 if (configured() && window.supabase && window.supabase.createClient) {
   SB = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
   DB = DB_ADAPTER;
-  SB.auth.getSession().then(function (r) { SESSION = (r && r.data && r.data.session) || null; return refreshAdmin(); })
-    .then(loadAll)
-    .then(loadPrivate)
-    .then(render, function (e) { console.error("No se han podido cargar los datos:", e); render(); });
+  // 1) Se pinta al momento con lo guardado de la última visita; 2) sesión y contenido en paralelo; 3) zona privada
+  if (cacheContenido()) { try { render(); } catch (e) {} }
+  var sesionP = SB.auth.getSession().then(function (r) { SESSION = (r && r.data && r.data.session) || null; return refreshAdmin(); });
+  Promise.all([sesionP, loadAll().catch(function (e) { console.error("No se han podido cargar los datos:", e); })])
+    .then(function () { render(); return loadPrivate(); })
+    .then(function () { render(); validarSesion(); sincronizarPush(); }, function (e) { console.error(e); render(); });
   SB.auth.onAuthStateChange(function (event, session) {
     if (event === "INITIAL_SESSION") return;
     SESSION = session || null;
-    ADMINS.loaded = false; ADMINS.list = []; CUENTAS.loaded = false; CARGOS.loaded = false; REUN.loaded = false; REUN.open = null; DIRECTIVA.loaded = false; TAREAS.loaded = false;
+    ADMINS.loaded = false; ADMINS.list = []; CUENTAS.loaded = false; CARGOS.loaded = false; SOL.loaded = false; REUN.loaded = false; REUN.open = null; DIRECTIVA.loaded = false; TAREAS.loaded = false;
     CUENTAS.loaded = false; CUENTAS.list = [];
     PRIV.loaded = false; PRIV.loading = true;
     // Se sale del callback antes de llamar de nuevo a Supabase
-    setTimeout(function () { refreshAdmin().then(loadPrivate).then(render); }, 0);
+    setTimeout(function () { refreshAdmin().then(loadPrivate).then(function () { render(); if (SESSION) sincronizarPush(); }); }, 0);
   });
   // Recarga los datos al volver a la pestaña, por si otro administrador ha cambiado algo
   document.addEventListener("visibilitychange", function () {

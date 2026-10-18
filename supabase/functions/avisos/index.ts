@@ -1,6 +1,6 @@
 // Notificaciones al móvil de los músicos (Web Push).
 // Acciones:
-//   "clave"   → devuelve la clave pública VAPID (cualquiera con sesión)
+//   "clave"   → devuelve la clave pública VAPID (sin sesión: no es secreta)
 //   "prueba"  → manda una notificación de prueba a los móviles de quien llama
 //   "evento"  → avisa a los convocados de uno o varios eventos nuevos (permiso «Área de músicos»)
 //   "anuncio" → avisa de un anuncio nuevo a sus destinatarios (cualquier miembro de la directiva)
@@ -48,6 +48,8 @@ Deno.serve(async (req: Request) => {
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const vapid = { publicKey: Deno.env.get("VAPID_PUBLIC_KEY") || "", privateKey: Deno.env.get("VAPID_PRIVATE_KEY") || "", contacto: Deno.env.get("VAPID_CONTACT") || "mailto:administracion@bandadesiero.es" };
     const body = await req.json().catch(() => ({}));
+    // La clave pública no es secreta: se da sin sesión
+    if (body.action === "clave") return json({ publicKey: vapid.publicKey || null });
 
     const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
     if (!token) return json({ error: "Tienes que iniciar sesión." }, 401);
@@ -55,7 +57,6 @@ Deno.serve(async (req: Request) => {
     const { data: ud, error: uerr } = await userClient.auth.getUser(token);
     if (uerr || !ud?.user) return json({ error: "Tu sesión ha caducado. Vuelve a iniciar sesión." }, 401);
 
-    if (body.action === "clave") return json({ publicKey: vapid.publicKey || null });
     if (!vapid.publicKey || !vapid.privateKey) return json({ error: "Las notificaciones no están configuradas (faltan las claves VAPID)." }, 503);
 
     const admin = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -67,16 +68,19 @@ Deno.serve(async (req: Request) => {
       if (error) throw error;
       let enviados = 0;
       const muertas: string[] = [];
+      const errores: { servicio: string; estado: number; detalle: string }[] = [];
       await Promise.all((subs || []).map(async (s) => {
+        const servicio = new URL(s.endpoint).host;
         try {
-          const st = await enviarPush(s as Suscripcion, datos, vapid);
-          if (st >= 200 && st < 300) enviados++;
-          else if (st === 404 || st === 410) muertas.push(s.id);
-          else console.error("push", st, new URL(s.endpoint).host);
-        } catch (e) { console.error("push", e); }
+          const r = await enviarPush(s as Suscripcion, datos, vapid);
+          if (r.status >= 200 && r.status < 300) enviados++;
+          else if (r.status === 404 || r.status === 410) muertas.push(s.id);
+          else { console.error("push", r.status, servicio, r.texto); errores.push({ servicio, estado: r.status, detalle: r.texto }); }
+        } catch (e) { console.error("push", servicio, e); errores.push({ servicio, estado: 0, detalle: String(e) }); }
       }));
       if (muertas.length) await admin.from("push_suscripciones").delete().in("id", muertas);
-      return { personas: new Set((subs || []).map((s) => s.user_id)).size, moviles: (subs || []).length, enviados };
+      const conEnvio = new Set((subs || []).filter((s) => !muertas.includes(s.id)).map((s) => s.user_id));
+      return { personas: conEnvio.size, moviles: (subs || []).length - muertas.length, enviados, caducados: muertas.length, errores };
     }
 
     if (body.action === "prueba") {
