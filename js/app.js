@@ -4072,7 +4072,7 @@ function cuentaForm(c) {
       FLASH = { col: "personas", msg: nuevo ? "Cuenta de " + body.nombre + " creada." : "Cambios guardados." };
       if (nuevo) FLASH.acceso = { a: { nombre: body.nombre, usuario: body.usuario, email: body.email, password: body.password }, correo: (d && d.correo) || (body.enviar ? { enviado: false, error: "no-configurado" } : { enviado: false, error: "no-pedido" }), nueva: true };
       CUENTAS.edit = null;
-      return Promise.all([loadCuentas(), loadAll(), refreshAdmin()]);
+      DIRECTIVA.loaded = false; return Promise.all([loadCuentas(), loadAll(), refreshAdmin(), loadDirectiva()]);
     }).then(function () { render(); var fl = document.querySelector(".pp-flash"); if (fl && fl.scrollIntoView) fl.scrollIntoView({ block: "center" }); }, function (e) { btn.disabled = false; btn.textContent = nuevo ? "Crear cuenta" : "Guardar cambios"; setStatus(st, e.message, false); });
   });
   return form;
@@ -4112,7 +4112,7 @@ function cuentaRow(c) {
       isMe ? null : deleteButton(function (b) {
         musicosFn({ action: "remove", user_id: c.user_id }).then(function () {
           FLASH = { col: "personas", msg: "Cuenta de " + (c.nombre || c.email) + " borrada." };
-          return Promise.all([loadCuentas(), loadAll()]);
+          return Promise.all([loadCuentas(), loadAll(), loadDirectiva()]);
         }).then(render, function (e) { b.disabled = false; b.textContent = "Borrar"; alert2(b, e.message); });
       })),
     CUENTAS.edit === c.user_id ? cuentaForm(c) : null);
