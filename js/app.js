@@ -94,7 +94,7 @@ var DEFAULTS = {
     texto: "Personas, empresas e instituciones pueden colaborar con la divulgación de la música en Siero y la Comarca del Nora haciéndose socio o mecenas.",
     pasos: "Rellena la hoja de socio con tus datos.\nEntrégala en nuestras oficinas o envíanosla.\nTe confirmamos el alta y empiezas a formar parte de la asociación.",
     aviso: "Para más información, contacte con nosotros o pase por nuestras oficinas.",
-    niveles: "Socio | 12 € al año (1 € al mes) | Contribución mínima para apoyar la promoción cultural.\nAmigo | 100 € y más | Recibe el estatus de AMIGO de la asociación.\nMecenas | 500 € y más | Recibe el estatus de MECENAS de la asociación.",
+    niveles: "Socio | Entre 12 € y 49 € al año | Contribución para apoyar la promoción cultural de la música en Siero.\nAmigo | Entre 50 € y 499 € al año | Recibe el estatus de AMIGO de la asociación.\nMecenas | A partir de 500 € al año | Recibe el estatus de MECENAS de la asociación.",
     ventajas: "Exhibición del logotipo | Solo para MECENAS: empresas e instituciones con su logotipo y enlace en nuestra web.\nMención especial en nuestra web | Opcional, para AMIGOS y MECENAS.\nAcceso a conciertos | Acceso preferente a los conciertos de la asociación."
   },
   pie: { texto: "Asociación sin ánimo de lucro que enseña, toca y comparte música en el concejo de Siero desde 1984.", apoyos: "Con el apoyo del Ayuntamiento de Siero y la Fundación Caja Rural de Asturias", copyright: "© Asociación Sierense Amigos de la Música · Pola de Siero, Asturias" }
