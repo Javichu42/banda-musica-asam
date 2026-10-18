@@ -7,8 +7,8 @@
   "start_url": "/#musicos-agenda",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#3f7fd6",
-  "theme_color": "#3f7fd6",
+  "background_color": "#f6f8fc",
+  "theme_color": "#f6f8fc",
   "icons": [
     {
       "src": "img/app/icono-192.png",

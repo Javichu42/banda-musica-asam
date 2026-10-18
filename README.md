@@ -26,6 +26,7 @@ supabase/directiva.sql         Cargos con permisos, cuentas unificadas y reunion
 supabase/notificaciones.sql    Móviles con los avisos activados (notificaciones push)
 supabase/perfil.sql            Fotos de perfil que sube cada persona
 supabase/socios.sql            Hojas de alta de socio enviadas desde la web
+supabase/sanciones.sql         Reglamento de Régimen Interno (RRI) y sanciones
 docs/alta-socio.pdf            Plantilla oficial de la hoja de socio (la web escribe encima)
 sw.js, manifest.webmanifest    La web como app instalable y receptor de notificaciones
 vercel.json                    Ajustes de Vercel
@@ -209,6 +210,12 @@ En «Hacerse socio» cualquiera puede rellenar la hoja oficial, firmarla con el 
 ## Fotos de perfil
 
 Cada persona puede poner su foto desde Área de músicos → Perfil (se recorta en cuadrado y se reduce antes de subirla). Hay que ejecutar `supabase/perfil.sql`.
+
+### Reglamento (RRI) y sanciones
+
+En el Área de músicos hay una pestaña «Reglamento» con el RRI separado por capítulos y artículos, con buscador e índice. Quien tenga el permiso «Reglamento y sanciones» (o «Área de músicos») puede publicarlo subiendo el PDF (la web lee el texto, también si está escaneado) o pegándolo.
+
+En Administración → Directiva → «⚖️ Sanciones» se ponen las sanciones (persona, gravedad, medida, motivo, artículo, fechas). A la persona le llega un aviso al móvil sin el motivo en la pantalla bloqueada; la ve en Reglamento → Mis sanciones, la directiva sabe cuándo la ha visto y puede presentar una alegación, que la directiva responde desde el panel. Hay filtros, estadísticas, historial por persona y exportación a CSV. Hay que ejecutar `supabase/sanciones.sql`, que crea el permiso nuevo y se lo da al Administrador general y a la Presidencia.
 
 ## Móvil
 
