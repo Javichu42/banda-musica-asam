@@ -2688,6 +2688,57 @@ function renderThumb(page) {
   var c = document.createElement("canvas"); c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
   return page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise.then(function () { return c.toDataURL("image/jpeg", 0.72); });
 }
+/* ---------- Lectura de PDF escaneados (OCR con Tesseract.js, en el navegador) ---------- */
+var TESS_VER = "5.1.1", TESS_P = null;
+function getOcr() {
+  if (!TESS_P) TESS_P = (window.Tesseract ? Promise.resolve() : loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@" + TESS_VER + "/dist/tesseract.min.js"))
+    .then(function () { return window.Tesseract.createWorker("spa", 1); })
+    .then(function (w) { return w.setParameters({ tessedit_pageseg_mode: "11" }).then(function () { return w; }); })
+    .catch(function (e) { TESS_P = null; throw e; });
+  return TESS_P;
+}
+// Recorta el borde de la página donde suele ir el nombre del instrumento y lo deja en horizontal.
+// "arriba": cabecera normal · "der"/"izq": página girada, con el nombre en vertical en un margen
+function ocrStrip(src, lado) {
+  var W = src.width, H = src.height, c = document.createElement("canvas"), x = c.getContext("2d");
+  if (lado === "arriba") { var hh = Math.round(H * 0.17); c.width = W; c.height = hh; x.fillStyle = "#fff"; x.fillRect(0, 0, W, hh); x.drawImage(src, 0, 0, W, hh, 0, 0, W, hh); return c; }
+  var cw = Math.round(W * 0.17); c.width = H; c.height = cw; x.fillStyle = "#fff"; x.fillRect(0, 0, H, cw);
+  if (lado === "der") { x.translate(0, cw); x.rotate(-Math.PI / 2); x.drawImage(src, W - cw, 0, cw, H, 0, 0, cw, H); }
+  else { x.translate(H, 0); x.rotate(Math.PI / 2); x.drawImage(src, 0, 0, cw, H, 0, 0, cw, H); }
+  return c;
+}
+function ocrText(worker, canvas) {
+  return worker.recognize(canvas).then(function (r) {
+    var d = r.data || {}, words = d.words || [];
+    if (!words.length) return d.text || "";
+    return words.filter(function (w) { return w.confidence >= 45 && /[A-Za-zÀ-ÿ0-9]/.test(w.text); }).map(function (w) { return w.text; }).join(" ");
+  });
+}
+// Devuelve la detección de una página escaneada (o null). item.ocrLado recuerda qué borde funcionó.
+function ocrPage(worker, page, item) {
+  var vp0 = page.getViewport({ scale: 1 }), scale = 1800 / Math.max(vp0.width, vp0.height), vp = page.getViewport({ scale: scale });
+  var c = document.createElement("canvas"); c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
+  var ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+  return page.render({ canvasContext: ctx, viewport: vp }).promise.then(function () {
+    var lados = ["arriba", "der", "izq"];
+    if (item.ocrLado) lados = [item.ocrLado].concat(lados.filter(function (l) { return l !== item.ocrLado; }));
+    var k = 0;
+    function next() {
+      if (k >= lados.length || item.ocrSkip) return null;
+      var lado = lados[k++];
+      return ocrText(worker, ocrStrip(c, lado)).then(function (txt) {
+        var d = INST.detect(txt, { ocr: true });
+        if (d) { item.ocrLado = lado; d.ocr = true; return d; }
+        return next();
+      });
+    }
+    return next();
+  });
+}
+function setProgreso(item, txt) {
+  item.progreso = txt;
+  var el = document.getElementById("si-p-" + item.id); if (el) el.textContent = txt;
+}
 function sameDet(a, b) { return a && b && a.instrumento === b.instrumento && (a.voces || []).join() === (b.voces || []).join(); }
 function analyzeFile(item) {
   var file = item.file, g = INST.detect(file.name);
@@ -2695,7 +2746,7 @@ function analyzeFile(item) {
   if (!/pdf$/i.test(file.type) && !/\.pdf$/i.test(file.name)) { item.status = "listo"; return Promise.resolve(); }
   return readAsBuffer(file).then(function (buf) {
     item.buf = buf;
-    return getPdfjs().then(function (pdfjs) { return pdfjs.getDocument({ data: buf.slice(0) }).promise; });
+    return getPdfjs().then(function (pdfjs) { return pdfjs.getDocument({ data: buf.slice(0), wasmUrl: new URL("js/vendor/wasm/", location.href).href }).promise; });
   }).then(function (doc) {
     item.paginas = doc.numPages;
     var n = Math.min(doc.numPages, 120), dets = [], thumbs = [], conTexto = false;
@@ -2707,19 +2758,33 @@ function analyzeFile(item) {
       }).then(function () { item.progreso = i + "/" + n; });
     })(i);
     return chain.then(function () {
+      if (conTexto || !n) return;
+      // PDF escaneado: se intenta leer el nombre de cada particella en la imagen
+      item.ocr = true; setProgreso(item, "Preparando la lectura de la imagen…");
+      if (AREA.stage) render();
+      return getOcr().then(function (worker) {
+        var c2 = Promise.resolve();
+        for (var i = 1; i <= n; i++) (function (i) {
+          c2 = c2.then(function () { if (item.ocrSkip) return; setProgreso(item, "Leyendo la imagen de la página " + i + " de " + n + "…");
+            return doc.getPage(i).then(function (page) { return ocrPage(worker, page, item); }).then(function (d) { dets[i - 1] = d; }); });
+        })(i);
+        return c2.then(function () { item.ocrHecho = !item.ocrSkip; });
+      }).catch(function (e) { item.ocrError = (e && e.message) || "error"; });
+    }).then(function () {
       item.thumbs = thumbs; item.dets = dets; item.conTexto = conTexto;
       // Cortes: empieza una particella nueva cuando cambia el instrumento o la voz de la cabecera
       var segs = [];
       dets.forEach(function (d, idx) {
         var cur = segs[segs.length - 1];
         if (!cur) segs.push({ start: idx, instrumento: d ? d.instrumento : item.instrumento, voces: d ? d.voces : item.voces });
+        else if (d && d.ocr) segs.push({ start: idx, instrumento: d.instrumento, voces: d.voces }); // en un escaneo, cada cabecera leída abre particella
         else if (d && !d.guion && !sameDet(d, cur)) segs.push({ start: idx, instrumento: d.instrumento, voces: d.voces });
         else if (d && d.guion && cur.instrumento !== "Guion") segs.push({ start: idx, instrumento: "Guion", voces: [] });
       });
-      if (segs.length > 1) { item.kind = "split"; item.segments = segs; item.origen = "contenido"; }
+      if (segs.length > 1) { item.kind = "split"; item.segments = segs; item.origen = item.ocr ? "imagen" : "contenido"; }
       else {
         item.kind = "single";
-        if (!item.instrumento && segs[0] && segs[0].instrumento) { item.instrumento = segs[0].instrumento; item.voces = segs[0].voces || []; item.origen = "contenido"; }
+        if (!item.instrumento && segs[0] && segs[0].instrumento) { item.instrumento = segs[0].instrumento; item.voces = segs[0].voces || []; item.origen = item.ocr ? "imagen" : "contenido"; }
         item.segments = [{ start: 0, instrumento: item.instrumento, voces: item.voces }];
       }
       item.status = "listo";
@@ -2848,12 +2913,19 @@ function stagedItem(it, idx, o, F) {
   var remove = h("button", { type: "button", class: "ico-btn", "aria-label": "Quitar " + it.file.name, title: "Quitar", onclick: function () { st.items.splice(idx, 1); render(); } }, icon("no"));
   var head = h("div", { class: "si-head" }, h("span", { class: "f-ic", "aria-hidden": "true", text: it.kind === "split" ? "📚" : instEmoji(it.instrumento) }),
     h("div", { class: "si-name" }, h("b", { text: it.file.name }), h("small", { text: [Math.round(it.file.size / 1024) + " KB", it.paginas ? it.paginas + (it.paginas === 1 ? " página" : " páginas") : "",
-      it.status !== "listo" ? "Leyendo el PDF… " + (it.progreso || "") : it.kind === "split" ? "Contiene " + it.segments.length + " particellas" : it.origen === "nombre" ? "Reconocido por el nombre" : it.origen === "contenido" ? "Reconocido por el contenido" : "No reconocido: elige el instrumento"].filter(Boolean).join(" · ") })),
+      it.status !== "listo" ? null : it.kind === "split" ? "Contiene " + it.segments.length + " particellas" : it.origen === "nombre" ? "Reconocido por el nombre" : it.origen === "contenido" ? "Reconocido por el contenido" : it.origen === "imagen" ? "Reconocido leyendo la imagen" : "No reconocido: elige el instrumento"].filter(Boolean).join(" · ") }),
+      it.status !== "listo" ? h("small", { class: "si-prog", id: "si-p-" + it.id, text: it.progreso || "Leyendo el PDF…" }) : null),
     remove);
   var box = h("div", { class: "staged-item" + (it.status !== "listo" ? " loading" : "") + (it.error ? " bad" : "") }, head);
   if (it.error) { add(box, h("p", { class: "status err", text: it.error })); return box; }
   if (it.aviso) add(box, h("p", { class: "muted small", text: it.aviso }));
-  if (it.status !== "listo") return box;
+  if (it.status !== "listo") {
+    if (it.ocr) add(box, h("div", { class: "ocr-run" }, h("span", { class: "spin", "aria-hidden": "true" }),
+      h("p", { class: "muted small", text: "Este PDF está escaneado (no tiene texto), así que la web está leyendo la imagen de cada página para encontrar el nombre de cada particella. Puede tardar un par de segundos por página." }),
+      h("button", { type: "button", class: "btn ghost small", text: "Saltar y marcar a mano", onclick: function (ev) { it.ocrSkip = true; ev.currentTarget.disabled = true; ev.currentTarget.textContent = "Parando…"; } })));
+    return box;
+  }
+  if (it.ocrError) add(box, h("p", { class: "muted small", text: "No se ha podido leer la imagen (" + it.ocrError + "). Marca las particellas a mano." }));
   if (it.kind !== "split") {
     add(box, h("div", { class: "si-assign" },
       instSelect("si-i-" + it.id, it.instrumento, function (v) { it.instrumento = v; it.segments = [{ start: 0, instrumento: v, voces: it.voces }]; render(); }),
@@ -2864,7 +2936,9 @@ function stagedItem(it, idx, o, F) {
     return box;
   }
   // PDF con varias particellas: páginas con su corte
-  add(box, h("p", { class: "muted small", text: it.conTexto ? "La web ha leído la cabecera de cada página y ha encontrado dónde empieza cada particella. Revisa los cortes: pulsa «✂» en una página para empezar ahí otra particella." : "Este PDF no tiene texto (está escaneado), así que no se puede leer la cabecera. Marca con «✂» la primera página de cada particella y elige su instrumento." }));
+  add(box, h("p", { class: "muted small", text: it.conTexto ? "La web ha leído la cabecera de cada página y ha encontrado dónde empieza cada particella. Revisa los cortes: pulsa «✂» en una página para empezar ahí otra particella."
+    : it.ocrHecho ? "Este PDF está escaneado: la web ha leído la imagen de cada página y ha propuesto estos cortes. Al leer imágenes puede equivocarse, así que revisa bien cada instrumento y su voz. Pulsa «✂» para empezar otra particella en una página o «Unir con la anterior» para quitar un corte."
+    : "Este PDF no tiene texto (está escaneado). Marca con «✂» la primera página de cada particella y elige su instrumento." }));
   var startMap = {}; it.segments.forEach(function (s, k) { startMap[s.start] = k; });
   var grid = h("div", { class: "pages" });
   var curSeg = -1;

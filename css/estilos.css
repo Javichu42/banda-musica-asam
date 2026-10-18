@@ -1137,7 +1137,7 @@ button.mus-av { cursor: zoom-in; }
 .staged { display: grid; gap: 12px; }
 .staged-item { border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; display: grid; gap: 10px; background: var(--bg); }
 .staged-item.loading { opacity: .85; }
-.staged-item.loading .si-name small::after { content: ""; display: inline-block; width: 10px; height: 10px; border: 2px solid var(--azul); border-right-color: transparent; border-radius: 50%; margin-left: 6px; animation: spin .8s linear infinite; vertical-align: -1px; }
+.staged-item.loading .si-name .si-prog::after { content: ""; display: inline-block; width: 10px; height: 10px; border: 2px solid var(--azul); border-right-color: transparent; border-radius: 50%; margin-left: 6px; animation: spin .8s linear infinite; vertical-align: -1px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .staged-item.bad { border-color: var(--danger); }
 .si-head { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
@@ -1155,7 +1155,7 @@ button.mus-av { cursor: zoom-in; }
 .pg.start { box-shadow: 0 0 0 2px color-mix(in srgb, var(--sc) 50%, transparent); }
 .seg-0 { --sc: #3f7fd6; } .seg-1 { --sc: #e07a1f; } .seg-2 { --sc: #1f8f48; } .seg-3 { --sc: #8a63d2; } .seg-4 { --sc: #d7263d; } .seg-5 { --sc: #00897b; }
 .pg-thumb { position: relative; aspect-ratio: 3 / 4; background: #fff; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); display: grid; place-items: center; color: #777; font-size: .8rem; }
-.pg-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.pg-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center top; display: block; }
 .pg-n { position: absolute; bottom: 4px; right: 4px; background: rgba(0, 0, 0, .65); color: #fff; font-size: .7rem; font-weight: 700; padding: 1px 6px; border-radius: 6px; }
 .pg-seg { display: grid; gap: 6px; }
 .pg-seg .voz-in { width: 100%; }
@@ -1401,3 +1401,8 @@ body.in-area .top .wrap { gap: 22px; }
   body.in-area .top-area-in .area-user .u-av { width: 36px; height: 36px; }
   body.in-area .ver-como, body.in-area .adm-btn { padding: 6px 7px; }
 }
+/* Lectura de PDF escaneados */
+.si-name .si-prog { display: block; color: var(--azul-ink, var(--azul)); font-weight: 600; }
+.ocr-run { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--azul) 8%, var(--surface)); border: 1px dashed color-mix(in srgb, var(--azul) 40%, var(--line)); }
+.ocr-run p { flex: 1 1 260px; margin: 0; }
+.ocr-run .spin { width: 22px; height: 22px; border: 3px solid var(--azul); border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; flex: none; }

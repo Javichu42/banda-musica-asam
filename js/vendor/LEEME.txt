@@ -2,3 +2,5 @@ Librerías de terceros incluidas tal cual (se cargan solo cuando hacen falta):
 - pdf-lib 1.17.1 (MIT) · https://pdf-lib.js.org — dividir PDF en particellas.
 - PDF.js 6.2.108, versión "legacy" (Apache-2.0) · https://mozilla.github.io/pdf.js — leer el texto y las miniaturas de los PDF.
 - JSZip 3.10.1 (MIT o GPL-3.0) · https://stuk.github.io/jszip — descargar varias partituras en un .zip.
+- wasm/ (de PDF.js 6.2.108: jbig2, openjpeg y qcms, con sus licencias) — necesarios para ver y leer los PDF escaneados.
+- Tesseract.js 5.1.1 (Apache-2.0) · https://tesseract.projectnaptha.com — no está copiado aquí: se descarga de cdn.jsdelivr.net (con el idioma español) solo cuando se sube un PDF escaneado, para leer el nombre de cada particella en la imagen.
