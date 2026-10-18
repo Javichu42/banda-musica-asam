@@ -1022,7 +1022,7 @@ PAGES.admin = function (tab) {
   return [head, h("section", { class: "block" }, h("div", { class: "wrap" },
     h("div", { class: "row-head" }, h("p", { class: "muted", text: "Sesión iniciada como " + ((SESSION.user && SESSION.user.email) || "") }), logout),
     h("nav", { class: "admin-tabs", "aria-label": "Secciones editables" }, TABS.map(function (t) {
-      return h("a", { href: "#admin-" + t[0], "aria-current": t[0] === tab ? "page" : null, text: t[1] });
+      return h("a", { href: "#admin-" + t[0], class: "tab-" + t[0], "aria-current": t[0] === tab ? "page" : null, text: (t[0] === "cuentas" ? "🎷 " : t[0] === "usuarios" ? "🔑 " : "") + t[1] });
     })), body))];
 };
 
@@ -2049,7 +2049,7 @@ function rsvpControl(e, ans, mode) {
   }
   return h("div", { class: "rsvp-round", role: "group", "aria-label": "¿Vas a ir?" },
     h("button", { type: "button", class: "rb rb-no", "aria-label": "No asistiré", title: "No asistiré", onclick: function (ev) { setRSVP(e.id, "no", null, ev.currentTarget); } }, icon("no")),
-    mode === "card" ? null : h("button", { type: "button", class: "rb rb-duda", "aria-label": "Duda", title: "Duda", onclick: function (ev) { setRSVP(e.id, "duda", null, ev.currentTarget); } }, icon("duda")),
+    h("button", { type: "button", class: "rb rb-duda", "aria-label": "Duda", title: "Duda", onclick: function (ev) { setRSVP(e.id, "duda", null, ev.currentTarget); } }, icon("duda")),
     h("button", { type: "button", class: "rb rb-si", "aria-label": "Asistiré", title: "Asistiré", onclick: function (ev) { setRSVP(e.id, "si", null, ev.currentTarget); } }, icon("si")));
 }
 document.addEventListener("click", function () { Array.prototype.forEach.call(document.querySelectorAll(".ans-menu:not([hidden])"), function (m) { m.hidden = true; }); });

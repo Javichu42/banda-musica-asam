@@ -1221,3 +1221,10 @@ body.in-area .area-main { padding-bottom: 50px; }
 .pm-form { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 18px; }
 .pm-form h3 { font-size: 1.15rem; }
 @media (max-width: 760px) { body.in-area .area-main { padding-bottom: 110px; } }
+
+/* Administración: pestañas de cuentas destacadas */
+.admin-tabs a.tab-cuentas { margin-left: 10px; background: color-mix(in srgb, var(--verde) 14%, var(--surface)); border-color: color-mix(in srgb, var(--verde) 55%, var(--line)); color: var(--verde); }
+.admin-tabs a.tab-usuarios { background: color-mix(in srgb, var(--naranja) 14%, var(--surface)); border-color: color-mix(in srgb, var(--naranja) 55%, var(--line)); color: #b35500; }
+.admin-tabs a.tab-cuentas[aria-current="page"] { background: var(--verde); border-color: var(--verde); color: #fff; }
+.admin-tabs a.tab-usuarios[aria-current="page"] { background: var(--naranja); border-color: var(--naranja); color: #fff; }
+@media (max-width: 700px) { .admin-tabs a.tab-cuentas { margin-left: 0; } }
