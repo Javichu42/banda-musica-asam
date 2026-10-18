@@ -1780,3 +1780,4 @@ img.av-mini.photo, img.av-mid.photo { object-fit: cover; }
 .sc-selects select { font: 600 .92rem var(--f-body); color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
 .admin-tabs a.tab-sanciones { background: color-mix(in srgb, #d63a2f 9%, var(--surface)); border-color: color-mix(in srgb, #d63a2f 40%, var(--line)); color: #a3281f; }
 .admin-tabs a.tab-sanciones[aria-current="page"] { background: #c8352b; border-color: #c8352b; color: #fff; }
+.junta-auto { margin-bottom: 14px; display: block; }

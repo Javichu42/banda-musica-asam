@@ -880,7 +880,7 @@ PAGES.bandin = function () {
 };
 
 PAGES.direccion = function () {
-  var dirs = DATA.directores.slice().sort(byOrden), junta = DATA.directiva.slice().sort(byOrden);
+  var dirs = DATA.directores.slice().sort(byOrden), jp = juntaPublica(), junta = jp.list;
   return [
     headSize(pageHead("Dirección", "Quién lleva la batuta y quién sostiene la asociación", null, "verde", staffLettering("Al frente de la música", { glyphs: MUSIC_CAPS, colors: { 1: "c-verde", 4: "c-azul" }, punct: "c-naranja" })), "head-base"),
     h("section", { class: "block" }, h("div", { class: "wrap" },
@@ -893,7 +893,7 @@ PAGES.direccion = function () {
           tray.length ? h("details", null, h("summary", { text: "Trayectoria" }), h("ul", null, tray.map(function (t) { return h("li", { text: t }); }))) : null);
       })) : emptyBox("Todavía no hay directores añadidos.", "directores"))),
     h("section", { class: "block alt" }, h("div", { class: "wrap" },
-      h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Junta Directiva" }), h("p", { class: "muted", text: "Trabajo voluntario y altruista" })), adminLink("directiva", "Editar directiva")),
+      h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Junta Directiva" }), h("p", { class: "muted", text: "Trabajo voluntario y altruista" })), jp.auto ? (can("cuentas") ? h("a", { class: "admin-hint", href: "#admin-personas", text: "✎ Cambiar cargos" }) : null) : adminLink("directiva", "Editar directiva")),
       (function () {
         var isPres = function (m) { return /presiden/i.test(m.cargo || "") && !/vice/i.test(m.cargo || ""); };
         var pres = junta.filter(isPres)[0];
@@ -1529,7 +1529,8 @@ function adminCrud(col) {
   });
   var list = h("div", null, filterEl, rows.length ? h("div", { class: "alist" }, rows)
     : h("div", { class: "empty" }, h("p", { text: "Todavía no hay nada aquí. Usa el formulario para añadir el primero." })));
-  return h("div", { class: "admin-grid" }, list, form);
+  var avisoJunta = col === "directiva" && JUNTA_CARGOS && JUNTA_CARGOS.length ? h("p", { class: "sg-priv junta-auto" }, "La página Dirección ya muestra automáticamente a quien tiene un cargo en ", h("a", { href: "#admin-personas", text: "Personas y accesos" }), " (menos el Administrador general). Aquí solo hace falta añadir una presentación (bio) o una foto: se aplican a la persona con el mismo nombre.") : null;
+  return avisoJunta ? h("div", null, avisoJunta, h("div", { class: "admin-grid" }, list, form)) : h("div", { class: "admin-grid" }, list, form);
 }
 var FLASH = null;
 function alertInline(near, msg) { var p = h("p", { class: "status err", text: msg }); near.parentNode.parentNode.appendChild(p); }
@@ -4941,13 +4942,26 @@ function newId() {
 }
 function check(res) { if (res && res.error) throw res.error; return res; }
 var CACHE_KEY = "asam-contenido-v1";
-function cacheContenido() { try { var c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); if (c && c.rows) { aplicarContenido(c.rows); return true; } } catch (e) {} return false; }
+// Junta directiva pública: personas con cargo (menos Administrador general). null = aún no disponible
+var JUNTA_CARGOS = null;
+function cacheContenido() { try { var c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); if (c && c.rows) { aplicarContenido(c.rows); if (c.junta) JUNTA_CARGOS = c.junta; return true; } } catch (e) {} return false; }
 function loadAll() {
-  return SB.from("contenido").select("coleccion,id,datos").then(function (res) {
+  var junta = SB.rpc("directiva_publica").then(function (r) { return r && !r.error && Array.isArray(r.data) ? r.data : null; }, function () { return null; });
+  return Promise.all([SB.from("contenido").select("coleccion,id,datos"), junta]).then(function (rs) {
+    var res = rs[0];
     check(res);
+    JUNTA_CARGOS = rs[1];
     aplicarContenido(res.data || []);
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), rows: res.data || [] })); } catch (e) {}
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), rows: res.data || [], junta: JUNTA_CARGOS })); } catch (e) {}
   });
+}
+// Lista de la Junta para la página Dirección: la de los cargos si existe; si no, la que se escribió a mano
+function juntaPublica() {
+  if (!JUNTA_CARGOS || !JUNTA_CARGOS.length) return { auto: false, list: DATA.directiva.slice().sort(byOrden) };
+  return { auto: true, list: JUNTA_CARGOS.map(function (p) {
+    var manual = DATA.directiva.filter(function (d) { return norm(d.nombre) === norm(p.nombre); })[0] || {};
+    return { nombre: p.nombre, cargo: p.cargo, orden: p.orden, foto: p.foto || manual.foto || "", bio: manual.bio || "" };
+  }) };
 }
 function aplicarContenido(rows) {
   (function (res) {
