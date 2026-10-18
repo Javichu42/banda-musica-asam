@@ -1622,3 +1622,8 @@ html, body { max-width: 100%; overflow-x: clip; }
 .sl-datos dt { color: var(--muted); font-weight: 600; }
 .sl-datos dd { margin: 0; overflow-wrap: anywhere; }
 .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+/* App instalada a pantalla completa (Android): que nada quede bajo la cámara ni la barra de gestos */
+@media (display-mode: fullscreen), (display-mode: standalone) {
+  .top { padding-top: env(safe-area-inset-top, 0px); }
+  html, body { background: var(--bg); }
+}

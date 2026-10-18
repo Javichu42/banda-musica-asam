@@ -4,14 +4,23 @@ self.addEventListener("install", function () { self.skipWaiting(); });
 self.addEventListener("activate", function (e) { e.waitUntil(self.clients.claim()); });
 
 self.addEventListener("push", function (e) {
-  var d = {};
-  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { title: "Banda de Música de Siero", body: e.data ? e.data.text() : "" }; }
-  e.waitUntil(self.registration.showNotification(d.title || "Banda de Música de Siero", {
-    body: d.body || "",
-    icon: "img/app/icono-192.png",
-    badge: "img/app/insignia-96.png",
+  var d = {}, txt = "";
+  try { txt = e.data ? e.data.text() : ""; } catch (err) { txt = ""; }
+  try { d = txt ? JSON.parse(txt) : {}; } catch (err) { d = { body: txt }; }
+  var base = self.registration.scope;
+  var titulo = String(d.title || "Banda de Música de Siero");
+  var cuerpo = String(d.body || "Toca para verlo en la app de la banda.");
+  e.waitUntil(self.registration.showNotification(titulo, {
+    body: cuerpo,
+    icon: new URL("img/app/icono-192.png", base).href,
+    badge: new URL("img/app/insignia-96.png", base).href,
     tag: d.tag || undefined,
     renotify: !!d.tag,
+    silent: false,
+    vibrate: [120, 60, 120],
+    timestamp: Date.now(),
+    lang: "es",
+    dir: "ltr",
     data: { url: d.url || "/#musicos-agenda" }
   }));
 });

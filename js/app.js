@@ -2260,7 +2260,7 @@ function pushClave() {
   return PUSH_CLAVE_P;
 }
 function esIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
-function instalada() { return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true; }
+function instalada() { return (window.matchMedia && (matchMedia("(display-mode: fullscreen)").matches || matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: minimal-ui)").matches)) || navigator.standalone === true; }
 function swReg() {
   if (!("serviceWorker" in navigator)) return Promise.reject(new Error("sin service worker"));
   return Promise.race([
