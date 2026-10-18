@@ -62,3 +62,51 @@ create policy "Peticiones: borrar la propia o admin" on public.peticiones
 drop policy if exists "Asistencias: los músicos ven las de todos" on public.asistencias;
 create policy "Asistencias: los músicos ven las de todos" on public.asistencias
   for select to authenticated using (public.es_musico() or public.es_admin());
+
+-- 4. Sugerencias de los músicos: solo las leen los administradores (y cada uno las suyas)
+create table if not exists public.sugerencias (
+  id        uuid        primary key default gen_random_uuid(),
+  user_id   uuid        not null default auth.uid() references auth.users (id) on delete cascade,
+  autor     text        not null,
+  anonima   boolean     not null default false,
+  categoria text,
+  texto     text        not null check (char_length(texto) between 1 and 3000),
+  leida     boolean     not null default false,
+  creado    timestamptz not null default now()
+);
+alter table public.sugerencias enable row level security;
+drop policy if exists "Sugerencias: ver las propias o todas si eres admin" on public.sugerencias;
+drop policy if exists "Sugerencias: enviar como uno mismo" on public.sugerencias;
+drop policy if exists "Sugerencias: marcar leída (admin)" on public.sugerencias;
+drop policy if exists "Sugerencias: borrar la propia o admin" on public.sugerencias;
+create policy "Sugerencias: ver las propias o todas si eres admin" on public.sugerencias
+  for select to authenticated using (user_id = auth.uid() or public.es_admin());
+create policy "Sugerencias: enviar como uno mismo" on public.sugerencias
+  for insert to authenticated with check (user_id = auth.uid() and (public.es_musico() or public.es_admin()));
+create policy "Sugerencias: marcar leída (admin)" on public.sugerencias
+  for update to authenticated using (public.es_admin()) with check (public.es_admin());
+create policy "Sugerencias: borrar la propia o admin" on public.sugerencias
+  for delete to authenticated using (user_id = auth.uid() or public.es_admin());
+
+-- 5. Tareas de la directiva: solo administradores
+create table if not exists public.tareas (
+  id           uuid        primary key default gen_random_uuid(),
+  titulo       text        not null check (char_length(titulo) between 1 and 200),
+  descripcion  text        check (descripcion is null or char_length(descripcion) <= 4000),
+  estado       text        not null default 'pendiente' check (estado in ('pendiente', 'estudio', 'curso', 'hecha')),
+  prioridad    text        not null default 'media' check (prioridad in ('baja', 'media', 'alta', 'urgente')),
+  responsable  text,
+  fecha_limite date,
+  autor        text,
+  completada   timestamptz,
+  aviso_id     text,
+  creado       timestamptz not null default now(),
+  actualizado  timestamptz not null default now()
+);
+drop trigger if exists tareas_actualizado on public.tareas;
+create trigger tareas_actualizado before update on public.tareas
+  for each row execute function public.tocar_actualizado();
+alter table public.tareas enable row level security;
+drop policy if exists "Tareas: administradores" on public.tareas;
+create policy "Tareas: administradores" on public.tareas
+  for all to authenticated using (public.es_admin()) with check (public.es_admin());

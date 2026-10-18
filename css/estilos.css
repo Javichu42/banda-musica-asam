@@ -1285,3 +1285,119 @@ body.in-area .area-main { padding-bottom: 50px; }
 .serie-info.warn { background: color-mix(in srgb, var(--naranja) 12%, var(--surface)); color: #b05600; }
 .ev-admin { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .ev-admin p { flex-basis: 100%; margin: 0; }
+
+/* Panel de administración: dos grupos de pestañas */
+.admin-navs { display: grid; gap: 12px; margin-bottom: 24px; }
+.admin-nav-group { display: grid; gap: 6px; }
+.admin-nav-group .admin-tabs { margin-bottom: 0; }
+.ang-label { font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.admin-nav-group.jcuentas { padding-top: 12px; border-top: 1px dashed var(--line); }
+.admin-tabs a.tab-cuentas { margin-left: 0; }
+.admin-tabs a.tab-tareas { background: color-mix(in srgb, var(--azul) 12%, var(--surface)); border-color: color-mix(in srgb, var(--azul) 50%, var(--line)); color: var(--azul-ink); }
+.admin-tabs a.tab-tareas[aria-current="page"] { background: var(--azul); border-color: var(--azul); color: #fff; }
+.admin-tabs a.tab-area { margin-left: auto; border-style: dashed; }
+@media (max-width: 700px) { .admin-tabs a.tab-area { margin-left: 0; } }
+
+/* Botón de administración en el Área de músicos */
+.adm-btn { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-weight: 700; font-size: .9rem; color: #b35500; border: 1.5px solid color-mix(in srgb, var(--naranja) 55%, var(--line)); background: color-mix(in srgb, var(--naranja) 10%, var(--surface)); padding: 7px 12px; border-radius: 10px; flex: none; }
+.adm-btn:hover { background: color-mix(in srgb, var(--naranja) 18%, var(--surface)); }
+@media (max-width: 760px) { .adm-btn span { display: none; } .adm-btn { padding: 7px 9px; } }
+
+/* Sugerencias */
+.sg-priv { display: flex; align-items: center; gap: 8px; background: color-mix(in srgb, var(--azul) 9%, var(--surface)); border-radius: 10px; padding: 8px 10px; font-size: .88rem; color: var(--azul-ink); }
+.sg-form textarea { min-height: 130px; }
+.check { display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--verde); }
+.sugs { display: grid; gap: 12px; }
+.sug { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: grid; gap: 8px; }
+.sug.nueva { border-color: var(--naranja); box-shadow: inset 4px 0 0 var(--naranja); }
+.sug-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: .88rem; }
+.sug p { white-space: pre-line; }
+.sug .acts { display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+
+/* Tareas de la directiva */
+.tareas-grid { grid-template-columns: minmax(0, 1fr) 340px; }
+@media (max-width: 1100px) { .tareas-grid { grid-template-columns: 1fr; } .tareas-grid .aform { order: -1; position: static; } }
+.board { display: grid; grid-template-columns: repeat(4, minmax(210px, 1fr)); gap: 12px; align-items: start; overflow-x: auto; padding-bottom: 6px; }
+@media (max-width: 900px) { .board { grid-template-columns: 1fr; } }
+.b-col { background: var(--surface-2); border-radius: 16px; padding: 10px; display: grid; gap: 10px; align-content: start; min-height: 120px; border-top: 4px solid var(--muted); }
+.col-pendiente { border-top-color: #8a93a6; } .col-estudio { border-top-color: #8a63d2; } .col-curso { border-top-color: var(--azul); } .col-hecha { border-top-color: var(--verde); }
+.b-col h3 { display: flex; justify-content: space-between; align-items: center; font-size: .9rem; letter-spacing: .04em; }
+.b-n { background: var(--surface); border-radius: 999px; padding: 1px 9px; font-size: .78rem; }
+.b-empty { text-align: center; padding: 10px 0; }
+.tarea { --pc: #8a93a6; background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--pc); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; }
+.tarea.prio-urgente { --pc: #d7263d; } .tarea.prio-alta { --pc: var(--naranja); } .tarea.prio-media { --pc: #e2b100; } .tarea.prio-baja { --pc: #8a93a6; }
+.tarea.hecha h4 { text-decoration: line-through; opacity: .75; }
+.t-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.t-prio { font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--pc); }
+.t-doing { font-size: .74rem; font-weight: 700; color: var(--azul-ink); }
+.tarea h4 { font-size: 1rem; line-height: 1.3; }
+.tarea p { font-size: .88rem; color: var(--muted); white-space: pre-line; }
+.t-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: .82rem; }
+.t-meta .late { color: var(--danger); font-weight: 700; }
+.t-acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.t-estado { font: 600 .82rem var(--f-body); border: 1px solid var(--line); border-radius: 8px; padding: 5px 6px; background: var(--bg); color: var(--fg); }
+.t-send { justify-self: start; background: var(--verde); color: #fff; }
+.t-pub { font-size: .82rem; color: var(--verde); font-weight: 700; }
+.t-foot { color: var(--muted); font-size: .74rem; }
+.aviso-form { display: grid; gap: 8px; background: color-mix(in srgb, var(--verde) 8%, var(--surface)); border: 1px solid color-mix(in srgb, var(--verde) 40%, var(--line)); border-radius: 12px; padding: 10px; }
+.aviso-form textarea { min-height: 90px; }
+
+/* Obras en el formulario de nuevo evento */
+.obra-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; margin-top: 4px; }
+.obra-pick { display: flex; align-items: center; gap: 10px; text-align: left; border: 1px solid var(--line); border-radius: 12px; padding: 6px 10px 6px 6px; background: var(--bg); color: var(--fg); cursor: pointer; font: inherit; }
+.obra-pick span { display: grid; flex: 1; min-width: 0; line-height: 1.25; }
+.obra-pick small { color: var(--muted); }
+.obra-pick[aria-pressed="true"] { border-color: var(--verde); background: color-mix(in srgb, var(--verde) 9%, var(--surface)); }
+.pick-mark { font-style: normal; font-weight: 800; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); flex: none; }
+.obra-pick[aria-pressed="true"] .pick-mark { background: var(--verde); color: #fff; }
+
+/* Cabecera del Área de músicos dentro de la barra superior de la web */
+.top-area { display: none; }
+body.in-area .top-area { display: flex; flex: 1; min-width: 0; }
+body.in-area .top .wrap { gap: 22px; }
+.top-area-in { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
+.top-area-in .crumbs { padding-left: 18px; border-left: 1px solid var(--line); min-height: 34px; }
+.top-area-in .crumb-root { color: var(--muted); text-decoration: none; }
+.top-area-in .area-user { margin-left: 0; }
+.top-area-in .ver-como { margin-left: auto; }
+.area-top { display: none; }
+@media (min-width: 761px) { .area-tabs { top: calc(64px + env(safe-area-inset-top, 0px)); } }
+.ver-como { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--line); background: var(--surface); color: var(--fg); font: 700 .88rem var(--f-body); padding: 7px 12px; border-radius: 10px; cursor: pointer; flex: none; }
+.ver-como:hover { border-color: #8a63d2; }
+.ver-como.on { background: #2b2140; border-color: #2b2140; color: #fff; }
+@media (max-width: 1000px) { .top-area-in .u-txt { display: none; } }
+@media (max-width: 760px) {
+  body.in-area .brand small { display: none; }
+  body.in-area .top .wrap { gap: 10px; }
+  .top-area-in { gap: 8px; }
+  .top-area-in .crumbs { display: none; }
+  .ver-como span, .adm-btn span { display: none; }
+  .ver-como, .adm-btn { padding: 7px 9px; }
+  .top-area-in .ver-como { margin-left: auto; }
+}
+/* La barrita y la fecha de cada convocatoria toman el color de tu respuesta */
+.ev-card.mine-si { --tc: var(--verde); }
+.ev-card.mine-no { --tc: var(--danger); }
+.ev-card.mine-duda { --tc: #d4a200; }
+.ev-card.mine-no .ev-link h3 { opacity: .75; }
+
+.ver-como .ico, .adm-btn .ico { width: 18px; height: 18px; display: inline-grid; }
+.ver-como .ico svg, .adm-btn .ico svg, .sim-banner .ico svg, .sg-priv .ico svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+/* Tareas: tablero a todo el ancho y formulario encima */
+.tareas-grid { grid-template-columns: 1fr; }
+.tareas-grid .aform { order: -1; position: static; max-width: none; }
+.tareas-grid .aform .t-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.board { grid-template-columns: repeat(4, minmax(230px, 1fr)); }
+@media (max-width: 1000px) { .board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .board { grid-template-columns: 1fr; } }
+.tareas-new { margin-bottom: 4px; order: -1; }
+.tareas-grid .aform { max-width: 760px; }
+@media (max-width: 520px) {
+  body.in-area .brand { gap: 6px; flex-shrink: 1; }
+  body.in-area .brand .brand-mark { width: 42px; height: 38px; }
+  body.in-area .brand span { font-size: .86rem; }
+  body.in-area .top-area-in { gap: 6px; }
+  body.in-area .top-area-in .area-user .u-av { width: 36px; height: 36px; }
+  body.in-area .ver-como, body.in-area .adm-btn { padding: 6px 7px; }
+}

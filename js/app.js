@@ -944,7 +944,8 @@ var SCHEMAS = {
     filter: { k: "formacion", label: "Formación", options: ["Banda", "Bandín", "Banda y Bandín"] },
     group: function (d) { return (d.formacion || "") + " · " + (d.instrumento || "Otros"); } }
 };
-var TABS = [["directiva", "Directiva"], ["directores", "Directores"], ["profesores", "Profesorado"], ["historia", "Historia"], ["musicos", "Músicos"], ["eventos", "Eventos"], ["noticias", "Noticias"], ["enlaces", "Enlaces y redes"], ["fotos", "Galería"], ["escuela", "Escuela"], ["socio", "Hacerse socio"], ["contacto", "Contacto"], ["pie", "Pie de página"], ["cuentas", "Cuentas de músicos"], ["usuarios", "Administradores"]];
+var TABS_JUNTA = [["tareas", "📋 Tareas de la directiva"], ["cuentas", "🎷 Cuentas de músicos"], ["usuarios", "🔑 Administradores"]];
+var TABS = [["directiva", "Directiva"], ["directores", "Directores"], ["profesores", "Profesorado"], ["historia", "Historia"], ["musicos", "Músicos"], ["eventos", "Eventos"], ["noticias", "Noticias"], ["enlaces", "Enlaces y redes"], ["fotos", "Galería"], ["escuela", "Escuela"], ["socio", "Hacerse socio"], ["contacto", "Contacto"], ["pie", "Pie de página"]].concat(TABS_JUNTA);
 SCHEMAS.historia = { label: "Historia", singular: "hito", fields: [
     { k: "anio", l: "Año o etiqueta", req: true, ph: "1984" },
     { k: "detalle", l: "Fecha o detalle", ph: "24 de diciembre" },
@@ -1018,12 +1019,20 @@ PAGES.admin = function (tab) {
   else if (tab === "escuela") body = adminEscuela();
   else if (tab === "usuarios") body = adminUsuarios();
   else if (tab === "cuentas") body = adminCuentas();
+  else if (tab === "tareas") body = adminTareas();
   else body = adminCrud(tab);
   return [head, h("section", { class: "block" }, h("div", { class: "wrap" },
     h("div", { class: "row-head" }, h("p", { class: "muted", text: "Sesión iniciada como " + ((SESSION.user && SESSION.user.email) || "") }), logout),
-    h("nav", { class: "admin-tabs", "aria-label": "Secciones editables" }, TABS.map(function (t) {
-      return h("a", { href: "#admin-" + t[0], class: "tab-" + t[0], "aria-current": t[0] === tab ? "page" : null, text: (t[0] === "cuentas" ? "🎷 " : t[0] === "usuarios" ? "🔑 " : "") + t[1] });
-    })), body))];
+    h("div", { class: "admin-navs" },
+      h("div", { class: "admin-nav-group" }, h("span", { class: "ang-label", text: "Contenido de la web" }),
+        h("nav", { class: "admin-tabs", "aria-label": "Contenido de la web" }, TABS.filter(function (t) { return !TABS_JUNTA.some(function (j) { return j[0] === t[0]; }); }).map(function (t) {
+          return h("a", { href: "#admin-" + t[0], class: "tab-" + t[0], "aria-current": t[0] === tab ? "page" : null, text: t[1] });
+        }))),
+      h("div", { class: "admin-nav-group jcuentas" }, h("span", { class: "ang-label", text: "Junta y cuentas" }),
+        h("nav", { class: "admin-tabs", "aria-label": "Junta y cuentas" }, TABS_JUNTA.map(function (t) {
+          return h("a", { href: "#admin-" + t[0], class: "tab-" + t[0], "aria-current": t[0] === tab ? "page" : null, text: t[1] });
+        }), h("a", { href: "#musicos-agenda", class: "tab-area", text: "🎼 Ir al Área de músicos" })))),
+    body))];
 };
 
 /* ---------- Gestión de administradores (función de Supabase "administradores") ---------- */
@@ -1612,6 +1621,7 @@ function render() {
   app.appendChild(page);
   document.body.classList.toggle("in-area", r.page === "musicos");
   if (r.page !== "musicos" && AREA) AREA.verComo = null;
+  var slot = document.getElementById("top-area"); if (slot && (r.page !== "musicos" || !SESSION)) slot.replaceChildren();
   var navPage = (r.page === "admin" || r.page === "musicos") ? "privado" : r.page;
   Array.prototype.forEach.call(navEl.querySelectorAll("a"), function (a) { a.setAttribute("aria-current", a.getAttribute("data-p") === navPage ? "page" : "false"); });
   renderFooter();
@@ -1647,14 +1657,9 @@ var AREA = { abiertos: {}, editAnuncio: null, cuando: "proximos", tipo: "todos",
 
 var AREA_REAL_ADMIN = false;
 function simulando() { return !!AREA.verComo && AREA_REAL_ADMIN; }
-function simBlock(btn) {
-  if (!simulando()) return false;
-  if (btn) { btn.disabled = false; alert2(btn, "Estás viendo el área como otro músico: no se guardan cambios."); }
-  return true;
-}
+function simBlock() { return false; }
 function myMusico() {
   if (!SESSION || !SESSION.user) return null;
-  if (simulando()) return DATA.musicos.filter(function (m) { return m.id === AREA.verComo; })[0] || null;
   var id = SESSION.user.id;
   return DATA.musicos.filter(function (m) { return m.user_id === id; })[0] || null;
 }
@@ -1741,7 +1746,8 @@ function loadPrivate() {
     SB.from("pase_lista").select("evento_id,user_id,presente"),
     SB.from("comentarios").select("id,anuncio_id,user_id,autor,texto,creado").order("creado"),
     optional(SB.from("valoraciones").select("obra_id,user_id,estrellas")),
-    optional(SB.from("peticiones").select("id,obra_id,user_id,autor,instrumento,voz,mensaje,creado").order("creado"))
+    optional(SB.from("peticiones").select("id,obra_id,user_id,autor,instrumento,voz,mensaje,creado").order("creado")),
+    optional(SB.from("sugerencias").select("id,user_id,autor,anonima,categoria,texto,leida,creado").order("creado"))
   ]).then(function (r) {
     r.slice(0, 4).forEach(check);
     var an = [], ob = [], pa = [], prog = {};
@@ -1756,7 +1762,7 @@ function loadPrivate() {
     var pase = {}; r[2].data.forEach(function (p) { (pase[p.evento_id] = pase[p.evento_id] || {})[p.user_id] = p.presente; });
     var com = {}; r[3].data.forEach(function (c) { (com[c.anuncio_id] = com[c.anuncio_id] || []).push(c); });
     var val = {}; (r[4].data || []).forEach(function (v) { (val[v.obra_id] = val[v.obra_id] || {})[v.user_id] = v.estrellas; });
-    PRIV = { loaded: true, loading: false, anuncios: an, obras: ob, partes: pa, asist: asist, pase: pase, coments: com, valor: val, peticiones: r[5].data || [], programas: prog, error: "" };
+    PRIV = { loaded: true, loading: false, anuncios: an, obras: ob, partes: pa, asist: asist, pase: pase, coments: com, valor: val, peticiones: r[5].data || [], sugerencias: r[6].data || [], programas: prog, error: "" };
   }, function (e) { PRIV.loading = false; PRIV.loaded = true; PRIV.error = (e && e.message) || "No se han podido cargar los datos."; });
 }
 function reloadPrivate() { return loadPrivate().then(render); }
@@ -1809,7 +1815,9 @@ var ICONS = {
   grupo: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8.5" r="3.3"/><path d="M3 19.5c.8-3.3 3.2-5 6-5s5.2 1.7 6 5"/><circle cx="17" cy="9.5" r="2.6"/><path d="M15.5 14.6c2.6-.3 4.8 1.2 5.5 4.4"/></svg>',
   estrella: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.8l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></svg>',
   subir: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19.5h14"/></svg>',
-  ojo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>'
+  ojo: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  sugerencias: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.4 1.1 2.2h5c0-.8.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/></svg>',
+  ajustes: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M4.2 7.5l2.1 1.2M17.7 15.3l2.1 1.2M4.2 16.5l2.1-1.2M17.7 8.7l2.1-1.2"/><circle cx="12" cy="12" r="6.3"/></svg>'
 };
 function icon(name, cls) { return h("span", { class: "ico" + (cls ? " " + cls : ""), html: ICONS[name] || "" }); }
 
@@ -1840,7 +1848,7 @@ function pendientes() {
 
 /* ---------- Estructura de la página ---------- */
 function areaTabs() {
-  var t = [["agenda", "Agenda"], ["repertorio", "Repertorio"], ["avisos", "Avisos"], ["perfil", "Perfil"]];
+  var t = [["agenda", "Agenda"], ["repertorio", "Repertorio"], ["avisos", "Avisos"], ["sugerencias", "Sugerencias"], ["perfil", "Perfil"]];
   if (IS_ADMIN) t.splice(2, 0, ["gestion", "Partituras"]);
   return t;
 }
@@ -1879,6 +1887,7 @@ function musicosPage(sub) {
   else if (tab === "avisos") { body = areaAvisos(); crumbs = [[null, "Avisos"]]; }
   else if (tab === "perfil") { body = areaPerfil(); crumbs = [[null, "Perfil"]]; }
   else if (tab === "gestion" && IS_ADMIN) { body = areaGestion(); crumbs = [[null, "Partituras"]]; }
+  else if (tab === "sugerencias") { body = areaSugerencias(); crumbs = [[null, "Sugerencias"]]; }
   else { tab = "agenda"; body = areaAgenda(); crumbs = [[null, "Agenda"]]; }
   return [areaShell(tab, body, crumbs)];
 }
@@ -1886,30 +1895,27 @@ function notFound(msg) { return h("div", { class: "empty" }, h("p", { text: msg 
 function areaShell(tab, body, crumbs) {
   var me = myMusico(), nov = PRIV.loaded ? novedades().filter(function (n) { return n.nuevo; }).length : 0;
   var pend = PRIV.loaded ? pendientes().length : 0;
-  var verSel = null;
-  if (AREA_REAL_ADMIN && DATA.musicos.length) {
-    verSel = h("label", { class: "ver-como" }, icon("ojo"), h("span", { class: "sr-only", text: "Ver el área como" }),
-      h("select", { id: "ver-como", onchange: function (ev) { AREA.verComo = ev.target.value || null; AREA.stage = null; render(); } },
-        h("option", { value: "", text: "Ver como: administración" }),
-        DATA.musicos.slice().sort(musicianSort).map(function (m) {
-          return h("option", { value: m.id, selected: AREA.verComo === m.id || null, text: "Ver como " + m.nombre + " · " + (m.instrumento || "") + (m.voz ? " " + m.voz + "º" : "") });
-        })));
-  }
+  var verBtn = AREA_REAL_ADMIN ? h("button", { type: "button", class: "ver-como" + (simulando() ? " on" : ""), "aria-pressed": simulando() ? "true" : "false",
+    title: simulando() ? "Volver a la vista de administración" : "Ver el área tal como la ve un músico", onclick: function () { AREA.verComo = simulando() ? null : true; AREA.stage = null; render(); } },
+    icon("ojo"), h("span", { text: simulando() ? "Salir de la vista de músico" : "Ver como músico" })) : null;
+  var top = h("div", { class: "top-area-in" },
+    h("nav", { class: "crumbs", "aria-label": "Estás en" }, h("a", { class: "crumb-root", href: "#musicos-agenda", text: "Área de músicos" }),
+      crumbs.map(function (c) { return [h("span", { class: "sep", "aria-hidden": "true", text: "›" }), c[0] ? h("a", { href: "#musicos-" + c[0], text: c[1] }) : h("span", { class: "here", text: c[1] })]; })),
+    verBtn,
+    AREA_REAL_ADMIN && !simulando() ? h("a", { class: "adm-btn", href: "#admin", title: "Panel de administración" }, icon("ajustes"), h("span", { text: "Administración" })) : null,
+    h("a", { class: "area-user", href: "#musicos-perfil", title: "Tu perfil" },
+      h("span", { class: "u-txt" }, h("b", { text: displayName() }), h("small", { text: me ? [me.instrumento + (me.voz ? " " + vocesTxt([INST.normVoz(me.voz)]) : ""), me.formacion].filter(Boolean).join(" · ") : "Administración" })),
+      me ? personAvatar(me, "azul", "u-av") : h("span", { class: "u-av", text: initials(displayName()) })));
+  var slot = document.getElementById("top-area"); if (slot) slot.replaceChildren(top);
   return h("section", { class: "area-app" + (simulando() ? " simulating" : "") },
-    h("header", { class: "area-top" }, h("div", { class: "wrap" },
-      h("nav", { class: "crumbs", "aria-label": "Estás en" }, h("span", { class: "crumb-root", text: "Área de músicos" }),
-        crumbs.map(function (c) { return [h("span", { class: "sep", "aria-hidden": "true", text: "›" }), c[0] ? h("a", { href: "#musicos-" + c[0], text: c[1] }) : h("span", { class: "here", text: c[1] })]; })),
-      verSel,
-      h("a", { class: "area-user", href: "#musicos-perfil", title: "Tu perfil" },
-        h("span", { class: "u-txt" }, h("b", { text: displayName() }), h("small", { text: me ? [me.instrumento + (me.voz ? " " + vocesTxt([INST.normVoz(me.voz)]) : ""), me.formacion].filter(Boolean).join(" · ") : "Administración" })),
-        me ? personAvatar(me, "azul", "u-av") : h("span", { class: "u-av", text: initials(displayName()) })))),
     h("nav", { class: "area-tabs", "aria-label": "Secciones del área de músicos" }, h("div", { class: "wrap" }, areaTabs().map(function (t) {
-      var badge = t[0] === "avisos" ? nov : t[0] === "agenda" ? pend : (t[0] === "gestion" ? PRIV.peticiones.length : 0);
+      var badge = t[0] === "avisos" ? nov : t[0] === "agenda" ? pend : t[0] === "gestion" ? PRIV.peticiones.length
+        : (t[0] === "sugerencias" && IS_ADMIN ? (PRIV.sugerencias || []).filter(function (x) { return !x.leida; }).length : 0);
       return h("a", { href: "#musicos-" + t[0], "aria-current": t[0] === tab ? "page" : null },
         icon(t[0]), h("span", { class: "t-label", text: t[1] }), badge ? h("span", { class: "badge-n", "aria-label": badge + " pendientes", text: badge > 99 ? "99+" : String(badge) }) : null);
     }))),
     h("div", { class: "area-main" }, h("div", { class: "wrap" }, PRIV.error ? h("p", { class: "status err", text: PRIV.error }) : null,
-      simulando() && me ? h("div", { class: "sim-banner" }, icon("ojo"), h("span", null, "Estás viendo el área como ", h("b", { text: me.nombre }), " (" + [me.instrumento + (me.voz ? " " + vocesTxt([INST.normVoz(me.voz)]) : ""), me.formacion].filter(Boolean).join(" · ") + "). No se guardan cambios."),
+      simulando() ? h("div", { class: "sim-banner" }, icon("ojo"), h("span", { text: "Estás viendo el área como la ve un músico, sin las herramientas de administración." + (me ? "" : " Completa tu ficha de músico en Perfil para ver también tus convocatorias y partituras.") }),
         h("button", { type: "button", class: "btn small", text: "Volver a mi vista", onclick: function () { AREA.verComo = null; render(); } })) : null,
       IS_ADMIN && !me && !simulando() && tab !== "perfil" ? h("a", { class: "ag-pend admin-mus", href: "#musicos-perfil" }, icon("perfil"), "Para contar como un músico más (responder convocatorias, salir en la lista y recibir tus partituras), completa tu perfil de músico →") : null,
       body)));
@@ -2026,7 +2032,7 @@ function fechasSerie(f) {
   return out.sort();
 }
 function eventoForm() {
-  if (!AREA.evForm) AREA.evForm = { titulo: "Ensayo", tipo: "Ensayo", fecha: todayStr(), hora: "", hora_fin: "", lugar: "", direccion: "", formacion: "Banda", publico: "no", indumentaria: "", notas: "", repetir: "no", hasta: isoOf(addDays(new Date(), 90)), dias: [] };
+  if (!AREA.evForm) AREA.evForm = { titulo: "Ensayo", tipo: "Ensayo", fecha: todayStr(), hora: "", hora_fin: "", lugar: "", direccion: "", formacion: "Banda", publico: "no", indumentaria: "", notas: "", repetir: "no", hasta: isoOf(addDays(new Date(), 90)), dias: [], obras: [] };
   var F = AREA.evForm, st = statusEl();
   function field(id, k, label, type, ph, opts) {
     var el;
@@ -2070,6 +2076,14 @@ function eventoForm() {
       field("nf-pub", "publico", "¿Dónde se ve?", null, null, [["no", "Solo en el Área de músicos"], ["si", "También en la web pública"]]),
       field("nf-ind", "indumentaria", "Indumentaria", "text", "Opcional")),
     field("nf-notas", "notas", "Indicaciones para los músicos", "textarea", "Hora de llegada, atriles, partituras…"),
+    h("div", { class: "field" }, h("span", { class: "flabel", text: "Obras que se tocan" }),
+      PRIV.obras.length ? h("div", { class: "obra-picks" }, PRIV.obras.slice().sort(function (a, b) { return String(a.titulo).localeCompare(String(b.titulo), "es"); }).map(function (o) {
+        var on = F.obras.indexOf(o.id) >= 0;
+        return h("button", { type: "button", class: "obra-pick", "aria-pressed": on ? "true" : "false", onclick: function () {
+          var i = F.obras.indexOf(o.id); if (i >= 0) F.obras.splice(i, 1); else F.obras.push(o.id); render(); } },
+          obraCover(o, "xs"), h("span", null, h("b", { text: o.titulo }), o.compositor ? h("small", { text: o.compositor }) : null), h("i", { class: "pick-mark", text: on ? "✓" : "+" }));
+      })) : h("p", { class: "muted small" }, "Todavía no hay obras. ", h("a", { href: "#musicos-editar~nueva", text: "Crea la primera en Partituras" }), "."),
+      F.obras.length ? h("small", { text: F.obras.length + (F.obras.length === 1 ? " obra elegida" : " obras elegidas") + (fechas.length > 1 ? " (se añaden a los " + fechas.length + " eventos)" : "") + ". El orden se cambia luego en la pestaña Repertorio del evento." }) : null),
     h("div", { class: "form-acts" }, btn, h("button", { class: "btn ghost", type: "button", text: "Cancelar", onclick: function () { AREA.nuevoEvento = false; AREA.evForm = null; render(); } })), st);
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
@@ -2079,8 +2093,17 @@ function eventoForm() {
     var serie = fechas.length > 1 ? newId() : null;
     var base = { titulo: F.titulo.trim(), tipo: F.tipo, hora: F.hora, hora_fin: F.hora_fin, lugar: F.lugar.trim(), direccion: F.direccion.trim(), formacion: F.formacion, publico: F.publico, indumentaria: F.indumentaria.trim(), notas: F.notas.trim(), descripcion: "" };
     var rows = fechas.map(function (d) { var o = Object.assign({}, base, { fecha: d }); if (serie) o.serie = serie; return { coleccion: "eventos", id: newId(), datos: o }; });
+    var newIds = rows.map(function (r) { return r.id; });
     SB.from("contenido").insert(rows).then(check).then(function () {
-      FLASH = { col: "agenda", msg: fechas.length > 1 ? "Creados " + fechas.length + " eventos «" + base.titulo + "»." : "Evento creado." };
+      return F.obras.reduce(function (p, oid) {
+        var o = getObra(oid); if (!o) return p;
+        var datos = Object.assign({}, o); delete datos.id;
+        datos.eventos = (o.eventos || []).concat(newIds);
+        return p.then(function () { return SB.from("interno").upsert({ coleccion: "obras", id: oid, datos: datos }).then(check); });
+      }, Promise.resolve());
+    }).then(function () {
+      FLASH = { col: "agenda", msg: (fechas.length > 1 ? "Creados " + fechas.length + " eventos «" + base.titulo + "»" : "Evento creado") + (F.obras.length ? " con " + F.obras.length + (F.obras.length === 1 ? " obra." : " obras.") : ".") };
+      if (F.obras.length) PRIV.loaded = false;
       AREA.nuevoEvento = false; AREA.evForm = null;
       return loadAll();
     }).then(render, function (e) { btn.disabled = false; btn.textContent = "Crear evento"; setStatus(st, errMsg(e), false); });
@@ -2156,7 +2179,7 @@ function avatarStack(list) {
 }
 function eventCard(e, past) {
   var ans = myAnswer(e.id), me = myMusico(), conf = confirmados(e);
-  var card = h("article", { class: "ev-card tipo-" + tipoGrupo(e) + (past ? " past" : "") + (e.publico === "no" ? " interno" : ""), id: "ev-" + e.id });
+  var card = h("article", { class: "ev-card tipo-" + tipoGrupo(e) + (ans ? " mine-" + ans.estado : "") + (past ? " past" : "") + (e.publico === "no" ? " interno" : ""), id: "ev-" + e.id });
   var link = h("a", { class: "ev-link", href: "#musicos-evento~" + e.id },
     h("span", { class: "ev-when", text: fechaLarga(e).toUpperCase() }),
     h("h3", { text: e.titulo }),
@@ -3035,6 +3058,65 @@ function anuncioForm() {
 }
 
 /* =====================================================================
+   SUGERENCIAS (solo las leen los administradores)
+   ===================================================================== */
+var SUG_CATS = ["General", "Ensayos", "Repertorio", "Conciertos y salidas", "Escuela", "Instalaciones y material", "Otro"];
+function areaSugerencias() {
+  var st = statusEl(), me = myMusico();
+  var cat = h("select", { id: "sg-cat" }, SUG_CATS.map(function (c) { return h("option", { value: c, text: c }); }));
+  var txt = h("textarea", { id: "sg-txt", maxlength: "3000", placeholder: "Cuéntanos tu idea, propuesta o queja…" });
+  var anon = h("input", { type: "checkbox", id: "sg-anon" });
+  var btn = h("button", { class: "btn primary", type: "submit", text: "Enviar sugerencia" });
+  var form = h("form", { class: "aform sg-form", style: "position:static", novalidate: true },
+    h("h3", { text: "Envía una sugerencia" }),
+    h("p", { class: "sg-priv" }, icon("ojo"), "Solo la leen los administradores de la asociación. No la ve ningún otro músico."),
+    h("div", { class: "field" }, h("label", { for: "sg-cat", text: "Tema" }), cat),
+    h("div", { class: "field" }, h("label", { for: "sg-txt", text: "Tu sugerencia *" }), txt),
+    h("label", { class: "check", for: "sg-anon" }, anon, h("span", { text: "No mostrar mi nombre" })),
+    h("div", { class: "form-acts" }, btn), st);
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (!txt.value.trim()) { setStatus(st, "Escribe tu sugerencia.", false); return; }
+    if (simBlock(btn)) return;
+    btn.disabled = true;
+    SB.from("sugerencias").insert({ user_id: SESSION.user.id, autor: anon.checked ? "Anónimo" : displayName(), anonima: anon.checked, categoria: cat.value, texto: txt.value.trim() })
+      .then(check).then(function () { FLASH = { col: "sug", msg: "¡Gracias! Tu sugerencia ha llegado a la directiva." }; return reloadPrivate(); },
+        function (e) { btn.disabled = false; setStatus(st, errMsg(e), false); });
+  });
+  if (FLASH && FLASH.col === "sug") { setStatus(st, FLASH.msg, true); FLASH = null; }
+  var all = (PRIV.sugerencias || []).slice().reverse();
+  var mias = all.filter(function (x) { return SESSION && x.user_id === SESSION.user.id && !simulando(); });
+  function sugCard(x, admin) {
+    return h("article", { class: "sug" + (admin && !x.leida ? " nueva" : "") },
+      h("div", { class: "sug-meta" }, h("span", { class: "pill", text: x.categoria || "General" }),
+        h("span", { text: (admin ? (x.anonima ? "Anónimo" : x.autor) + " · " : "") + fmtLong(String(x.creado).slice(0, 10)) }),
+        admin && !x.leida ? h("span", { class: "new-dot", text: "Nueva" }) : null),
+      h("p", { text: x.texto }),
+      h("div", { class: "acts" },
+        admin && !x.leida ? h("button", { class: "btn ghost small", type: "button", text: "Marcar como leída", onclick: function (ev) {
+          ev.currentTarget.disabled = true; SB.from("sugerencias").update({ leida: true }).eq("id", x.id).then(check).then(reloadPrivate); } }) : null,
+        !admin ? h("small", { class: "muted", text: x.leida ? "✓ Leída por la directiva" : "Enviada" }) : null,
+        deleteButton(function (b) { SB.from("sugerencias").delete().eq("id", x.id).then(check).then(reloadPrivate, function (e) { b.disabled = false; b.textContent = "Borrar"; alert2(b, errMsg(e)); }); })));
+  }
+  var left;
+  if (IS_ADMIN) {
+    var f = AREA.sugFiltro || "nuevas";
+    var list = all.filter(function (x) { return f === "todas" || !x.leida; });
+    left = h("div", null,
+      h("div", { class: "ag-head" }, h("h1", { text: "Sugerencias recibidas" })),
+      h("div", { class: "chips" }, [["nuevas", "Sin leer"], ["todas", "Todas"]].map(function (o) {
+        return h("button", { type: "button", class: "chip", "aria-pressed": f === o[0] ? "true" : "false", text: o[1] + (o[0] === "nuevas" ? " (" + all.filter(function (x) { return !x.leida; }).length + ")" : " (" + all.length + ")"), onclick: function () { AREA.sugFiltro = o[0]; render(); } });
+      })),
+      list.length ? h("div", { class: "sugs" }, list.map(function (x) { return sugCard(x, true); })) : h("div", { class: "empty" }, h("p", { text: f === "nuevas" ? "No hay sugerencias sin leer." : "Todavía no ha llegado ninguna sugerencia." })));
+  } else {
+    left = h("div", null, h("div", { class: "ag-head" }, h("h1", { text: "Sugerencias" })),
+      h("p", { class: "muted", style: "margin-bottom:16px", text: "¿Tienes una idea para los ensayos, el repertorio o la asociación? Escríbela aquí: llega directamente a la directiva." }),
+      mias.length ? h("div", null, h("h2", { text: "Tus sugerencias", style: "margin-bottom:10px" }), h("div", { class: "sugs" }, mias.map(function (x) { return sugCard(x, false); }))) : null);
+  }
+  return h("div", { class: "admin-grid" }, left, me || !IS_ADMIN ? form : h("div"));
+}
+
+/* =====================================================================
    PERFIL
    ===================================================================== */
 function areaPerfil() {
@@ -3113,6 +3195,110 @@ function perfilMusicoForm(me) {
       .then(function () { return loadAll(); }).then(function () { return reloadPrivate(); }, function (e) { btn.disabled = false; setStatus(st, errMsg(e), false); });
   });
   return form;
+}
+
+/* ---------- Panel: tareas de la directiva ---------- */
+var TAREAS = { loaded: false, loading: false, list: [], error: "", edit: null, aviso: null, nueva: false };
+var T_ESTADOS = [["pendiente", "Pendiente"], ["estudio", "En estudio"], ["curso", "En curso"], ["hecha", "Completada"]];
+var T_PRIO = [["urgente", "Urgente"], ["alta", "Alta"], ["media", "Media"], ["baja", "Baja"]];
+function loadTareas() {
+  TAREAS.loading = true;
+  return SB.from("tareas").select("*").then(function (r) {
+    if (r.error) throw r.error;
+    TAREAS.list = r.data || []; TAREAS.loaded = true; TAREAS.loading = false; TAREAS.error = "";
+  }).catch(function (e) { TAREAS.loaded = true; TAREAS.loading = false; TAREAS.error = errMsg(e); });
+}
+function prioIdx(p) { for (var i = 0; i < T_PRIO.length; i++) if (T_PRIO[i][0] === p) return i; return 9; }
+function tareaForm(t) {
+  var st = statusEl();
+  var nombres = DATA.directiva.map(function (d) { return d.nombre; }).filter(Boolean);
+  var titulo = h("input", { id: "ta-titulo", type: "text", maxlength: "200", value: (t && t.titulo) || "" });
+  var desc = h("textarea", { id: "ta-desc", maxlength: "4000" }); desc.value = (t && t.descripcion) || "";
+  var prio = h("select", { id: "ta-prio" }, T_PRIO.map(function (p) { return h("option", { value: p[0], text: p[1], selected: ((t && t.prioridad) || "media") === p[0] || null }); }));
+  var est = h("select", { id: "ta-est" }, T_ESTADOS.map(function (p) { return h("option", { value: p[0], text: p[1], selected: ((t && t.estado) || "pendiente") === p[0] || null }); }));
+  var resp = h("input", { id: "ta-resp", type: "text", list: "ta-resps", value: (t && t.responsable) || "", placeholder: "Quién se encarga" });
+  var dl = h("datalist", { id: "ta-resps" }, nombres.map(function (n) { return h("option", { value: n }); }));
+  var lim = h("input", { id: "ta-lim", type: "date", value: (t && t.fecha_limite) || "" });
+  var btn = h("button", { class: "btn primary", type: "submit", text: t ? "Guardar cambios" : "Añadir tarea" });
+  var form = h("form", { class: "aform", novalidate: true }, h("h3", { text: t ? "Editar tarea" : "Nueva tarea" }),
+    h("div", { class: "field" }, h("label", { for: "ta-titulo", text: "Tarea *" }), titulo),
+    h("div", { class: "field" }, h("label", { for: "ta-desc", text: "Detalles" }), desc),
+    h("div", { class: "two" }, h("div", { class: "field" }, h("label", { for: "ta-prio", text: "Prioridad" }), prio), h("div", { class: "field" }, h("label", { for: "ta-est", text: "Estado" }), est)),
+    h("div", { class: "two" }, h("div", { class: "field" }, h("label", { for: "ta-resp", text: "Responsable" }), resp, dl), h("div", { class: "field" }, h("label", { for: "ta-lim", text: "Fecha límite" }), lim)),
+    h("div", { class: "form-acts" }, btn, h("button", { class: "btn ghost", type: "button", text: "Cancelar", onclick: function () { TAREAS.edit = null; TAREAS.nueva = false; render(); } })), st);
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (!titulo.value.trim()) { setStatus(st, "Escribe la tarea.", false); return; }
+    btn.disabled = true;
+    var datos = { titulo: titulo.value.trim(), descripcion: desc.value.trim() || null, prioridad: prio.value, estado: est.value, responsable: resp.value.trim() || null, fecha_limite: lim.value || null };
+    if (datos.estado === "hecha" && !(t && t.completada)) datos.completada = new Date().toISOString();
+    if (datos.estado !== "hecha") datos.completada = null;
+    var q = t ? SB.from("tareas").update(datos).eq("id", t.id) : SB.from("tareas").insert(Object.assign(datos, { autor: displayName() }));
+    q.then(check).then(function () { TAREAS.edit = null; TAREAS.nueva = false; return loadTareas(); }).then(render, function (e) { btn.disabled = false; setStatus(st, errMsg(e), false); });
+  });
+  return form;
+}
+function setEstadoTarea(t, estado, el) {
+  el.disabled = true;
+  var datos = { estado: estado, completada: estado === "hecha" ? (t.completada || new Date().toISOString()) : null };
+  SB.from("tareas").update(datos).eq("id", t.id).then(check).then(function () { if (estado === "hecha" && !t.aviso_id) TAREAS.aviso = t.id; return loadTareas(); }).then(render, function (e) { el.disabled = false; alert2(el, errMsg(e)); });
+}
+function avisoTareaForm(t) {
+  var st = statusEl();
+  var titulo = h("input", { id: "av-t-" + t.id, type: "text", value: "✅ " + t.titulo });
+  var texto = h("textarea", { id: "av-x-" + t.id }); texto.value = (t.descripcion ? t.descripcion + "\n\n" : "") + "La directiva ha completado esta tarea.";
+  var dest = h("select", { id: "av-d-" + t.id }, ["Todos", "Banda", "Bandín"].map(function (d) { return h("option", { value: d, text: d === "Todos" ? "Todos los músicos" : "Solo " + d }); }));
+  var btn = h("button", { class: "btn primary small", type: "submit", text: "Publicar en Avisos" });
+  var f = h("form", { class: "aviso-form" }, h("b", { text: "Enviar a los avisos de los músicos" }),
+    h("div", { class: "field" }, h("label", { for: "av-t-" + t.id, text: "Título" }), titulo),
+    h("div", { class: "field" }, h("label", { for: "av-x-" + t.id, text: "Texto" }), texto),
+    h("div", { class: "field" }, h("label", { for: "av-d-" + t.id, text: "Para" }), dest),
+    h("div", { class: "form-acts" }, btn, h("button", { class: "btn ghost small", type: "button", text: "Ahora no", onclick: function () { TAREAS.aviso = null; render(); } })), st);
+  f.addEventListener("submit", function (ev) {
+    ev.preventDefault(); btn.disabled = true;
+    var id = newId();
+    SB.from("interno").upsert({ coleccion: "anuncios", id: id, datos: { titulo: titulo.value.trim() || t.titulo, texto: texto.value.trim(), destinatarios: dest.value, autor: displayName(), creado: new Date().toISOString() } }).then(check)
+      .then(function () { return SB.from("tareas").update({ aviso_id: id }).eq("id", t.id).then(check); })
+      .then(function () { TAREAS.aviso = null; PRIV.loaded = false; return loadTareas(); }).then(render, function (e) { btn.disabled = false; setStatus(st, errMsg(e), false); });
+  });
+  return f;
+}
+function tareaCard(t) {
+  var hoy = todayStr(), vencida = t.fecha_limite && t.fecha_limite < hoy && t.estado !== "hecha";
+  var est = h("select", { "aria-label": "Estado de " + t.titulo, class: "t-estado" }, T_ESTADOS.map(function (p) { return h("option", { value: p[0], text: p[1], selected: t.estado === p[0] || null }); }));
+  est.addEventListener("change", function () { setEstadoTarea(t, est.value, est); });
+  return h("article", { class: "tarea prio-" + t.prioridad + (t.estado === "hecha" ? " hecha" : "") },
+    h("div", { class: "t-top" }, h("span", { class: "t-prio", text: (T_PRIO[prioIdx(t.prioridad)] || [0, ""])[1] }), t.estado === "curso" ? h("span", { class: "t-doing", text: "● Haciéndose" }) : null),
+    h("h4", { text: t.titulo }),
+    t.descripcion ? h("p", { text: excerpt(t.descripcion, 180) }) : null,
+    h("div", { class: "t-meta" },
+      t.responsable ? h("span", { text: "👤 " + t.responsable }) : h("span", { class: "muted", text: "Sin responsable" }),
+      t.fecha_limite ? h("span", { class: vencida ? "late" : "", text: "📅 " + fmtLong(t.fecha_limite) + (vencida ? " (vencida)" : "") }) : null),
+    h("div", { class: "t-acts" }, est,
+      h("button", { class: "btn ghost small", type: "button", text: "Editar", onclick: function () { TAREAS.edit = t.id; render(); window.scrollTo(0, 0); } }),
+      deleteButton(function (b) { SB.from("tareas").delete().eq("id", t.id).then(check).then(loadTareas).then(render, function (e) { b.disabled = false; b.textContent = "Borrar"; alert2(b, errMsg(e)); }); })),
+    t.estado === "hecha" ? (t.aviso_id ? h("p", { class: "t-pub", text: "📣 Publicada en los avisos de los músicos" })
+      : (TAREAS.aviso === t.id ? avisoTareaForm(t) : h("button", { class: "btn small t-send", type: "button", text: "📣 Enviar a avisos de músicos", onclick: function () { TAREAS.aviso = t.id; render(); } }))) : null,
+    h("small", { class: "t-foot", text: "Creada por " + (t.autor || "—") + " · " + fmtLong(String(t.creado).slice(0, 10)) + (t.completada ? " · Completada el " + fmtLong(String(t.completada).slice(0, 10)) : "") }));
+}
+function adminTareas() {
+  if (!TAREAS.loaded && !TAREAS.loading) loadTareas().then(render);
+  if (!TAREAS.loaded) return h("div", { class: "empty" }, h("p", { text: "Cargando tareas…" }));
+  if (TAREAS.error) return h("div", { class: "notice" }, h("h3", { text: "No se han podido cargar las tareas" }), h("p", { class: "muted", text: TAREAS.error + " Si es la primera vez, ejecuta supabase/repertorio.sql en Supabase." }));
+  var edit = TAREAS.edit ? TAREAS.list.filter(function (t) { return t.id === TAREAS.edit; })[0] : null;
+  var counts = {};
+  var board = h("div", { class: "board" }, T_ESTADOS.map(function (e) {
+    var items = TAREAS.list.filter(function (t) { return t.estado === e[0]; }).sort(function (a, b) {
+      return e[0] === "hecha" ? String(b.completada || "").localeCompare(String(a.completada || "")) : prioIdx(a.prioridad) - prioIdx(b.prioridad) || String(a.fecha_limite || "9999").localeCompare(String(b.fecha_limite || "9999"));
+    });
+    counts[e[0]] = items.length;
+    return h("section", { class: "b-col col-" + e[0] }, h("h3", null, h("span", { text: e[1] }), h("span", { class: "b-n", text: String(items.length) })),
+      items.length ? items.map(tareaCard) : h("p", { class: "muted small b-empty", text: "Nada por aquí." }));
+  }));
+  return h("div", { class: "tareas" },
+    h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Tareas de la directiva" }), h("p", { class: "muted", text: "Cualquier miembro de la directiva con acceso de administración puede añadir tareas y cambiar su estado. Cuando una se completa, puedes anunciarla en los avisos de los músicos." }))),
+    h("div", { class: "admin-grid tareas-grid" }, board,
+      edit || TAREAS.nueva ? tareaForm(edit) : h("div", { class: "tareas-new" }, h("button", { class: "btn primary", type: "button", text: "+ Nueva tarea", onclick: function () { TAREAS.nueva = true; render(); } }))));
 }
 
 /* ---------- Panel: cuentas de músicos ---------- */
