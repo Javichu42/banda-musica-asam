@@ -1627,3 +1627,14 @@ html, body { max-width: 100%; overflow-x: clip; }
   .top { padding-top: env(safe-area-inset-top, 0px); }
   html, body { background: var(--bg); }
 }
+/* Fotos de perfil en listas */
+.av-mini { width: 26px; height: 26px; font-size: .62rem; }
+img.av-mini.photo, img.av-mid.photo { object-fit: cover; }
+.ra-list li { grid-template-columns: 34px 1fr; }
+.ra-av { position: relative; display: inline-grid; }
+.ra-av .av-mini { width: 30px; height: 30px; font-size: .7rem; }
+.ra-av .dot { position: absolute; right: -2px; bottom: -2px; border: 2px solid var(--surface); width: 12px; height: 12px; }
+.cg-people { display: flex; flex-wrap: wrap; gap: 8px; }
+.cg-p { display: inline-flex; align-items: center; gap: 6px; font-size: .88rem; background: var(--surface-2); border-radius: 999px; padding: 3px 10px 3px 3px; }
+.c-head .av-mini { width: 24px; height: 24px; }
+.c-head { align-items: center; }

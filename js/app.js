@@ -1974,6 +1974,7 @@ function loadPrivate() {
     var pase = {}; r[2].data.forEach(function (p) { (pase[p.evento_id] = pase[p.evento_id] || {})[p.user_id] = p.presente; });
     var com = {}; r[3].data.forEach(function (c) { (com[c.anuncio_id] = com[c.anuncio_id] || []).push(c); });
     var val = {}; (r[4].data || []).forEach(function (v) { (val[v.obra_id] = val[v.obra_id] || {})[v.user_id] = v.estrellas; });
+    if (IS_ADMIN && !DIRECTIVA.loaded && !DIRECTIVA.loading) loadDirectiva();
     PRIV = { loaded: true, loading: false, anuncios: an, obras: ob, partes: pa, asist: asist, pase: pase, coments: com, valor: val, peticiones: r[5].data || [], sugerencias: r[6].data || [], programas: prog, error: "" };
   }, function (e) { PRIV.loading = false; PRIV.loaded = true; PRIV.error = (e && e.message) || "No se han podido cargar los datos."; });
 }
@@ -3579,7 +3580,7 @@ function anuncioCard(a, compact) {
   add(card, h("div", { class: "coments" }, com.map(function (c) {
     var mine = SESSION && c.user_id === SESSION.user.id;
     return h("div", { class: "coment" },
-      h("div", { class: "c-head" }, h("b", { text: c.autor }), h("span", { text: fmtLong(String(c.creado).slice(0, 10)) }),
+      h("div", { class: "c-head" }, avatarUsuario(c.user_id, c.autor, "av-mini"), h("b", { text: c.autor }), h("span", { text: fmtLong(String(c.creado).slice(0, 10)) }),
         (mine || IS_ADMIN) ? h("button", { class: "linkish", type: "button", text: "Borrar", onclick: function () {
           SB.from("comentarios").delete().eq("id", c.id).then(check).then(reloadPrivate);
         } }) : null),
@@ -3649,6 +3650,7 @@ function areaSugerencias() {
   function sugCard(x, admin) {
     return h("article", { class: "sug" + (admin && !x.leida ? " nueva" : "") },
       h("div", { class: "sug-meta" }, h("span", { class: "pill", text: x.categoria || "General" }),
+        admin && !x.anonima ? avatarUsuario(x.user_id, x.autor, "av-mini") : null,
         h("span", { text: (admin ? (x.anonima ? "Anónimo" : x.autor) + " · " : "") + fmtLong(String(x.creado).slice(0, 10)) }),
         admin && !x.leida ? h("span", { class: "new-dot", text: "Nueva" }) : null),
       h("p", { text: x.texto }),
@@ -3685,6 +3687,20 @@ function miAvatar(me, cls) {
   var foto = (me && me.foto) || MI_FOTO;
   if (foto) return h("img", { class: cls + " photo", src: blobUrl(foto), alt: "Tu foto" });
   return me ? personAvatar(me, "azul", cls) : h("span", { class: cls, text: initials(displayName()) });
+}
+// Foto de cualquier cuenta (ficha de músico, fila de la directiva o lista de cuentas)
+function fotoDeUsuario(uid) {
+  if (!uid) return "";
+  var m = DATA.musicos.filter(function (x) { return x.user_id === uid && x.foto; })[0]; if (m) return m.foto;
+  var d = DIRECTIVA.list.filter(function (x) { return x.user_id === uid && x.foto; })[0]; if (d) return d.foto;
+  var c = CUENTAS.list.filter(function (x) { return x.user_id === uid && x.foto; })[0]; if (c) return c.foto;
+  if (SESSION && SESSION.user && SESSION.user.id === uid && MI_FOTO) return MI_FOTO;
+  return "";
+}
+function avatarUsuario(uid, nombre, cls) {
+  var f = fotoDeUsuario(uid);
+  if (f) return h("img", { class: (cls || "u-av") + " photo", src: blobUrl(f), alt: nombre ? "Foto de " + nombre : "", loading: "lazy" });
+  return h("span", { class: cls || "u-av", text: initials(nombre || "?") });
 }
 // Recorta al centro en cuadrado y la deja en 480×480 JPEG
 function prepararFoto(file) {
@@ -4074,7 +4090,7 @@ function cuentaRow(c) {
   var m = c.musico, d = c.directiva, cg = d ? CUENTAS.cargos.filter(function (x) { return x.id === d.cargo_id; })[0] : null;
   return h("article", { class: "persona" + (CUENTAS.edit === c.user_id ? " editing" : "") },
     h("div", { class: "p-main" },
-      h("span", { class: "u-av", text: initials(c.nombre || c.email) }),
+      avatarUsuario(c.user_id, c.nombre || c.email, "u-av"),
       h("div", { class: "p-txt" },
         h("b", { text: (c.nombre || "(sin nombre)") + (isMe ? " (tú)" : "") }),
         h("small", { text: [c.usuario, c.email].filter(Boolean).join(" · ") }),
@@ -4190,7 +4206,8 @@ function adminCargos() {
       h("div", { class: "cg-top" }, h("h3", { text: c.nombre }), c.sistema ? h("span", { class: "pill-soft", text: "Fijo" }) : null),
       c.descripcion ? h("p", { class: "muted small", text: c.descripcion }) : null,
       h("div", { class: "perm-row" }, permChips(c.permisos)),
-      h("p", { class: "small cg-people", text: gente.length ? "👤 " + gente.map(function (a) { return a.nombre || a.email; }).join(", ") : "Nadie tiene este cargo." }),
+      gente.length ? h("div", { class: "cg-people" }, gente.map(function (a) { return h("span", { class: "cg-p" }, avatarUsuario(a.user_id, a.nombre || a.email, "av-mini"), h("span", { text: a.nombre || a.email })); }))
+        : h("p", { class: "small cg-people muted", text: "Nadie tiene este cargo." }),
       h("div", { class: "form-acts" },
         h("button", { class: "btn ghost small", type: "button", text: "Editar", onclick: function () { CARGOS.edit = c.id; render(); } }),
         c.sistema ? null : deleteButton(function (b) {
@@ -4259,7 +4276,10 @@ function adminSolicitudes() {
 var DIRECTIVA = { loaded: false, loading: false, list: [] };
 function loadDirectiva() {
   DIRECTIVA.loading = true;
-  return SB.from("administradores").select("user_id,email,nombre,cargo_id").then(function (r) {
+  return SB.from("administradores").select("user_id,email,nombre,cargo_id,foto").then(function (r) {
+    if (r.error) return SB.from("administradores").select("user_id,email,nombre,cargo_id");
+    return r;
+  }).then(function (r) {
     DIRECTIVA.list = r.error ? [] : (r.data || []); DIRECTIVA.loaded = true; DIRECTIVA.loading = false;
   }, function () { DIRECTIVA.loaded = true; DIRECTIVA.loading = false; });
 }
@@ -4343,7 +4363,7 @@ function reunionDetalle(r) {
   var lineas = (r.acuerdos || "").split(/\n+/).map(function (x) { return x.replace(/^\s*[-•\d.)]+\s*/, "").trim(); }).filter(Boolean);
   var personas = DIRECTIVA.list.map(function (d) {
     var a = as.filter(function (x) { return x.user_id === d.user_id; })[0];
-    return h("li", { class: "ra-" + (a ? a.estado : "nada") }, h("span", { class: "dot", "aria-hidden": "true" }), h("span", { text: (d.nombre || d.email) }), h("small", { text: cargoNombre(d.cargo_id) + " · " + (a ? { si: "Va", no: "No puede", duda: "No lo sabe" }[a.estado] : "Sin responder") }));
+    return h("li", { class: "ra-" + (a ? a.estado : "nada") }, h("span", { class: "ra-av" }, avatarUsuario(d.user_id, d.nombre || d.email, "av-mini"), h("span", { class: "dot", "aria-hidden": "true" })), h("span", { text: (d.nombre || d.email) }), h("small", { text: cargoNombre(d.cargo_id) + " · " + (a ? { si: "Va", no: "No puede", duda: "No lo sabe" }[a.estado] : "Sin responder") }));
   });
   return h("div", { class: "reunion-det" },
     h("button", { class: "back linkish", type: "button", onclick: function () { REUN.open = null; render(); } }, "‹ Todas las reuniones"),

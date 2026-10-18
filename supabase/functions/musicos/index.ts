@@ -137,7 +137,7 @@ Deno.serve(async (req: Request) => {
     if (body.action === "list") {
       const [{ data: mus, error: me1 }, { data: adm, error: me2 }, { data: cargos, error: me3 }] = await Promise.all([
         admin.from("contenido").select("id, datos").eq("coleccion", "musicos"),
-        admin.from("administradores").select("user_id, email, nombre, usuario, cargo_id, creado"),
+        admin.from("administradores").select("*"),
         admin.from("cargos").select("*").order("orden"),
       ]);
       if (me1 || me2 || me3) throw me1 || me2 || me3;
@@ -145,12 +145,13 @@ Deno.serve(async (req: Request) => {
       for (const r of mus || []) {
         const d = r.datos || {};
         if (!d.user_id) continue;
-        map.set(d.user_id, { user_id: d.user_id, nombre: d.nombre || "", usuario: d.usuario || "", musico: { id: r.id, formacion: d.formacion, instrumento: d.instrumento, voz: d.voz || "", cargo: d.cargo || "Músico" }, directiva: null });
+        map.set(d.user_id, { user_id: d.user_id, nombre: d.nombre || "", usuario: d.usuario || "", foto: d.foto || "", musico: { id: r.id, formacion: d.formacion, instrumento: d.instrumento, voz: d.voz || "", cargo: d.cargo || "Músico" }, directiva: null });
       }
       for (const a of adm || []) {
         const cur = map.get(a.user_id) || { user_id: a.user_id, nombre: "", usuario: "", musico: null };
         cur.nombre = cur.nombre || a.nombre || "";
         cur.usuario = cur.usuario || a.usuario || "";
+        cur.foto = cur.foto || a.foto || "";
         cur.directiva = { cargo_id: a.cargo_id, desde: a.creado };
         map.set(a.user_id, cur);
       }
