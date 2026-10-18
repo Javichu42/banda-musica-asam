@@ -1971,6 +1971,7 @@ function areaAgenda() {
         return h("button", { type: "button", role: "tab", "aria-selected": AREA.cuando === o[0] ? "true" : "false", text: o[1], onclick: function () { AREA.cuando = o[0]; AREA.dia = null; render(); } });
       }))),
     flashAgenda(),
+    simulando() ? null : pushBanner(),
     can("musica") && AREA.nuevoEvento ? eventoForm() : null,
     weekStrip(all),
     h("div", { class: "chips", role: "group", "aria-label": "Filtrar por tipo" }, [["todos", "Todos"], ["actuaciones", "Actuaciones"], ["ensayos", "Ensayos"], ["otros", "Otros"]].map(function (o) {
@@ -2029,6 +2030,107 @@ function fechasSerie(f) {
   }
   return out.sort();
 }
+/* =====================================================================
+   NOTIFICACIONES AL MÓVIL (Web Push)
+   ===================================================================== */
+var VAPID_PUBLIC = "BEeqQDyQujh58-ZCDyauAz2q5YzHHvvA8YFQCriqLHT643pmVBlIwRwHnga8wlKzXUvDbMnm2UlEzY4G_6atIbA";
+var PUSH = { estado: null, ocupado: false, msg: "", ok: true };
+function esIOS() { return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
+function instalada() { return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true; }
+function swReg() {
+  if (!("serviceWorker" in navigator)) return Promise.reject(new Error("sin service worker"));
+  return navigator.serviceWorker.register("sw.js").then(function () { return navigator.serviceWorker.ready; });
+}
+function b64uToBytes(s) { var b = atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+// "nosoporta" | "ios-instalar" | "bloqueado" | "activo" | "inactivo"
+function comprobarPush() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+    PUSH.estado = esIOS() && !instalada() ? "ios-instalar" : "nosoporta"; return Promise.resolve(PUSH.estado);
+  }
+  if (Notification.permission === "denied") { PUSH.estado = "bloqueado"; return Promise.resolve(PUSH.estado); }
+  return swReg().then(function (reg) { return reg.pushManager.getSubscription(); })
+    .then(function (sub) { PUSH.estado = sub && Notification.permission === "granted" ? "activo" : "inactivo"; return PUSH.estado; },
+      function () { PUSH.estado = "nosoporta"; return PUSH.estado; });
+}
+function activarPush() {
+  PUSH.ocupado = true; PUSH.msg = ""; render();
+  return Notification.requestPermission().then(function (perm) {
+    if (perm !== "granted") throw new Error(perm === "denied" ? "bloqueado" : "Has cerrado el permiso sin aceptarlo.");
+    return swReg();
+  }).then(function (reg) {
+    return reg.pushManager.getSubscription().then(function (old) {
+      return old || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(VAPID_PUBLIC) });
+    });
+  }).then(function (sub) {
+    var j = sub.toJSON();
+    return SB.rpc("registrar_push", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_dispositivo: navigator.userAgent.slice(0, 200) }).then(check);
+  }).then(function () {
+    PUSH.estado = "activo"; PUSH.ok = true; PUSH.msg = "¡Listo! Te avisaremos en este móvil de las convocatorias y los avisos.";
+    try { localStorage.setItem("asam-push-oculto", "1"); } catch (e) {}
+  }).catch(function (e) {
+    PUSH.ok = false;
+    if (e && e.message === "bloqueado") { PUSH.estado = "bloqueado"; PUSH.msg = ""; }
+    else PUSH.msg = (e && e.message && !/registrar_push|function/i.test(e.message)) ? e.message : "No se han podido activar los avisos. Inténtalo de nuevo.";
+  }).then(function () { PUSH.ocupado = false; render(); });
+}
+function desactivarPush() {
+  PUSH.ocupado = true; render();
+  return swReg().then(function (reg) { return reg.pushManager.getSubscription(); }).then(function (sub) {
+    if (!sub) return;
+    var ep = sub.endpoint;
+    return sub.unsubscribe().then(function () { return SB.from("push_suscripciones").delete().eq("endpoint", ep); });
+  }).then(function () { PUSH.estado = "inactivo"; PUSH.ok = true; PUSH.msg = "Avisos desactivados en este móvil."; }, function () { PUSH.ok = false; PUSH.msg = "No se han podido desactivar."; })
+    .then(function () { PUSH.ocupado = false; render(); });
+}
+function avisosFn(body) {
+  return SB.functions.invoke("avisos", { body: body }).then(function (r) {
+    if (!r.error) return r.data;
+    var ctx = r.error.context, fb = "No se ha podido enviar la notificación.";
+    if (ctx && typeof ctx.json === "function") return ctx.json().then(function (j) { throw new Error((j && j.error) || fb); }, function () { throw new Error(fb); });
+    throw new Error(fb);
+  });
+}
+function probarPush() {
+  PUSH.ocupado = true; render();
+  avisosFn({ action: "prueba" }).then(function (d) {
+    PUSH.ok = !!(d && d.enviados); PUSH.msg = d && d.enviados ? "Notificación de prueba enviada. Debería llegarte en unos segundos." : "No hay ningún móvil tuyo con los avisos activados.";
+  }, function (e) { PUSH.ok = false; PUSH.msg = e.message; }).then(function () { PUSH.ocupado = false; render(); });
+}
+// Tarjeta para activar los avisos (perfil y aviso en la agenda)
+function pushCard(compacta) {
+  if (PUSH.estado === null) { comprobarPush().then(function () { render(); }); return null; }
+  var st = PUSH.estado, body;
+  var msg = PUSH.msg ? h("p", { class: "status " + (PUSH.ok ? "ok" : "err"), role: "status", text: PUSH.msg }) : null;
+  if (st === "activo") {
+    if (compacta) return null;
+    body = [h("p", null, "✅ Los avisos están ", h("b", { text: "activados en este móvil" }), ". Te llegará una notificación cuando te convoquen a un evento o haya un aviso nuevo."),
+      h("div", { class: "form-acts" }, h("button", { class: "btn ghost small", type: "button", disabled: PUSH.ocupado || null, text: "Enviarme una prueba", onclick: probarPush }),
+        h("button", { class: "btn ghost small", type: "button", disabled: PUSH.ocupado || null, text: "Desactivar en este móvil", onclick: desactivarPush }))];
+  } else if (st === "inactivo") {
+    body = [h("p", { text: "Recibe en el móvil las convocatorias nuevas y los avisos de la banda, aunque tengas la web cerrada." }),
+      h("div", { class: "form-acts" }, h("button", { class: "btn primary small", type: "button", disabled: PUSH.ocupado || null, text: PUSH.ocupado ? "Activando…" : "🔔 Activar avisos en este móvil", onclick: activarPush }),
+        compacta ? h("button", { class: "btn ghost small", type: "button", text: "Ahora no", onclick: function () { try { localStorage.setItem("asam-push-oculto", "1"); } catch (e) {} render(); } }) : null)];
+  } else if (st === "ios-instalar") {
+    body = [h("p", { text: "En iPhone, los avisos solo funcionan si añades la web a la pantalla de inicio:" }),
+      h("ol", { class: "ios-pasos" }, h("li", null, "Ábrela en ", h("b", { text: "Safari" }), " y pulsa el botón ", h("b", { text: "Compartir" }), " (el cuadrado con la flecha hacia arriba)."),
+        h("li", null, "Elige ", h("b", { text: "«Añadir a pantalla de inicio»" }), "."),
+        h("li", null, "Abre la web desde el icono nuevo, entra con tu usuario y vuelve aquí para activar los avisos.")),
+      h("small", { class: "muted", text: "Hace falta iOS 16.4 o posterior." }),
+      compacta ? h("div", { class: "form-acts" }, h("button", { class: "btn ghost small", type: "button", text: "Ahora no", onclick: function () { try { localStorage.setItem("asam-push-oculto", "1"); } catch (e) {} render(); } })) : null];
+  } else if (st === "bloqueado") {
+    if (compacta) return null;
+    body = [h("p", { text: "Has bloqueado las notificaciones de esta web. Para activarlas, ve a los ajustes del navegador (el candado junto a la dirección → Notificaciones → Permitir) y vuelve a cargar la página." })];
+  } else {
+    if (compacta) return null;
+    body = [h("p", { class: "muted", text: "Este navegador no permite notificaciones. Prueba con Chrome en Android o con la web añadida a la pantalla de inicio en iPhone." })];
+  }
+  return h("section", { class: "push-card" + (compacta ? " compacta" : "") }, h("h3", null, icon("avisos"), h("span", { text: "Avisos en el móvil" })), body, msg);
+}
+function pushBanner() {
+  var oculto = false; try { oculto = localStorage.getItem("asam-push-oculto") === "1"; } catch (e) {}
+  if (oculto) return null;
+  return pushCard(true);
+}
 function eventoForm() {
   if (!AREA.evForm) AREA.evForm = { titulo: "Ensayo", tipo: "Ensayo", fecha: todayStr(), hora: "", hora_fin: "", lugar: "", direccion: "", formacion: "Banda", publico: "no", indumentaria: "", notas: "", repetir: "no", hasta: isoOf(addDays(new Date(), 90)), dias: [], obras: [] };
   var F = AREA.evForm, st = statusEl();
@@ -2082,6 +2184,8 @@ function eventoForm() {
           obraCover(o, "xs"), h("span", null, h("b", { text: o.titulo }), o.compositor ? h("small", { text: o.compositor }) : null), h("i", { class: "pick-mark", text: on ? "✓" : "+" }));
       })) : h("p", { class: "muted small" }, "Todavía no hay obras. ", h("a", { href: "#musicos-editar~nueva", text: "Crea la primera en Partituras" }), "."),
       F.obras.length ? h("small", { text: F.obras.length + (F.obras.length === 1 ? " obra elegida" : " obras elegidas") + (fechas.length > 1 ? " (se añaden a los " + fechas.length + " eventos)" : "") + ". El orden se cambia luego en la pestaña Repertorio del evento." }) : null),
+    h("label", { class: "check notif-check", for: "nf-avisar" }, (function () { var cb = h("input", { type: "checkbox", id: "nf-avisar", checked: F.avisar !== false || null }); cb.addEventListener("change", function () { F.avisar = cb.checked; }); return cb; })(),
+      h("span", null, h("b", { text: "🔔 Avisar al móvil a los convocados" }), h("small", { text: " Les llega una notificación a quienes tengan los avisos activados." }))),
     h("div", { class: "form-acts" }, btn, h("button", { class: "btn ghost", type: "button", text: "Cancelar", onclick: function () { AREA.nuevoEvento = false; AREA.evForm = null; render(); } })), st);
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
@@ -2101,6 +2205,13 @@ function eventoForm() {
       }, Promise.resolve());
     }).then(function () {
       FLASH = { col: "agenda", msg: (fechas.length > 1 ? "Creados " + fechas.length + " eventos «" + base.titulo + "»" : "Evento creado") + (F.obras.length ? " con " + F.obras.length + (F.obras.length === 1 ? " obra." : " obras.") : ".") };
+      if (F.avisar !== false) {
+        var flashRef = FLASH;
+        avisosFn({ action: "evento", ids: newIds }).then(function (d) {
+          flashRef.msg += d && d.enviados ? " 🔔 Notificación enviada a " + d.personas + (d.personas === 1 ? " músico." : " músicos.") : " (Nadie de los convocados tiene todavía los avisos del móvil activados.)";
+          var el = document.querySelector(".agenda .status.ok"); if (el) el.textContent = flashRef.msg;
+        }, function (e) { var el = document.querySelector(".agenda .status.ok"); if (el) el.textContent = flashRef.msg + " (No se ha podido avisar al móvil: " + e.message + ")"; });
+      }
       if (F.obras.length) PRIV.loaded = false;
       AREA.nuevoEvento = false; AREA.evForm = null;
       return loadAll();
@@ -3111,11 +3222,13 @@ function anuncioForm() {
   var titulo = h("input", { id: "an-titulo", type: "text", value: (cur && cur.titulo) || "" });
   var texto = h("textarea", { id: "an-texto" }); texto.value = (cur && cur.texto) || "";
   var dest = h("select", { id: "an-dest" }, ["Todos", "Banda", "Bandín"].map(function (d) { return h("option", { value: d, text: d === "Todos" ? "Todos los músicos" : "Solo " + d, selected: cur && cur.destinatarios === d || null }); }));
+  var avisarCb = h("input", { type: "checkbox", id: "an-avisar", checked: true });
   var btn = h("button", { class: "btn primary", type: "submit", text: cur ? "Guardar cambios" : "Publicar anuncio" });
   var form = h("form", { class: "aform", novalidate: true }, h("h3", { text: cur ? "Editar anuncio" : "Nuevo anuncio" }),
     h("div", { class: "field" }, h("label", { for: "an-titulo", text: "Título *" }), titulo),
     h("div", { class: "field" }, h("label", { for: "an-texto", text: "Texto" }), texto),
     h("div", { class: "field" }, h("label", { for: "an-dest", text: "Para" }), dest),
+    cur ? null : h("label", { class: "check notif-check", for: "an-avisar" }, avisarCb, h("span", null, h("b", { text: "🔔 Avisar al móvil" }), h("small", { text: " A quien tenga los avisos activados." }))),
     h("div", { class: "form-acts" }, btn, cur ? h("button", { class: "btn ghost", type: "button", text: "Cancelar", onclick: function () { AREA.editAnuncio = null; render(); } }) : null), st);
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
@@ -3123,8 +3236,12 @@ function anuncioForm() {
     btn.disabled = true;
     var datos = { titulo: titulo.value.trim(), texto: texto.value.trim(), destinatarios: dest.value,
       autor: (cur && cur.autor) || displayName(), creado: (cur && cur.creado) || new Date().toISOString() };
-    SB.from("interno").upsert({ coleccion: "anuncios", id: cur ? cur.id : newId(), datos: datos }).then(check)
-      .then(function () { AREA.editAnuncio = null; return reloadPrivate(); }, function (e) { btn.disabled = false; setStatus(st, errMsg(e), false); });
+    var aid = cur ? cur.id : newId();
+    SB.from("interno").upsert({ coleccion: "anuncios", id: aid, datos: datos }).then(check)
+      .then(function () {
+        if (!cur && avisarCb.checked) avisosFn({ action: "anuncio", id: aid }).then(function (d) { if (d && d.enviados) console.info("Aviso enviado a", d.personas); }, function (e) { console.warn(e.message); });
+        AREA.editAnuncio = null; return reloadPrivate();
+      }, function (e) { btn.disabled = false; setStatus(st, errMsg(e), false); });
   });
   return form;
 }
@@ -3237,7 +3354,7 @@ function areaPerfil() {
         kv("Instrumento", me && me.instrumento), kv("Voz", me && me.voz ? vocesTxt([INST.normVoz(me.voz)]) : (me ? "Todas las de tu instrumento" : "")),
         IS_ADMIN ? null : h("p", { class: "muted small", text: "Tu instrumento y tu voz deciden qué partituras ves. Si algo no es correcto, pídeselo a la junta." }),
         musForm),
-      form));
+      h("div", { class: "pf-side" }, pushCard(false), form)));
 }
 /* Un administrador también es músico: puede crear o cambiar su propia ficha */
 function perfilMusicoForm(me) {
@@ -3886,6 +4003,9 @@ function refreshAdmin() {
     return SB.rpc("es_admin").then(function (r2) { IS_ADMIN = !r2.error && r2.data === true; PERMS = IS_ADMIN ? ["web", "musica", "cuentas"] : []; MI_CARGO = ""; done(); });
   }).catch(function () { IS_ADMIN = false; PERMS = []; ASSETS = null; updateNav(); });
 }
+
+// Service worker: hace que la web se pueda instalar en el móvil y recibe las notificaciones
+if ("serviceWorker" in navigator && location.protocol !== "file:") window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
 
 if (configured() && window.supabase && window.supabase.createClient) {
   SB = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);

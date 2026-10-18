@@ -1,0 +1,16 @@
+{
+  "name": "Banda de Música de Siero",
+  "short_name": "Banda Siero",
+  "description": "Asociación Sierense Amigos de la Música: agenda, partituras y avisos de la banda.",
+  "lang": "es",
+  "start_url": "/#musicos-agenda",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3f7fd6",
+  "icons": [
+    { "src": "img/app/icono-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/app/icono-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "img/app/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

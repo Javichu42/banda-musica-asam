@@ -23,6 +23,8 @@ supabase/anadir-administrador.sql  Para dar permiso de edición a una persona
 supabase/area-musicos.sql      Área de músicos: asistencia, anuncios y partituras privadas
 supabase/repertorio.sql        Valoraciones de obras y peticiones de partituras
 supabase/directiva.sql         Cargos con permisos, cuentas unificadas y reuniones de la directiva
+supabase/notificaciones.sql    Móviles con los avisos activados (notificaciones push)
+sw.js, manifest.webmanifest    La web como app instalable y receptor de notificaciones
 vercel.json                    Ajustes de Vercel
 ```
 
@@ -185,3 +187,14 @@ Para que los correos salgan hay que configurarlo una vez (si no, la web enseña 
    - `WEB_URL` = la dirección de la web (por ejemplo `https://bandadesiero.es`)
 
 También funciona con [Resend](https://resend.com) poniendo `RESEND_API_KEY` en lugar de `BREVO_API_KEY` (Resend pide verificar el dominio). Las claves van solo en los secretos de Supabase, nunca en `js/config.js`.
+
+## Notificaciones al móvil
+
+Los músicos pueden activar en su móvil los avisos de la web (Área de músicos → aviso en la Agenda o en Perfil). Al crear un evento desde la Agenda, o al publicar un anuncio, se marca «🔔 Avisar al móvil» y les llega una notificación aunque tengan la web cerrada. En iPhone hace falta añadir antes la web a la pantalla de inicio (iOS 16.4 o posterior); la propia web lo explica.
+
+Puesta en marcha (una vez):
+1. Ejecuta `supabase/notificaciones.sql` en el SQL Editor.
+2. En Supabase → Edge Functions → Secrets añade `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` (el par de claves de las notificaciones; la pública es la que aparece como `VAPID_PUBLIC` en `js/app.js`). Opcional: `VAPID_CONTACT` = `mailto:correo-de-la-asociacion`.
+3. La función `avisos` (`supabase/functions/avisos/`) es la que envía las notificaciones.
+
+La clave privada no se guarda nunca en el repositorio. Si se pierde, genera un par nuevo, cambia `VAPID_PUBLIC` en `js/app.js` y los músicos tendrán que volver a activar los avisos.
