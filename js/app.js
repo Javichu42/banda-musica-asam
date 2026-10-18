@@ -4291,10 +4291,8 @@ function adminSolicitudes() {
    REGLAMENTO DE RÉGIMEN INTERNO (RRI) Y SANCIONES
    ===================================================================== */
 var GRAVEDADES = ["Leve", "Grave", "Muy grave"];
-var SANC_ESTADOS = ["Vigente", "Cumplida", "Anulada"];
-var SANC_MEDIDAS = ["Amonestación verbal", "Amonestación por escrito", "Apercibimiento", "Suspensión temporal de actuaciones", "Suspensión temporal de la condición de músico", "Expulsión de la banda"];
-var RRI_UI = { buscar: "", editar: false, alegar: null, vistas: {}, flash: null, ir: null };
-var SANC = { nueva: false, edit: null, flash: null, q: "", grav: "todas", estado: "todos", formacion: "todas", anio: "todos", solo: null, persona: null, orden: "recientes", abierta: null };
+var RRI_UI = { buscar: "", editar: false, vistas: {}, flash: null };
+var SANC = { nueva: false, edit: null, flash: null, q: "", grav: "todas", formacion: "todas", anio: "todos", solo: null, persona: null, orden: "recientes", abierta: null };
 function canRRI() { return can("sanciones") || can("musica"); }
 function gravSlug(g) { return norm(g).replace(/\s+/g, "-"); }
 function rriDoc() { return PRIV.rri || null; }
@@ -4316,7 +4314,7 @@ function misSanciones() {
   var uid = SESSION.user.id;
   return (PRIV.sanciones || []).filter(function (s) { return s.user_id === uid; });
 }
-function misSancionesSinVer() { return misSanciones().filter(function (s) { return !s.visto && s.estado !== "Anulada"; }); }
+function misSancionesSinVer() { return misSanciones().filter(function (s) { return !s.visto; }); }
 function reloadSanciones() {
   return SB.from("sanciones").select("*").order("fecha", { ascending: false }).order("creado", { ascending: false }).then(function (r) {
     if (r.error) { PRIV.sancionesError = errMsg(r.error); return; }
@@ -4609,9 +4607,8 @@ function misSancionesVista(abrir) {
     }, 900);
   }
   if (abrir) setTimeout(function () { var el = document.getElementById("sanc-" + abrir); if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("flash-art"); } }, 60);
-  var vigentes = mias.filter(function (s) { return s.estado === "Vigente"; }).length;
   return h("div", { class: "mis-sanc" }, fl || null,
-    h("p", { class: "muted", text: mias.length + (mias.length === 1 ? " sanción" : " sanciones") + (vigentes ? " · " + vigentes + " vigente" + (vigentes === 1 ? "" : "s") : " · ninguna vigente") }),
+    h("p", { class: "muted", text: mias.length === 1 ? "Tienes 1 sanción." : "Tienes " + mias.length + " sanciones." }),
     mias.map(function (s) { return sancionCard(s, false, RRI_UI.vistas[s.id] && sinVer.indexOf(s) >= 0); }), nota);
 }
 
@@ -4620,88 +4617,29 @@ function sancionCard(s, admin, nueva) {
   var art = artDeTexto(s.articulo), mus = DATA.musicos.filter(function (m) { return m.user_id === s.user_id; })[0];
   var historial = admin ? (PRIV.sanciones || []).filter(function (x) { return x.user_id === s.user_id; }).length : 0;
   var st = h("small", { class: "status" });
-  function cambiar(patch, b, motivo, ok) {
-    b.disabled = true;
-    SB.from("sanciones").update(patch).eq("id", s.id).then(check).then(function () {
-      return motivo ? avisosFn({ action: "sancion", id: s.id, motivo: motivo }).then(function (d) { return avisoTxt(d); }, function () { return ""; }) : "";
-    }).then(function (txt) { SANC.flash = ok + (txt ? " " + txt : ""); return reloadSanciones(); }, function (e) { b.disabled = false; st.className = "status err"; st.textContent = errMsg(e); });
-  }
   var cab = h("div", { class: "sc-top" },
     admin ? h("button", { class: "sc-persona", type: "button", title: "Ver solo las sanciones de esta persona", onclick: function () { SANC.persona = s.user_id; render(); window.scrollTo(0, 0); } },
       avatarUsuario(s.user_id, s.nombre, "av-mini"), h("span", null, h("b", { text: s.nombre }), h("small", { text: [mus ? mus.instrumento : null, mus ? mus.formacion : "Ya no es músico", historial > 1 ? historial + " sanciones" : null].filter(Boolean).join(" · ") }))) :
       h("div", { class: "sc-fecha" }, h("b", { text: "Sanción del " + fmtLong(s.fecha) })),
     h("div", { class: "sc-pills" }, nueva ? h("span", { class: "new-dot", text: "Nueva" }) : null,
-      h("span", { class: "grav g-" + gravSlug(s.gravedad), text: s.gravedad }), h("span", { class: "est e-" + norm(s.estado), text: s.estado })));
+      h("span", { class: "grav g-" + gravSlug(s.gravedad), text: s.gravedad })));
   var datos = h("dl", { class: "sc-datos" },
-    h("dt", { text: "Medida" }), h("dd", { class: "sc-medida", text: s.medida }),
     h("dt", { text: "Motivo" }), h("dd", null, String(s.motivo || "").split("\n").map(function (p) { return h("p", { text: p }); })),
     s.articulo ? h("dt", { text: "Reglamento" }) : null,
     s.articulo ? h("dd", null, art ? h("a", { href: "#musicos-rri~art~" + encodeURIComponent(art.num), text: s.articulo + " →" }) : s.articulo) : null,
     admin ? h("dt", { text: "Fecha" }) : null, admin ? h("dd", { text: fmtLong(s.fecha) }) : null,
-    s.fecha_hechos ? h("dt", { text: "Hechos" }) : null, s.fecha_hechos ? h("dd", { text: fmtLong(s.fecha_hechos) }) : null,
-    s.hasta ? h("dt", { text: "Hasta" }) : null, s.hasta ? h("dd", { text: fmtLong(s.hasta) + (s.estado === "Vigente" && s.hasta < todayStr() ? " (ya ha pasado la fecha)" : "") }) : null);
-  // Alegación
-  var aleg = null;
-  if (s.alegacion) {
-    aleg = h("div", { class: "sc-aleg" },
-      h("p", { class: "sc-aleg-h" }, h("b", { text: admin ? "Alegación de " + s.nombre.split(" ")[0] : "Tu alegación" }), h("small", { text: " · " + fechaHora(s.alegacion_fecha) })),
-      s.alegacion.split("\n").map(function (p) { return h("p", { text: p }); }),
-      s.respuesta ? h("div", { class: "sc-resp" }, h("p", { class: "sc-aleg-h" }, h("b", { text: "Respuesta de la directiva" }), h("small", { text: " · " + fechaHora(s.respuesta_fecha) })), s.respuesta.split("\n").map(function (p) { return h("p", { text: p }); }))
-        : admin ? respuestaForm(s) : h("p", { class: "small muted", text: "⏳ Pendiente de respuesta de la directiva." }));
-  } else if (!admin && s.estado !== "Anulada") {
-    aleg = RRI_UI.alegar === s.id ? alegacionForm(s) : h("div", { class: "sc-aleg-cta" }, h("p", { class: "small muted", text: "¿No estás de acuerdo o quieres explicar lo que pasó? Puedes presentar una alegación (solo una por sanción)." }),
-      h("button", { class: "btn ghost small", type: "button", text: "✍️ Presentar alegación", onclick: function () { RRI_UI.alegar = s.id; render(); } }));
-  }
+    s.fecha_hechos ? h("dt", { text: "Hechos" }) : null, s.fecha_hechos ? h("dd", { text: fmtLong(s.fecha_hechos) }) : null);
   var pie = admin ? h("div", { class: "sc-pie" },
     h("small", { class: "muted sc-visto", text: s.visto ? "👁 Vista el " + fechaHora(s.visto) : "No la ha visto todavía" }),
     h("small", { class: "muted", text: "Puesta por " + (s.autor_nombre || "la directiva") + " · " + fechaHora(s.creado) })) : null;
   var acciones = admin && can("sanciones") ? h("div", { class: "form-acts sc-acts" },
     h("button", { class: "btn ghost small", type: "button", text: "Editar", onclick: function () { SANC.edit = s.id; SANC.nueva = false; render(); } }),
-    s.estado === "Vigente" ? h("button", { class: "btn ghost small", type: "button", text: "✓ Cumplida", onclick: function (ev) { cambiar({ estado: "Cumplida" }, ev.currentTarget, "cambio", "Marcada como cumplida."); } }) : null,
-    s.estado === "Vigente" ? h("button", { class: "btn ghost small", type: "button", text: "Anular", onclick: function (ev) { cambiar({ estado: "Anulada" }, ev.currentTarget, "cambio", "Sanción anulada."); } }) : null,
-    s.estado !== "Vigente" ? h("button", { class: "btn ghost small", type: "button", text: "Volver a vigente", onclick: function (ev) { cambiar({ estado: "Vigente" }, ev.currentTarget, null, "Vuelve a estar vigente."); } }) : null,
-    !s.visto && s.estado === "Vigente" ? h("button", { class: "btn ghost small", type: "button", text: "🔔 Recordar", title: "Volver a mandarle el aviso al móvil", onclick: function (ev) {
+    !s.visto ? h("button", { class: "btn ghost small", type: "button", text: "🔔 Recordar", title: "Volver a mandarle el aviso al móvil", onclick: function (ev) {
       var b = ev.currentTarget; b.disabled = true;
       avisosFn({ action: "sancion", id: s.id, motivo: "nueva" }).then(function (d) { st.className = "status " + (d && d.enviados ? "ok" : "err"); st.textContent = avisoTxt(d); }, function (e) { st.className = "status err"; st.textContent = e.message; }).then(function () { b.disabled = false; });
     } }) : null,
     deleteButton(function (b) { SB.from("sanciones").delete().eq("id", s.id).then(check).then(function () { SANC.flash = "Sanción borrada."; return reloadSanciones(); }, function (e) { b.disabled = false; b.textContent = "Borrar"; alert2(b, errMsg(e)); }); })) : null;
-  return h("article", { class: "sanc e-" + norm(s.estado) + " g-" + gravSlug(s.gravedad) + (nueva ? " nueva" : ""), id: "sanc-" + s.id }, cab, datos, aleg, pie, acciones, st);
-}
-function alegacionForm(s) {
-  var st = statusEl(), txt = h("textarea", { id: "al-" + s.id.slice(0, 8), maxlength: "3000", placeholder: "Explica tu versión con calma y con respeto. La leerá la directiva." });
-  var btn = h("button", { class: "btn primary small", type: "submit", text: "Enviar alegación" });
-  var f = h("form", { class: "sc-aleg-form", novalidate: true },
-    h("label", { for: "al-" + s.id.slice(0, 8), text: "Tu alegación" }), txt,
-    h("small", { class: "muted", text: "Solo se puede enviar una vez y no se puede cambiar después." }),
-    h("div", { class: "form-acts" }, btn, h("button", { class: "btn ghost small", type: "button", text: "Cancelar", onclick: function () { RRI_UI.alegar = null; render(); } })), st);
-  f.addEventListener("submit", function (ev) {
-    ev.preventDefault();
-    var t = txt.value.trim(); if (t.length < 3) { setStatus(st, "Escribe tu alegación.", false); return; }
-    if (simBlock(btn)) return;
-    btn.disabled = true; btn.textContent = "Enviando…";
-    SB.rpc("alegar_sancion", { p_id: s.id, p_texto: t }).then(check).then(function () {
-      avisosFn({ action: "alegacion", id: s.id }).catch(function () {});
-      RRI_UI.alegar = null; RRI_UI.flash = "Alegación enviada. La directiva la revisará y te avisará cuando responda.";
-      return reloadSanciones();
-    }).catch(function (e) { btn.disabled = false; btn.textContent = "Enviar alegación"; setStatus(st, (e && e.message && !/fetch/i.test(e.message)) ? e.message : errMsg(e), false); });
-  });
-  setTimeout(function () { txt.focus(); }, 30);
-  return f;
-}
-function respuestaForm(s) {
-  if (!can("sanciones")) return h("p", { class: "small muted", text: "⏳ Sin responder." });
-  var st = statusEl(), id = "rp-" + s.id.slice(0, 8), txt = h("textarea", { id: id, maxlength: "3000", placeholder: "Respuesta de la directiva a la alegación…" });
-  var btn = h("button", { class: "btn primary small", type: "submit", text: "Responder y avisar" });
-  var f = h("form", { class: "sc-aleg-form", novalidate: true }, h("label", { for: id, text: "Responder a la alegación" }), txt, h("div", { class: "form-acts" }, btn), st);
-  f.addEventListener("submit", function (ev) {
-    ev.preventDefault();
-    var t = txt.value.trim(); if (!t) { setStatus(st, "Escribe la respuesta.", false); return; }
-    btn.disabled = true;
-    SB.from("sanciones").update({ respuesta: t, respuesta_fecha: new Date().toISOString() }).eq("id", s.id).then(check)
-      .then(function () { return avisosFn({ action: "sancion", id: s.id, motivo: "respuesta" }).then(avisoTxt, function () { return ""; }); })
-      .then(function (a) { SANC.flash = "Respuesta enviada." + (a ? " " + a : ""); return reloadSanciones(); }, function (e) { btn.disabled = false; setStatus(st, errMsg(e), false); });
-  });
-  return f;
+  return h("article", { class: "sanc g-" + gravSlug(s.gravedad) + (nueva ? " nueva" : ""), id: "sanc-" + s.id }, cab, datos, pie, acciones, st);
 }
 
 /* ---------- Directiva: poner y revisar sanciones ---------- */
@@ -4723,10 +4661,8 @@ function sancionForm(s) {
   }));
   var fecha = h("input", { id: pre + "-f", type: "date", value: s ? s.fecha : todayStr() });
   var hechos = h("input", { id: pre + "-fh", type: "date", value: s ? (s.fecha_hechos || "") : "" });
-  var hasta = h("input", { id: pre + "-ha", type: "date", value: s ? (s.hasta || "") : "" });
-  var dlA = pre + "-arts", dlM = pre + "-meds";
+  var dlA = pre + "-arts";
   var articulo = h("input", { id: pre + "-a", type: "text", maxlength: "200", list: dlA, value: s ? (s.articulo || "") : "", placeholder: rriArticulos().length ? "Empieza a escribir: «Art. 12»…" : "Ej.: Art. 12 · Faltas leves" });
-  var medida = h("input", { id: pre + "-m", type: "text", maxlength: "500", list: dlM, value: s ? s.medida : "", placeholder: "Ej.: Amonestación por escrito" });
   var motivo = h("textarea", { id: pre + "-mo", maxlength: "3000", placeholder: "Qué pasó, cuándo y por qué se sanciona. Lo leerá la persona sancionada." }); motivo.value = s ? s.motivo : "";
   var avisar = h("input", { type: "checkbox", id: pre + "-av", checked: nuevo || null });
   var btn = h("button", { class: "btn primary", type: "submit", text: nuevo ? "Poner la sanción" : "Guardar cambios" });
@@ -4734,15 +4670,13 @@ function sancionForm(s) {
     h("h3", { text: nuevo ? "Nueva sanción" : "Editar sanción" }),
     h("div", { class: "field" }, h("label", { for: pre + "-p", text: "Persona *" }), persona),
     h("div", { class: "field" }, h("span", { class: "lbl", text: "Gravedad *" }), gravBox),
-    h("div", { class: "field" }, h("label", { for: pre + "-m", text: "Medida *" }), medida, h("datalist", { id: dlM }, SANC_MEDIDAS.map(function (x) { return h("option", { value: x }); }))),
     h("div", { class: "field" }, h("label", { for: pre + "-mo", text: "Motivo *" }), motivo),
     h("div", { class: "field" }, h("label", { for: pre + "-a", text: "Artículo del reglamento" }), articulo,
       h("datalist", { id: dlA }, rriArticulos().filter(function (a) { return a.num; }).map(function (a) { return h("option", { value: artRef(a) }); })),
       !rriArticulos().length ? h("small", null, "Cuando publiquéis el ", h("a", { href: "#musicos-rri", text: "reglamento" }), ", aquí saldrán sus artículos.") : null),
-    h("div", { class: "three" },
+    h("div", { class: "two" },
       h("div", { class: "field" }, h("label", { for: pre + "-f", text: "Fecha de la sanción" }), fecha),
-      h("div", { class: "field" }, h("label", { for: pre + "-fh", text: "Fecha de los hechos" }), hechos),
-      h("div", { class: "field" }, h("label", { for: pre + "-ha", text: "Hasta (si dura)" }), hasta)),
+      h("div", { class: "field" }, h("label", { for: pre + "-fh", text: "Fecha de los hechos" }), hechos)),
     h("label", { class: "check", for: pre + "-av" }, avisar, h("span", { text: nuevo ? "Avisar a la persona en su móvil (sin contar el motivo en la pantalla bloqueada)" : "Avisar a la persona de que ha cambiado" })),
     h("div", { class: "form-acts" }, btn, h("button", { class: "btn ghost", type: "button", text: "Cancelar", onclick: function () { SANC.nueva = false; SANC.edit = null; render(); } })), st);
   f.addEventListener("submit", function (ev) {
@@ -4750,12 +4684,10 @@ function sancionForm(s) {
     var g = (f.querySelector('input[name="' + pre + '-g"]:checked') || {}).value || "Leve";
     var uid = persona.value, m = musicos.filter(function (x) { return x.user_id === uid; })[0];
     if (!uid) { setStatus(st, "Elige a quién se sanciona.", false); persona.focus(); return; }
-    if (!medida.value.trim()) { setStatus(st, "Escribe la medida.", false); medida.focus(); return; }
     if (!motivo.value.trim()) { setStatus(st, "Escribe el motivo.", false); motivo.focus(); return; }
     if (!fecha.value) { setStatus(st, "Pon la fecha de la sanción.", false); return; }
-    if (hasta.value && hasta.value < fecha.value) { setStatus(st, "La fecha «hasta» no puede ser anterior a la de la sanción.", false); return; }
     btn.disabled = true; btn.textContent = "Guardando…";
-    var datos = { gravedad: g, medida: medida.value.trim(), motivo: motivo.value.trim(), articulo: articulo.value.trim() || null, fecha: fecha.value, fecha_hechos: hechos.value || null, hasta: hasta.value || null };
+    var datos = { gravedad: g, motivo: motivo.value.trim(), articulo: articulo.value.trim() || null, fecha: fecha.value, fecha_hechos: hechos.value || null };
     var q = nuevo ? SB.from("sanciones").insert(Object.assign(datos, { user_id: uid, nombre: (m ? m.nombre : "") || "Sin nombre", autor_nombre: displayName() })).select("id")
       : SB.from("sanciones").update(datos).eq("id", s.id).select("id");
     q.then(check).then(function (r) {
@@ -4775,12 +4707,11 @@ function filtrarSanciones(all) {
     var m = DATA.musicos.filter(function (x) { return x.user_id === s.user_id; })[0];
     if (SANC.persona && s.user_id !== SANC.persona) return false;
     if (SANC.grav !== "todas" && s.gravedad !== SANC.grav) return false;
-    if (SANC.estado !== "todos" && s.estado !== SANC.estado) return false;
     if (SANC.anio !== "todos" && String(s.fecha).slice(0, 4) !== SANC.anio) return false;
     if (SANC.formacion !== "todas" && !(m && (m.formacion === SANC.formacion || m.formacion === "Banda y Bandín"))) return false;
-    if (SANC.solo === "alegaciones" && !(s.alegacion && !s.respuesta)) return false;
-    if (SANC.solo === "sinver" && (s.visto || s.estado !== "Vigente")) return false;
-    if (q && norm([s.nombre, s.motivo, s.medida, s.articulo, s.alegacion, m ? m.instrumento : ""].join(" ")).indexOf(q) < 0) return false;
+    if (SANC.solo === "sinver" && s.visto) return false;
+    if (SANC.solo === "graves" && s.gravedad === "Leve") return false;
+    if (q && norm([s.nombre, s.motivo, s.articulo, m ? m.instrumento : ""].join(" ")).indexOf(q) < 0) return false;
     return true;
   }).sort(function (a, b) {
     if (SANC.orden === "antiguas") return (a.fecha + a.creado) < (b.fecha + b.creado) ? -1 : 1;
@@ -4790,11 +4721,11 @@ function filtrarSanciones(all) {
   });
 }
 function exportarSanciones(list) {
-  var cab = ["Fecha", "Persona", "Formación", "Gravedad", "Medida", "Motivo", "Artículo", "Fecha de los hechos", "Hasta", "Estado", "Vista", "Alegación", "Respuesta", "Puesta por"];
+  var cab = ["Fecha", "Persona", "Formación", "Gravedad", "Motivo", "Artículo", "Fecha de los hechos", "Vista", "Puesta por"];
   function c(v) { v = v == null ? "" : String(v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
   var rows = list.map(function (s) {
     var m = DATA.musicos.filter(function (x) { return x.user_id === s.user_id; })[0];
-    return [s.fecha, s.nombre, m ? m.formacion : "", s.gravedad, s.medida, s.motivo, s.articulo, s.fecha_hechos, s.hasta, s.estado, s.visto ? fechaHora(s.visto) : "No", s.alegacion, s.respuesta, s.autor_nombre].map(c).join(";");
+    return [s.fecha, s.nombre, m ? m.formacion : "", s.gravedad, s.motivo, s.articulo, s.fecha_hechos, s.visto ? fechaHora(s.visto) : "No", s.autor_nombre].map(c).join(";");
   });
   var blob = new Blob(["﻿" + [cab.join(";")].concat(rows).join("\r\n")], { type: "text/csv;charset=utf-8" });
   var a = h("a", { href: URL.createObjectURL(blob), download: "sanciones-" + todayStr() + ".csv" });
@@ -4806,19 +4737,20 @@ function adminSanciones(sub) {
   if (sub && SANC.abierta !== sub) { SANC.abierta = sub; setTimeout(function () { var el = document.getElementById("sanc-" + sub); if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("flash-art"); } }, 80); }
   var all = PRIV.sanciones || [], list = filtrarSanciones(all), y = String(new Date().getFullYear());
   var n = {
-    vigentes: all.filter(function (s) { return s.estado === "Vigente"; }).length,
+    total: all.length,
+    personas: all.reduce(function (o, s) { o[s.user_id] = 1; return o; }, {}),
     anio: all.filter(function (s) { return String(s.fecha).slice(0, 4) === y; }).length,
-    aleg: all.filter(function (s) { return s.alegacion && !s.respuesta; }).length,
-    sinver: all.filter(function (s) { return !s.visto && s.estado === "Vigente"; }).length
+    graves: all.filter(function (s) { return s.gravedad !== "Leve"; }).length,
+    sinver: all.filter(function (s) { return !s.visto; }).length
   };
   function tile(num, txt, onclick, on, cls) { return h("button", { type: "button", class: "sc-tile" + (on ? " on" : "") + (cls ? " " + cls : ""), "aria-pressed": on ? "true" : "false", onclick: onclick }, h("b", { text: String(num) }), h("span", { text: txt })); }
   var stats = h("div", { class: "sc-stats" },
-    tile(n.vigentes, n.vigentes === 1 ? "vigente" : "vigentes", function () { SANC.estado = SANC.estado === "Vigente" ? "todos" : "Vigente"; SANC.solo = null; render(); }, SANC.estado === "Vigente" && !SANC.solo),
+    tile(Object.keys(n.personas).length, Object.keys(n.personas).length === 1 ? "persona sancionada" : "personas sancionadas", function () { SANC.solo = null; SANC.anio = "todos"; SANC.grav = "todas"; render(); }, false),
     tile(n.anio, "en " + y, function () { SANC.anio = SANC.anio === y ? "todos" : y; render(); }, SANC.anio === y),
-    tile(n.aleg, n.aleg === 1 ? "alegación sin responder" : "alegaciones sin responder", function () { SANC.solo = SANC.solo === "alegaciones" ? null : "alegaciones"; render(); }, SANC.solo === "alegaciones", n.aleg ? "warn" : ""),
+    tile(n.graves, "graves o muy graves", function () { SANC.solo = SANC.solo === "graves" ? null : "graves"; render(); }, SANC.solo === "graves", n.graves ? "warn" : ""),
     tile(n.sinver, "sin ver por el interesado", function () { SANC.solo = SANC.solo === "sinver" ? null : "sinver"; render(); }, SANC.solo === "sinver"));
   var anios = []; all.forEach(function (s) { var a = String(s.fecha).slice(0, 4); if (anios.indexOf(a) < 0) anios.push(a); }); anios.sort().reverse();
-  var buscar = h("input", { type: "search", id: "sc-buscar", placeholder: "Buscar por nombre, motivo, medida…", value: SANC.q, "aria-label": "Buscar sanciones" });
+  var buscar = h("input", { type: "search", id: "sc-buscar", placeholder: "Buscar por nombre, motivo, artículo…", value: SANC.q, "aria-label": "Buscar sanciones" });
   buscar.addEventListener("input", function () { SANC.q = buscar.value; var pos = buscar.selectionStart; render(); var s2 = document.getElementById("sc-buscar"); if (s2) { s2.focus(); try { s2.setSelectionRange(pos, pos); } catch (e) {} } });
   function sel(id, label, val, opts, on) { var e = h("select", { id: id, "aria-label": label }, opts.map(function (o) { return h("option", { value: o[0], text: o[1], selected: val === o[0] || null }); })); e.addEventListener("change", function () { on(e.value); render(); }); return e; }
   var cuenta = {}; all.forEach(function (s) { cuenta[s.gravedad] = (cuenta[s.gravedad] || 0) + 1; });
@@ -4829,15 +4761,14 @@ function adminSanciones(sub) {
         o[1], h("span", { class: "chip-n", text: String(o[0] === "todas" ? all.length : (cuenta[o[0]] || 0)) }));
     })),
     h("div", { class: "sc-selects" },
-      sel("sc-est", "Estado", SANC.estado, [["todos", "Todos los estados"]].concat(SANC_ESTADOS.map(function (e) { return [e, e + "s"]; })), function (v) { SANC.estado = v; }),
       sel("sc-for", "Formación", SANC.formacion, [["todas", "Banda y Bandín"], ["Banda", "Solo Banda"], ["Bandín", "Solo Bandín"]], function (v) { SANC.formacion = v; }),
       sel("sc-anio", "Año", SANC.anio, [["todos", "Todos los años"]].concat(anios.map(function (a) { return [a, a]; })), function (v) { SANC.anio = v; }),
       sel("sc-ord", "Ordenar", SANC.orden, [["recientes", "Más recientes"], ["antiguas", "Más antiguas"], ["gravedad", "Por gravedad"], ["persona", "Por persona"]], function (v) { SANC.orden = v; })));
-  var hayFiltro = SANC.q || SANC.grav !== "todas" || SANC.estado !== "todos" || SANC.formacion !== "todas" || SANC.anio !== "todos" || SANC.solo || SANC.persona;
+  var hayFiltro = SANC.q || SANC.grav !== "todas" || SANC.formacion !== "todas" || SANC.anio !== "todos" || SANC.solo || SANC.persona;
   var pers = SANC.persona ? all.filter(function (s) { return s.user_id === SANC.persona; }) : null;
   var personaBar = pers ? h("div", { class: "sc-persona-bar" }, avatarUsuario(SANC.persona, pers[0] ? pers[0].nombre : "", "u-av"),
     h("div", null, h("b", { text: "Historial de " + (pers[0] ? pers[0].nombre : "esta persona") }),
-      h("small", { text: pers.length + (pers.length === 1 ? " sanción" : " sanciones") + " · " + (function (k) { return k + (k === 1 ? " vigente" : " vigentes"); })(pers.filter(function (s) { return s.estado === "Vigente"; }).length) + " · " + GRAVEDADES.map(function (g) { var k = pers.filter(function (s) { return s.gravedad === g; }).length; return k ? k + " " + g.toLowerCase() + (k > 1 ? "s" : "") : null; }).filter(Boolean).join(", ") })),
+      h("small", { text: pers.length + (pers.length === 1 ? " sanción" : " sanciones") + " · " + GRAVEDADES.map(function (g) { var k = pers.filter(function (s) { return s.gravedad === g; }).length; return k ? k + " " + g.toLowerCase() + (k > 1 ? "s" : "") : null; }).filter(Boolean).join(", ") })),
     can("sanciones") ? h("button", { class: "btn ghost small", type: "button", text: "+ Sancionar", onclick: function () { SANC.nueva = true; SANC.edit = null; render(); } }) : null,
     h("button", { class: "ico-btn", type: "button", "aria-label": "Quitar el filtro de persona", text: "×", onclick: function () { SANC.persona = null; render(); } })) : null;
   if (SANC.flash) { var fl = h("p", { class: "status ok", role: "status", text: SANC.flash }); SANC.flash = null; }
@@ -4845,7 +4776,7 @@ function adminSanciones(sub) {
   var form = SANC.nueva || editando ? sancionForm(editando || null) : null;
   return h("div", { class: "sanciones-panel" },
     h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Sanciones" }),
-      h("p", { class: "muted", text: "Cada músico ve solo las suyas en el Área de músicos → Reglamento, y le llega un aviso al móvil. Desde allí puede presentar una alegación." })),
+      h("p", { class: "muted", text: "Cada músico ve solo las suyas en el Área de músicos → Reglamento, y le llega un aviso al móvil. Las sanciones no caducan: quedan siempre en su historial." })),
       h("div", { class: "form-acts" },
         h("a", { class: "btn ghost small", href: "#musicos-rri", text: "📘 Reglamento (RRI)" }),
         list.length ? h("button", { class: "btn ghost small", type: "button", text: "⬇ Exportar", title: "Descargar la lista filtrada (CSV para Excel)", onclick: function () { exportarSanciones(list); } }) : null,
@@ -4855,7 +4786,7 @@ function adminSanciones(sub) {
     all.length ? filtros : null,
     personaBar,
     hayFiltro && all.length ? h("p", { class: "small muted sc-res" }, list.length + (list.length === 1 ? " sanción" : " sanciones") + " con estos filtros · ",
-      h("button", { class: "linkish", type: "button", text: "quitar filtros", onclick: function () { SANC.q = ""; SANC.grav = "todas"; SANC.estado = "todos"; SANC.formacion = "todas"; SANC.anio = "todos"; SANC.solo = null; SANC.persona = null; render(); } })) : null,
+      h("button", { class: "linkish", type: "button", text: "quitar filtros", onclick: function () { SANC.q = ""; SANC.grav = "todas"; SANC.formacion = "todas"; SANC.anio = "todos"; SANC.solo = null; SANC.persona = null; render(); } })) : null,
     list.length ? h("div", { class: "sc-list" }, list.map(function (s) { return SANC.edit === s.id ? null : sancionCard(s, true); }))
       : h("div", { class: "empty" }, h("p", { text: all.length ? "Ninguna sanción con estos filtros." : "No hay ninguna sanción puesta. Ojalá siga así 🎶" })));
 }

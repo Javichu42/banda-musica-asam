@@ -5,7 +5,6 @@
 //   "evento"  → avisa a los convocados de uno o varios eventos nuevos (permiso «Área de músicos»)
 //   "anuncio" → avisa de un anuncio nuevo a sus destinatarios (cualquier miembro de la directiva)
 //   "sancion" → avisa a la persona sancionada (permiso «Reglamento y sanciones»)
-//   "alegacion" → la persona sancionada avisa a quien lleva las sanciones de su alegación
 // Secretos: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY y, opcional, VAPID_CONTACT (mailto:…).
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -90,38 +89,20 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, ...r });
     }
 
-    // ---------- Sanciones ----------
-    // "sancion": quien tiene el permiso avisa a la persona sancionada (nueva, respuesta a su alegación o cambio de estado)
-    // "alegacion": la persona sancionada avisa a quienes llevan las sanciones de que ha presentado una alegación
-    if (body.action === "sancion" || body.action === "alegacion") {
-      const { data: sr, error: se } = await admin.from("sanciones").select("id, user_id, nombre, gravedad, estado, alegacion").eq("id", String(body.id || "")).limit(1);
+    // ---------- Sanciones: quien tiene el permiso avisa a la persona sancionada ----------
+    if (body.action === "sancion") {
+      const { data: puede } = await userClient.rpc("tiene_permiso", { p: "sanciones" });
+      if (puede !== true) return json({ error: "Tu cargo no puede gestionar sanciones." }, 403);
+      const { data: sr, error: se } = await admin.from("sanciones").select("id, user_id, gravedad").eq("id", String(body.id || "")).limit(1);
       if (se) throw se;
       const s = sr && sr[0];
       if (!s) return json({ error: "No se encuentra la sanción." }, 404);
       const enlace = "/#musicos-rri~sanciones~" + s.id;
-      if (body.action === "sancion") {
-        const { data: puede } = await userClient.rpc("tiene_permiso", { p: "sanciones" });
-        if (puede !== true) return json({ error: "Tu cargo no puede gestionar sanciones." }, 403);
-        const motivo = String(body.motivo || "nueva");
-        // En la pantalla bloqueada no se muestra el motivo: solo que hay algo que mirar
-        const datos = motivo === "respuesta"
-          ? { title: "⚖️ La directiva ha respondido a tu alegación", body: "Toca para leer la respuesta.", url: enlace, tag: "sancion-" + s.id }
-          : motivo === "cambio"
-          ? { title: "⚖️ Tu sanción ha cambiado", body: "Ahora está: " + s.estado.toLowerCase() + ". Toca para verla.", url: enlace, tag: "sancion-" + s.id }
-          : { title: "⚖️ Tienes una sanción nueva", body: "Gravedad: " + s.gravedad.toLowerCase() + ". Toca para ver el motivo y, si quieres, presentar una alegación.", url: enlace, tag: "sancion-" + s.id };
-        const r = await enviarA([s.user_id], datos);
-        return json({ ok: true, ...r });
-      }
-      if (s.user_id !== ud.user.id) return json({ error: "Esta sanción no es tuya." }, 403);
-      if (!s.alegacion) return json({ error: "Todavía no has presentado la alegación." }, 400);
-      const { data: adm, error: ae } = await admin.from("administradores").select("user_id, cargos(permisos)");
-      if (ae) throw ae;
-      const quien = (adm || []).filter((a) => {
-        const c = a.cargos as unknown as { permisos?: string[] } | { permisos?: string[] }[] | null;
-        const permisos = Array.isArray(c) ? (c[0]?.permisos || []) : (c?.permisos || []);
-        return permisos.includes("sanciones") && a.user_id !== ud.user.id;
-      }).map((a) => String(a.user_id));
-      const r = await enviarA(quien, { title: "⚖️ Nueva alegación de " + String(s.nombre).slice(0, 60), body: "Ha respondido a una sanción " + s.gravedad.toLowerCase() + ". Toca para leerla.", url: "/#admin-sanciones~" + s.id, tag: "alegacion-" + s.id });
+      // En la pantalla bloqueada no se muestra el motivo: solo que hay algo que mirar
+      const datos = String(body.motivo) === "cambio"
+        ? { title: "⚖️ Se ha modificado una sanción tuya", body: "Toca para verla.", url: enlace, tag: "sancion-" + s.id }
+        : { title: "⚖️ Tienes una sanción nueva", body: "Gravedad: " + String(s.gravedad).toLowerCase() + ". Toca para ver el motivo.", url: enlace, tag: "sancion-" + s.id };
+      const r = await enviarA([s.user_id], datos);
       return json({ ok: true, ...r });
     }
 

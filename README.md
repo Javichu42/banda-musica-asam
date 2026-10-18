@@ -215,7 +215,7 @@ Cada persona puede poner su foto desde Área de músicos → Perfil (se recorta 
 
 En el Área de músicos hay una pestaña «Reglamento» con el RRI separado por capítulos y artículos, con buscador e índice. Quien tenga el permiso «Reglamento y sanciones» (o «Área de músicos») puede publicarlo subiendo el PDF (la web lee el texto, también si está escaneado) o pegándolo.
 
-En Administración → Directiva → «⚖️ Sanciones» se ponen las sanciones (persona, gravedad, medida, motivo, artículo, fechas). A la persona le llega un aviso al móvil sin el motivo en la pantalla bloqueada; la ve en Reglamento → Mis sanciones, la directiva sabe cuándo la ha visto y puede presentar una alegación, que la directiva responde desde el panel. Hay filtros, estadísticas, historial por persona y exportación a CSV. Hay que ejecutar `supabase/sanciones.sql`, que crea el permiso nuevo y se lo da al Administrador general y a la Presidencia.
+En Administración → Directiva → «⚖️ Sanciones» se ponen las sanciones (persona, gravedad, motivo, artículo del RRI y fechas). No caducan: quedan siempre en el historial. A la persona le llega un aviso al móvil sin el motivo en la pantalla bloqueada y la ve en Reglamento → Mis sanciones; la directiva sabe cuándo la ha visto. Hay filtros, estadísticas, historial por persona y exportación a CSV. Hay que ejecutar `supabase/sanciones.sql`, que crea el permiso nuevo y se lo da al Administrador general y a la Presidencia.
 
 ## Móvil
 
