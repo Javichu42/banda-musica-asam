@@ -2214,7 +2214,7 @@ function musicosPage(sub) {
   }
   if (!PRIV.loaded) {
     if (!PRIV.loading) reloadPrivate();
-    return [areaShell(tab, h("div", { class: "empty" }, h("p", { text: "Cargando…" })), [])];
+    return [cabeceraArea(), areaShell(tab, h("div", { class: "empty" }, h("p", { text: "Cargando…" })), [])];
   }
   var body, crumbs = [];
   if (tab === "evento") { var ev = getEvento(parts[1]); body = ev ? areaEvento(ev, parts[2] || "detalles") : notFound("Este evento ya no existe."); crumbs = [["agenda", "Agenda"], [null, ev ? ev.titulo : "Evento"]]; tab = "agenda"; }
@@ -2227,8 +2227,9 @@ function musicosPage(sub) {
   else if (tab === "sugerencias") { body = areaSugerencias(); crumbs = [[null, "Sugerencias"]]; }
   else if (tab === "rri" || tab === "reglamento" || tab === "sanciones") { var rr = tab === "sanciones" ? ["sanciones"].concat(parts.slice(1)) : parts.slice(1); body = areaRRI(rr); crumbs = rr[0] === "sanciones" ? [["rri", "Reglamento"], [null, "Mis sanciones"]] : [[null, "Reglamento"]]; tab = "rri"; }
   else { tab = "agenda"; body = areaAgenda(); crumbs = [[null, "Agenda"]]; }
-  return [areaShell(tab, body, crumbs)];
+  return [cabeceraArea(), areaShell(tab, body, crumbs)];
 }
+function cabeceraArea() { return headSize(pageHead("Músicos", "Área de músicos", null, "verde"), "head-compact"); }
 function notFound(msg) { return h("div", { class: "empty" }, h("p", { text: msg })); }
 function areaShell(tab, body, crumbs) {
   var me = myMusico(), nov = PRIV.loaded ? novedades().filter(function (n) { return n.nuevo; }).length : 0;
