@@ -893,7 +893,7 @@ PAGES.direccion = function () {
           tray.length ? h("details", null, h("summary", { text: "Trayectoria" }), h("ul", null, tray.map(function (t) { return h("li", { text: t }); }))) : null);
       })) : emptyBox("Todavía no hay directores añadidos.", "directores"))),
     h("section", { class: "block alt" }, h("div", { class: "wrap" },
-      h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Junta Directiva" }), h("p", { class: "muted", text: "Trabajo voluntario y altruista" })), adminLink("directiva", jp.auto ? "Cambiar cargos" : "Editar directiva")),
+      h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Junta Directiva" }), h("p", { class: "muted", text: "Trabajo voluntario y altruista" })), adminLink("directiva~nuevo", jp.auto ? "Cambiar cargos" : "Editar directiva")),
       (function () {
         var isPres = function (m) { return /presiden/i.test(m.cargo || "") && !/vice/i.test(m.cargo || ""); };
         var pres = junta.filter(isPres)[0];
@@ -1224,6 +1224,11 @@ PAGES.admin = function (tab) {
   else if (tab === "solicitudes") body = adminSolicitudes();
   else if (tab === "sanciones") body = adminSanciones(tabSub);
   else body = adminCrud(tab);
+  if (tabSub === "nuevo" && tab === "directiva") setTimeout(function () {
+    var f = document.querySelector(".admin-grid .aform"); if (!f) return;
+    f.scrollIntoView({ behavior: "smooth", block: "start" }); f.classList.add("flash-art");
+    var i = f.querySelector("input, select, textarea"); if (i) try { i.focus({ preventScroll: true }); } catch (e) {}
+  }, 80);
   var permsTxt = PERMISOS_DEF.filter(function (p) { return can(p[0]); }).map(function (p) { return p[1].toLowerCase(); });
   return [head, h("section", { class: "block" }, h("div", { class: "wrap" },
     h("div", { class: "row-head" }, h("p", { class: "muted" }, "Sesión iniciada como " + ((SESSION.user && SESSION.user.email) || ""),

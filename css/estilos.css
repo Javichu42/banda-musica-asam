@@ -1586,9 +1586,10 @@ body.in-area .page, body.in-area #app > * { animation: none !important; transfor
 html, body { max-width: 100%; overflow-x: clip; }
 /* Hoja de socio */
 .socio-hoja { border-style: solid; display: grid; gap: 18px; }
-.socio-form { display: grid; gap: 18px; max-width: 820px; }
+.socio-form { display: grid; gap: 18px; }
 .socio-form fieldset { border: 1px solid var(--line); border-radius: 18px; padding: 18px; margin: 0; display: grid; gap: 14px; min-width: 0; background: var(--bg); }
-.socio-form legend { font-family: var(--f-display); font-weight: 800; font-size: 1.1rem; padding: 0 8px; }
+.socio-form legend { float: left; width: 100%; padding: 0; margin: 0 0 2px; font-family: var(--f-display); font-weight: 800; font-size: 1.1rem; line-height: 1.3; }
+.socio-form legend + * { clear: both; }
 .so-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
 .so-grid .span2 { grid-column: 1 / -1; }
 @media (min-width: 760px) { .so-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .so-grid .span2 { grid-column: span 2; } }
@@ -1600,6 +1601,8 @@ html, body { max-width: 100%; overflow-x: clip; }
 .so-tipo[aria-checked="true"].t-socio { border-color: #e9a46a; background: #fdeee2; }
 .so-tipo[aria-checked="true"].t-amigo { border-color: #f08a3c; background: #fbd3b2; }
 .so-tipo[aria-checked="true"].t-mecenas { border-color: #e2661b; background: #f9b27c; }
+.so-tipo[aria-checked="true"] { color: #3a2410; }
+.so-tipo[aria-checked="true"] small { color: #6b4a2e; }
 .so-cuota input { max-width: 200px; }
 .so-banco { color: var(--verde); font-weight: 600; }
 #so-iban { font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: .04em; }
