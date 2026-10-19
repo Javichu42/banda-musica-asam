@@ -1859,3 +1859,13 @@ img.av-mini.photo, img.av-mid.photo { object-fit: cover; }
 .pr-rsvp { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .prox-reunion > .btn { justify-self: start; }
 @media (max-width: 860px) { .dash-cols { grid-template-columns: 1fr; } }
+/* Sin pie de página en el Panel de la directiva (como en el Área de músicos) */
+body.in-dir > footer, body.in-dir #footer { display: none; }
+@media (max-width: 760px) { body.in-dir .area-main { padding-bottom: 110px; } }
+/* Elegir vista al abrir la app */
+.elegir .wrap { display: grid; gap: 16px; max-width: 640px; }
+.elegir-p { margin: 0; font-size: 1.1rem; }
+.elegir-ops { display: grid; gap: 14px; }
+.elegir-ops .dash-big { border: 0; text-align: left; font: inherit; cursor: pointer; width: 100%; }
+.elegir-nota { margin: 0; }
+@media (max-width: 700px) { section.block.elegir { padding-block: 24px; } }

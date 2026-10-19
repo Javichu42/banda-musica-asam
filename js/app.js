@@ -1155,6 +1155,31 @@ SCHEMAS.profesores = { label: "Profesorado", singular: "profesor", fields: [
   title: function (d) { return d.nombre; }, sub: function (d) { return d.especialidad || ""; }, sort: byOrden };
 var LIST_FILTER = {};
 
+/* App del móvil: quien es de la directiva y además músico elige al entrar con qué vista empieza */
+var ELEGIR_KEY = "asam-vista-elegida";
+function quizaElegirVista() {
+  try { if (sessionStorage.getItem(ELEGIR_KEY)) return; } catch (e) {}
+  if (!instalada() || !SESSION || !IS_ADMIN || !myMusico() || debeCambiarClave()) return;
+  var hs = (location.hash || "").replace(/^#/, "");
+  if (hs && !/^(musicos|musicos-agenda|privado|inicio|admin)$/.test(hs)) return; // se respeta un enlace concreto (p. ej. una notificación)
+  try { sessionStorage.setItem(ELEGIR_KEY, "1"); } catch (e) {}
+  history.replaceState(null, "", "#elegir");
+}
+PAGES.elegir = function () {
+  if (!SESSION) { location.replace("#privado"); return []; }
+  function ir(h_) { try { sessionStorage.setItem(ELEGIR_KEY, "1"); } catch (e) {} location.hash = h_; }
+  var nombre = String(displayName()).split(" ")[0];
+  return [headSize(pageHead("Bienvenido/a", "Hola, " + nombre, null, "negra"), "head-compact"),
+    h("section", { class: "block elegir" }, h("div", { class: "wrap" },
+      h("p", { class: "muted elegir-p", text: "¿Con qué quieres entrar?" }),
+      h("div", { class: "elegir-ops" },
+        h("button", { type: "button", class: "dash-big area", onclick: function () { ir("#musicos-agenda"); } }, h("span", { class: "dash-big-ico", "aria-hidden": "true", text: "🎼" }),
+          h("span", null, h("b", { text: "Vista de músico" }), h("small", { text: "Agenda, partituras, avisos y tus convocatorias" }))),
+        h("button", { type: "button", class: "dash-big edit", onclick: function () { ir("#admin"); } }, h("span", { class: "dash-big-ico", "aria-hidden": "true", text: "🏛️" }),
+          h("span", null, h("b", { text: "Administración" }), h("small", { text: (MI_CARGO ? MI_CARGO + " · " : "") + "Panel de la directiva" })))),
+      h("p", { class: "small muted elegir-nota", text: "Puedes cambiar de una a otra cuando quieras con el botón «Administración» del Área de músicos o «Área de músicos» del panel." })))];
+};
+
 /* Protección de datos: el texto va tal cual (sin traducir ni cambiar nada) */
 var PROTECCION_DATOS = { titulo: "INFORMACION BASICA SOBRE PROTECCION DE DATOS", puntos: ["ACTIVIDAD DE TRATAMIENTO: GESTION DE SOCIOS/AMIGOS/MECENAS DE LA ASAM", "RESPONSABLE: ASAM (Asociación Sierense de Amigos de la Música)", "FINALIDAD: Los datos personales recabados a través del presente formulario, así como los generados en el transcurso de la relación administrativa serán tratados con la única finalidad y contexto de gestionar los socios, amigos y mecenas de la asociciación.", "LEGITIMACIÓN: Gestión de afiliados", "DESTINATARIOS: Afiliados de la ASAM", "DERECHOS: Puede ejercer los derechos de acceso, rectificación, supresión, oposición, limitación del tratamiento y portabilidad, contactando la ASAM: Calle Alcalde Parrondo, nº 32, Pola de Siero, Spain, 33510 - Tlf: 985 72 60 28 - banda_asam@hotmail.com"], texto: "De acuerdo con el Reglamento (UE) 2016/679 relativo a la protección de los datos personales de las personas físicas, se informa que los datos de carácter personal que se faciliten mediante el siguiente formulario quedarán debidamente registrados e incorporados a los sistemas de tratamiento de datos responsabilidad de la ASAM y ello, con la finalidad de gestionar esta solicitud. Igualmente, su información personal no será comunicada a ningún destinatario salvo en aquellos casos en los que así venga exigido por una ley o usted nos autorice expresamente. Su información personal no será destinada a ninguna otra finalidad distinta a la aquí informada, o que resulte incompatible con la misma. Usted podrá ejercer los derechos de acceso, rectificación, supresión, limitación de tratamiento, portabilidad y oposición ante la ASAM." };
 function textoLiteral(tag, cls, txt) { var el = document.createElement(tag); if (cls) el.className = cls; el.textContent = txt; return el; }
@@ -1940,6 +1965,7 @@ function render() {
   add(page, PAGES[r.page](r.sub));
   app.appendChild(page);
   document.body.classList.toggle("in-area", r.page === "musicos");
+  document.body.classList.toggle("in-dir", (r.page === "admin" && (!r.sub || r.sub.indexOf("inicio") === 0)) || r.page === "elegir");
   if (r.page !== "musicos" && AREA) AREA.verComo = null;
   var slot = document.getElementById("top-area"); if (slot && (r.page !== "musicos" || !SESSION)) slot.replaceChildren();
   var navPage = (r.page === "admin" || r.page === "musicos") ? "privado" : r.page;
@@ -5259,7 +5285,7 @@ if (configured() && window.supabase && window.supabase.createClient) {
   var sesionP = SB.auth.getSession().then(function (r) { SESSION = (r && r.data && r.data.session) || null; return refreshAdmin(); });
   Promise.all([sesionP, loadAll().catch(function (e) { console.error("No se han podido cargar los datos:", e); })])
     .then(function () { render(); return loadPrivate(); })
-    .then(function () { render(); validarSesion(); sincronizarPush(); }, function (e) { console.error(e); render(); });
+    .then(function () { quizaElegirVista(); render(); validarSesion(); sincronizarPush(); }, function (e) { console.error(e); render(); });
   SB.auth.onAuthStateChange(function (event, session) {
     if (event === "INITIAL_SESSION") return;
     SESSION = session || null;
@@ -5267,7 +5293,7 @@ if (configured() && window.supabase && window.supabase.createClient) {
     CUENTAS.loaded = false; CUENTAS.list = [];
     PRIV.loaded = false; PRIV.loading = true;
     // Se sale del callback antes de llamar de nuevo a Supabase
-    setTimeout(function () { refreshAdmin().then(loadPrivate).then(function () { render(); if (SESSION) sincronizarPush(); }); }, 0);
+    setTimeout(function () { refreshAdmin().then(loadPrivate).then(function () { if (event === "SIGNED_IN") quizaElegirVista(); render(); if (SESSION) sincronizarPush(); }); }, 0);
   });
   // Recarga los datos al volver a la pestaña, por si otro administrador ha cambiado algo
   document.addEventListener("visibilitychange", function () {
