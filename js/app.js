@@ -1211,7 +1211,7 @@ PAGES.admin = function (tab) {
     return [head, h("section", { class: "block" }, h("div", { class: "wrap" }, h("div", { class: "notice" },
       h("h3", { text: "Cargando datos…" }), h("p", { class: "muted", text: "Si este mensaje no desaparece, recarga la página." }))))];
   }
-  if (!tab || tab === "inicio") return [pageHead("Administración", "Panel de la directiva", "Lo más habitual, a mano. Para editar la web y todos los datos, entra en Edición.", "negra"), h("section", { class: "block" }, h("div", { class: "wrap" }, adminInicio()))];
+  if (!tab || tab === "inicio") return paginaDirectiva(tabSub || "inicio");
   if (tab === "edicion") tab = can("web") ? "directiva" : "tareas";
   if (can("cuentas") && !CUENTAS.loaded && !CUENTAS.loading) loadCuentas().then(function () { if (location.hash.indexOf("#admin-personas") === 0) render(); });
   var webTabs = TABS.filter(function (t) { return !TABS_JUNTA.some(function (j) { return j[0] === t[0]; }); });
@@ -1257,6 +1257,42 @@ PAGES.admin = function (tab) {
     body))];
 };
 
+/* ---------- Panel de la directiva con menú propio (como el de los músicos) ---------- */
+var DIR_TABS = [["inicio", "Inicio"], ["tareas", "Tareas"], ["reuniones", "Reuniones"], ["avisos", "Avisos"], ["sugerencias", "Sugerencias"], ["altas", "Altas de socio", "Altas"]];
+function dirBadge(k) {
+  var hoy = todayStr();
+  if (k === "tareas") return TAREAS.list.filter(function (t) { return t.estado !== "hecha"; }).length;
+  if (k === "reuniones") return REUN.list.filter(function (r) { return r.fecha >= hoy && r.estado === "convocada"; }).length;
+  if (k === "sugerencias") return (PRIV.sugerencias || []).filter(function (x) { return !x.leida; }).length;
+  if (k === "altas") return SOL.list.filter(function (x) { return x.estado === "nueva"; }).length;
+  return 0;
+}
+function paginaDirectiva(sec) {
+  if (DIR_TABS.every(function (t) { return t[0] !== sec; })) sec = "inicio";
+  AREA.verComo = null;
+  if (!TAREAS.loaded && !TAREAS.loading) loadTareas().then(render);
+  if (!REUN.loaded && !REUN.loading) loadReuniones().then(render);
+  if (!SOL.loaded && !SOL.loading) loadSolicitudes().then(render);
+  if (SESSION && !PRIV.loaded && !PRIV.loading) reloadPrivate();
+  var necesitaPriv = sec === "avisos" || sec === "sugerencias";
+  var body = sec === "tareas" ? adminTareas() : sec === "reuniones" ? adminReuniones() : sec === "altas" ? adminSolicitudes()
+    : necesitaPriv && !PRIV.loaded ? h("div", { class: "empty" }, h("p", { text: "Cargando…" }))
+    : sec === "avisos" ? areaAvisos() : sec === "sugerencias" ? areaSugerencias() : adminInicio();
+  var titulo = sec === "inicio" ? "Panel de la directiva" : (DIR_TABS.filter(function (t) { return t[0] === sec; })[0] || [0, ""])[1];
+  return [pageHead("Directiva", titulo, sec === "inicio" ? "Lo más habitual, a mano. Para editar la web y todos los datos, entra en Edición." : null, "negra"),
+    h("section", { class: "area-app dir-app" },
+      h("nav", { class: "area-tabs", "aria-label": "Secciones de la directiva" }, h("div", { class: "wrap" }, DIR_TABS.map(function (t) {
+        var n = dirBadge(t[0]);
+        return h("a", { href: t[0] === "inicio" ? "#admin" : "#admin-inicio~" + t[0], "aria-current": t[0] === sec ? "page" : null },
+          icon(ICONS["d-" + t[0]] ? "d-" + t[0] : t[0]),
+          t[2] ? h("span", { class: "t-label" }, h("span", { class: "t-l", text: t[1] }), h("span", { class: "t-s", text: t[2] })) : h("span", { class: "t-label", text: t[1] }),
+          n ? h("span", { class: "badge-n", "aria-label": n + " pendientes", text: n > 99 ? "99+" : String(n) }) : null);
+      }))),
+      h("div", { class: "area-main" }, h("div", { class: "wrap" },
+        sec !== "inicio" ? h("div", { class: "dir-top" }, h("a", { class: "back", href: "#admin" }, icon("atras"), "Inicio"),
+          h("div", { class: "dir-top-r" }, h("a", { class: "btn ghost small", href: "#admin-edicion", text: "✏️ Edición" }), h("a", { class: "btn ghost small", href: "#musicos-agenda", text: "🎼 Área de músicos" }))) : null,
+        body)))];
+}
 /* ---------- Inicio de la directiva: lo básico a mano ---------- */
 function adminInicio() {
   if (!TAREAS.loaded && !TAREAS.loading) loadTareas().then(render);
@@ -1284,14 +1320,14 @@ function adminInicio() {
   var nombre = String(displayName()).split(" ")[0];
   var cards = [
     card("📋", "Tareas", cargando(TAREAS) ? "…" : pend.length, cargando(TAREAS) ? "Cargando…" : (pend.length ? (mias.length ? mias.length + " a tu cargo" : "Ninguna a tu cargo") + (urg.length ? " · " + urg.length + (urg.length === 1 ? " urgente o atrasada" : " urgentes o atrasadas") : "") : "No hay tareas pendientes"),
-      "#admin-tareas", ["+ Nueva tarea", function () { TAREAS.nueva = true; location.hash = "#admin-tareas"; }], urg.length ? "warn" : ""),
+      "#admin-inicio~tareas", ["+ Nueva tarea", function () { TAREAS.nueva = true; location.hash = "#admin-inicio~tareas"; }], urg.length ? "warn" : ""),
     card("🗓️", "Próxima reunión", null, cargando(REUN) ? "Cargando…" : prox ? prox.titulo + " · " + fmtLong(prox.fecha) + (prox.hora ? " a las " + prox.hora : "") : "No hay ninguna convocada",
-      prox ? "#admin-reuniones" : "#admin-reuniones", ["+ Convocar reunión", function () { REUN.nueva = true; location.hash = "#admin-reuniones"; }]),
-    card("📣", "Aviso a los músicos", null, "Publica un anuncio en el Área de músicos y les llega al móvil", "#musicos-avisos", null),
+      "#admin-inicio~reuniones", ["+ Convocar reunión", function () { REUN.nueva = true; location.hash = "#admin-inicio~reuniones"; }]),
+    card("📣", "Aviso a los músicos", null, "Publica un anuncio en el Área de músicos y les llega al móvil", "#admin-inicio~avisos", null),
     can("musica") ? card("📅", "Agenda y eventos", null, evProx ? "Próximo: " + evProx.titulo + " · " + fmtLong(evProx.fecha) : "No hay eventos próximos", "#musicos-agenda",
       ["+ Nuevo evento", function () { AREA.nuevoEvento = true; location.hash = "#musicos-agenda"; }]) : null,
-    card("📝", "Altas de socio", cargando(SOL) ? "…" : altas, altas === 1 ? "hoja nueva por tramitar" : "hojas nuevas por tramitar", "#admin-solicitudes", null, altas ? "warn" : ""),
-    card("💡", "Sugerencias", sug, sug === 1 ? "sin leer" : "sin leer de los músicos", "#musicos-sugerencias", null, sug ? "warn" : ""),
+    card("📝", "Altas de socio", cargando(SOL) ? "…" : altas, altas === 1 ? "hoja nueva por tramitar" : "hojas nuevas por tramitar", "#admin-inicio~altas", null, altas ? "warn" : ""),
+    card("💡", "Sugerencias", sug, sug === 1 ? "sin leer" : "sin leer de los músicos", "#admin-inicio~sugerencias", null, sug ? "warn" : ""),
     can("sanciones") ? card("⚖️", "Sanciones", null, sanc ? sanc + " sin ver por el interesado" : "Poner y revisar sanciones", "#admin-sanciones", ["+ Nueva sanción", function () { SANC.nueva = true; location.hash = "#admin-sanciones"; }]) : null,
     can("cuentas") ? card("👥", "Personas y accesos", null, "Crear cuentas, dar accesos y cambiar claves", "#admin-personas", null) : null,
     card("📘", "Reglamento (RRI)", null, "Consultar el reglamento de régimen interno", "#musicos-rri", null)
@@ -2115,6 +2151,10 @@ function getEvento(id) { return DATA.eventos.filter(function (e) { return e.id =
 
 /* ---------- Iconos ---------- */
 var ICONS = {
+  "d-inicio": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 4.5l8 7"/><path d="M6.5 10v9.5h11V10"/><path d="M10 19.5v-5h4v5"/></svg>',
+  "d-tareas": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="5" width="13" height="15.5" rx="2"/><path d="M9.5 3.5h5v3h-5z"/><path d="M9 12.5l2 2 4-4"/></svg>',
+  "d-reuniones": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8.5" r="3.3"/><path d="M3 19.5c.8-3.3 3.2-5 6-5s5.2 1.7 6 5"/><circle cx="17" cy="9.5" r="2.6"/><path d="M15.5 14.6c2.6-.3 4.8 1.3 5.5 4.4"/></svg>',
+  "d-altas": '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8.5" r="3.5"/><path d="M3.5 19.5c.9-3.6 3.6-5.5 6.5-5.5s5.6 1.9 6.5 5.5"/><path d="M18.5 8v6M15.5 11h6"/></svg>',
   rri: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 18.5V5.5a2 2 0 0 1 2-2H19.5v14.5H6.5a2 2 0 0 0-2 2 2 2 0 0 0 2 2h13"/><path d="M12 7v7.5M9 8.5h6M9 8.5l-1.5 3.2a1.6 1.6 0 0 0 3 0zM15 8.5l-1.5 3.2a1.6 1.6 0 0 0 3 0z"/></svg>',
   agenda: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
   repertorio: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5.5l11-2.5v12.5"/><ellipse cx="6.5" cy="18" rx="2.6" ry="2"/><ellipse cx="17.5" cy="15.5" rx="2.6" ry="2"/></svg>',

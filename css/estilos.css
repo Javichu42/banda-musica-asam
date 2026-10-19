@@ -1826,3 +1826,7 @@ img.av-mini.photo, img.av-mid.photo { object-fit: cover; }
 @media (max-width: 640px) { .dash-main { grid-template-columns: 1fr; } .dash-big { padding: 18px; } .dash-grid { grid-template-columns: 1fr; } }
 .claves-confirm { grid-column: 1 / -1; border: 1px solid color-mix(in srgb, var(--danger, #d63a2f) 40%, var(--line)); background: color-mix(in srgb, #d63a2f 6%, var(--surface)); border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; }
 .claves-confirm p { margin: 0; }
+.dir-app { min-height: 0; }
+.dir-app .area-tabs { top: calc(64px + env(safe-area-inset-top, 0px)); }
+.dir-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.dir-top-r { display: flex; gap: 8px; flex-wrap: wrap; }
