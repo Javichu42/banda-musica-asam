@@ -1781,3 +1781,9 @@ img.av-mini.photo, img.av-mid.photo { object-fit: cover; }
 .admin-tabs a.tab-sanciones { background: color-mix(in srgb, #d63a2f 9%, var(--surface)); border-color: color-mix(in srgb, #d63a2f 40%, var(--line)); color: #a3281f; }
 .admin-tabs a.tab-sanciones[aria-current="page"] { background: #c8352b; border-color: #c8352b; color: #fff; }
 .junta-auto { margin-bottom: 14px; display: block; }
+.role.r-prof { background: color-mix(in srgb, var(--verde) 12%, var(--surface)); border-color: color-mix(in srgb, var(--verde) 40%, var(--line)); color: var(--verde); }
+.pill-oculta { font-size: .74rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); border: 1px dashed var(--line); }
+.visib { display: grid; gap: 6px; margin-top: 6px; }
+.visib-l { font-weight: 700; font-size: .85rem; }
+.visib .seg { justify-self: start; flex-wrap: wrap; }
+.visib-no { color: var(--naranja); font-weight: 600; }

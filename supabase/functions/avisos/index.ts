@@ -18,18 +18,24 @@ const cors = {
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 }
-type Musico = { user_id?: string; formacion?: string; nombre?: string };
+type Musico = { user_id?: string; formacion?: string; nombre?: string; profesor?: boolean };
+const FORMACIONES = ["Banda", "Bandín", "Banda y Bandín"];
 type Evento = { id: string; titulo?: string; fecha?: string; hora?: string; lugar?: string; tipo?: string; formacion?: string };
 
 function convocado(e: Evento, m: Musico) {
   const f = e.formacion || "Banda";
   if (f === "Asociación" || f === "Escuela") return true;
+  if (f === "Profesorado") return !!m.profesor;
+  if (!FORMACIONES.includes(String(m.formacion))) return false; // profesor que no toca en la banda
   if (m.formacion === "Banda y Bandín" || f === "Banda y Bandín") return true;
   return f === m.formacion;
 }
 function paraAnuncio(dest: string, m: Musico) {
   const d = dest || "Todos";
-  return d === "Todos" || m.formacion === "Banda y Bandín" || m.formacion === d;
+  if (d === "Todos") return true;
+  if (d === "Profesorado") return !!m.profesor;
+  if (!FORMACIONES.includes(String(m.formacion))) return false;
+  return m.formacion === "Banda y Bandín" || m.formacion === d;
 }
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];

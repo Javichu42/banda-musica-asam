@@ -1,8 +1,9 @@
 // Función de Supabase para las cuentas (músicos y directiva) en un solo sitio.
 // Acción pública: "login" (entrar con usuario o correo).
 // Acciones con el permiso «Cuentas y permisos»: "list", "create", "update", "password", "remove".
-// Una cuenta puede ser músico (ficha en la colección "musicos"), miembro de la
-// directiva (fila en "administradores" con su cargo) o las dos cosas.
+// Una cuenta puede ser músico y/o profesor (ficha en la colección "musicos"),
+// miembro de la directiva (fila en "administradores" con su cargo) o varias cosas.
+// Un profesor que no toca en la banda tiene la ficha con formacion "Profesorado".
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
@@ -19,6 +20,12 @@ const FORMACIONES = ["Banda", "Bandín", "Banda y Bandín"];
 const PUESTOS = ["Músico", "Jefe de sección", "Director"];
 
 type Musico = { formacion: string; instrumento: string; voz?: string; cargo: string };
+const SOLO_PROFESOR = { formacion: "Profesorado", instrumento: "", cargo: "Profesor" };
+function leerProfesor(p: unknown): { especialidad: string } | null {
+  if (!p) return null;
+  const o = (typeof p === "object" ? p : {}) as Record<string, unknown>;
+  return { especialidad: String(o.especialidad || "").trim().slice(0, 60) };
+}
 
 function leerMusico(m: Record<string, unknown> | null | undefined): Musico | string {
   if (!m) return "Faltan los datos de músico.";
@@ -145,10 +152,13 @@ Deno.serve(async (req: Request) => {
       for (const r of mus || []) {
         const d = r.datos || {};
         if (!d.user_id) continue;
-        map.set(d.user_id, { user_id: d.user_id, nombre: d.nombre || "", usuario: d.usuario || "", foto: d.foto || "", musico: { id: r.id, formacion: d.formacion, instrumento: d.instrumento, voz: d.voz || "", cargo: d.cargo || "Músico" }, directiva: null });
+        const esMusico = FORMACIONES.includes(d.formacion);
+        map.set(d.user_id, { user_id: d.user_id, nombre: d.nombre || "", usuario: d.usuario || "", foto: d.foto || "",
+          musico: esMusico ? { id: r.id, formacion: d.formacion, instrumento: d.instrumento, voz: d.voz || "", cargo: d.cargo || "Músico" } : null,
+          profesor: d.profesor ? { especialidad: d.especialidad || "" } : null, directiva: null });
       }
       for (const a of adm || []) {
-        const cur = map.get(a.user_id) || { user_id: a.user_id, nombre: "", usuario: "", musico: null };
+        const cur: Record<string, unknown> = map.get(a.user_id) || { user_id: a.user_id, nombre: "", usuario: "", musico: null, profesor: null };
         cur.nombre = cur.nombre || a.nombre || "";
         cur.usuario = cur.usuario || a.usuario || "";
         cur.foto = cur.foto || a.foto || "";
@@ -180,7 +190,8 @@ Deno.serve(async (req: Request) => {
       if (!USUARIO_RE.test(usuario)) return json({ error: "El usuario debe tener entre 3 y 30 caracteres: letras minúsculas, números, punto, guion o guion bajo." }, 400);
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "El correo no es válido." }, 400);
       if (password.length < 8) return json({ error: "La contraseña debe tener al menos 8 caracteres." }, 400);
-      if (!body.musico && !body.directiva) return json({ error: "Marca al menos un acceso: músico o directiva." }, 400);
+      const prof = leerProfesor(body.profesor);
+      if (!body.musico && !body.directiva && !prof) return json({ error: "Marca al menos un acceso: músico, profesor o directiva." }, 400);
       let mus: Musico | null = null;
       if (body.musico) { const r = leerMusico(body.musico); if (typeof r === "string") return json({ error: r }, 400); mus = r; }
       let cargoId: string | null = null;
@@ -198,8 +209,8 @@ Deno.serve(async (req: Request) => {
       }
       const uid = created.user.id;
       try {
-        if (mus) {
-          const { error } = await admin.from("contenido").insert({ coleccion: "musicos", id: uid, datos: { nombre, usuario, ...mus, user_id: uid } });
+        if (mus || prof) {
+          const { error } = await admin.from("contenido").insert({ coleccion: "musicos", id: uid, datos: { nombre, usuario, ...(mus || SOLO_PROFESOR), ...(prof ? { profesor: true, especialidad: prof.especialidad } : {}), user_id: uid } });
           if (error) throw error;
         }
         if (cargoId) {
@@ -228,9 +239,11 @@ Deno.serve(async (req: Request) => {
       if (!nombre) return json({ error: "Falta el nombre." }, 400);
       if (!USUARIO_RE.test(usuario)) return json({ error: "El usuario debe tener entre 3 y 30 caracteres: letras minúsculas, números, punto, guion o guion bajo." }, 400);
       if (!(await usuarioLibre(admin, usuario, uid))) return json({ error: "Ese nombre de usuario ya existe." }, 400);
-      const quiereMusico = body.musico !== undefined ? !!body.musico : !!ficha;
+      const eraMusico = !!ficha && FORMACIONES.includes(String(ficha.datos?.formacion));
+      const quiereMusico = body.musico !== undefined ? !!body.musico : eraMusico;
+      const prof = body.profesor !== undefined ? leerProfesor(body.profesor) : (ficha?.datos?.profesor ? { especialidad: String(ficha.datos.especialidad || "") } : null);
       const quiereDirectiva = body.directiva !== undefined ? !!body.directiva : !!adm;
-      if (!quiereMusico && !quiereDirectiva) return json({ error: "La cuenta tiene que tener al menos un acceso. Si ya no lo necesita, bórrala." }, 400);
+      if (!quiereMusico && !quiereDirectiva && !prof) return json({ error: "La cuenta tiene que tener al menos un acceso. Si ya no lo necesita, bórrala." }, 400);
       if (uid === meId && !quiereDirectiva) return json({ error: "No puedes quitarte a ti mismo el acceso de la directiva." }, 400);
 
       // Directiva
@@ -244,13 +257,14 @@ Deno.serve(async (req: Request) => {
         const { error } = await admin.from("administradores").delete().eq("user_id", uid);
         if (error) return json({ error: error.message }, 400);
       }
-      // Músico
-      if (quiereMusico) {
-        const r = leerMusico(body.musico ? body.musico : ficha?.datos);
-        if (typeof r === "string") return json({ error: r }, 400);
+      // Músico y/o profesor (una sola ficha)
+      if (quiereMusico || prof) {
+        let r: Musico = SOLO_PROFESOR;
+        if (quiereMusico) { const lm = leerMusico(body.musico ? body.musico : ficha?.datos); if (typeof lm === "string") return json({ error: lm }, 400); r = lm; }
         const prev = (ficha?.datos || {}) as Record<string, unknown>;
         const datos: Record<string, unknown> = { ...prev, nombre, usuario, ...r, user_id: uid };
         if (!r.voz) delete datos.voz;
+        if (prof) { datos.profesor = true; datos.especialidad = prof.especialidad; } else { delete datos.profesor; delete datos.especialidad; }
         const { error } = await admin.from("contenido").upsert({ coleccion: "musicos", id: ficha ? ficha.id : uid, datos });
         if (error) return json({ error: error.message }, 400);
       } else if (ficha) {

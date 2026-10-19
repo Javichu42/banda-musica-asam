@@ -1094,8 +1094,8 @@ var SCHEMAS = {
     { k: "hora_fin", l: "Hora de fin", type: "time", help: "Opcional. Se ve en el Área de músicos y al añadirlo al calendario." },
     { k: "lugar", l: "Lugar", ph: "Auditorio de Pola de Siero" },
     { k: "direccion", l: "Dirección para el mapa", ph: "Calle Alcalde Parrondo 32, Pola de Siero", help: "Opcional. Si la pones, el mapa del Área de músicos será más exacto." },
-    { k: "tipo", l: "Tipo", type: "select", options: [["Concierto", "Concierto"], ["Ensayo", "Ensayo"], ["Actuación", "Actuación"], ["Pasacalles", "Pasacalles"], ["Otro", "Otro"]] },
-    { k: "formacion", l: "Convocatoria", type: "select", options: [["Banda", "Banda"], ["Bandín", "Bandín"], ["Banda y Bandín", "Banda y Bandín"], ["Escuela", "Escuela"], ["Asociación", "Toda la asociación"]], help: "Quién está convocado. En el Área de músicos solo lo verán ellos." },
+    { k: "tipo", l: "Tipo", type: "select", options: [["Concierto", "Concierto"], ["Ensayo", "Ensayo"], ["Actuación", "Actuación"], ["Pasacalles", "Pasacalles"], ["Reunión", "Reunión"], ["Otro", "Otro"]] },
+    { k: "formacion", l: "Convocatoria", type: "select", options: [["Banda", "Banda"], ["Bandín", "Bandín"], ["Banda y Bandín", "Banda y Bandín"], ["Profesorado", "Profesorado"], ["Escuela", "Escuela"], ["Asociación", "Toda la asociación"]], help: "Quién está convocado. En el Área de músicos solo lo verán ellos." },
     { k: "publico", l: "¿Dónde se ve?", type: "select", options: [["si", "En la web pública y en el Área de músicos"], ["no", "Solo en el Área de músicos (ensayos, avisos internos…)"]] },
     { k: "descripcion", l: "Descripción", type: "textarea" },
     { k: "cartel", l: "Cartel del concierto", type: "images", single: true, help: "Opcional. El cartel con el programa o repertorio; se muestra en Próximas actuaciones y se amplía al pulsarlo." },
@@ -1501,7 +1501,7 @@ function adminCrud(col) {
   });
   if (FLASH && FLASH.col === col) { setStatus(st, FLASH.msg, true); FLASH = null; }
 
-  var all = DATA[col].slice().sort(S.sort);
+  var all = DATA[col].filter(function (x) { return col !== "musicos" || !soloProfesor(x); }).slice().sort(S.sort);
   var items = S.filter && LIST_FILTER[col] ? all.filter(function (x) { return x[S.filter.k] === LIST_FILTER[col]; }) : all;
   var filterEl = S.filter ? h("div", { class: "list-filter" }, h("label", { for: "lf-" + col, text: S.filter.label + ":" }),
     h("select", { id: "lf-" + col, onchange: function (e) { LIST_FILTER[col] = e.target.value; render(); } },
@@ -1888,20 +1888,37 @@ function displayName() {
 }
 function norm(t) { return String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); }
 function isDirectorM(m) { return !!m && /director/i.test(m.cargo || ""); }
+var FORMACIONES_BANDA = ["Banda", "Bandín", "Banda y Bandín"];
+function tocaEnBanda(m) { return !!m && FORMACIONES_BANDA.indexOf(m.formacion) >= 0; }
+function esProfesor(m) { return !!m && !!m.profesor; }
+function soloProfesor(m) { return !!m && !tocaEnBanda(m) && esProfesor(m); }
+// Profesor que no toca y no es de la directiva: solo agenda, avisos, sugerencias, reglamento y perfil
+function vistaProfesor() { return !IS_ADMIN && soloProfesor(myMusico()); }
+function fichaTxt(m) {
+  if (!m) return "";
+  var prof = esProfesor(m) ? "Profesor/a" + (m.especialidad ? " de " + m.especialidad : "") : "";
+  if (!tocaEnBanda(m)) return prof;
+  return [m.instrumento + (m.voz ? " " + vocesTxt([INST.normVoz(m.voz)]) : ""), m.formacion, prof].filter(Boolean).join(" · ");
+}
 function convocado(e, m) {
   var f = e.formacion || "Banda";
   if (!m) return true;
   if (f === "Asociación" || f === "Escuela") return true;
+  if (f === "Profesorado") return esProfesor(m);
+  if (!tocaEnBanda(m)) return false;
   if (m.formacion === "Banda y Bandín" || f === "Banda y Bandín") return true;
   return f === m.formacion;
 }
 function anuncioParaMi(a, m) {
   var d = a.destinatarios || "Todos";
   if (d === "Todos" || !m) return true;
+  if (d === "Profesorado") return esProfesor(m);
+  if (!tocaEnBanda(m)) return false;
   return m.formacion === "Banda y Bandín" || m.formacion === d;
 }
 function obraParaMi(o, m) {
   if (!m) return true;
+  if (!tocaEnBanda(m)) return false;
   var f = o.formacion || "Banda y Bandín";
   return f === "Banda y Bandín" || m.formacion === "Banda y Bandín" || f === m.formacion;
 }
@@ -1996,7 +2013,7 @@ function myAnswer(evId) { return SESSION ? ((PRIV.asist[evId] || {})[SESSION.use
 function obrasDeEvento(evId) {
   var orden = (PRIV.programas || {})[evId] || [];
   function pos(o) { var i = orden.indexOf(o.id); return i < 0 ? 999 : i; }
-  return PRIV.obras.filter(function (o) { return (o.eventos || []).indexOf(evId) >= 0; })
+  return PRIV.obras.filter(function (o) { return (o.eventos || []).indexOf(evId) >= 0 && (IS_ADMIN || o.visibilidad !== "oculta"); })
     .sort(function (a, b) { return pos(a) - pos(b) || String(a.creado || "").localeCompare(String(b.creado || "")) || String(a.titulo).localeCompare(String(b.titulo)); });
 }
 function moverEnPrograma(evId, obras, i, d, btn) {
@@ -2008,6 +2025,23 @@ function moverEnPrograma(evId, obras, i, d, btn) {
 }
 function eventosDeObra(o) { return (o.eventos || []).map(function (id) { return DATA.eventos.filter(function (e) { return e.id === id; })[0]; }).filter(Boolean).sort(function (a, b) { return a.fecha < b.fecha ? -1 : 1; }); }
 function getObra(id) { return PRIV.obras.filter(function (o) { return o.id === id; })[0] || null; }
+// ¿La ven los músicos? "auto" (por defecto): solo si está en algún ensayo o evento; "visible": siempre; "oculta": nunca
+function obraVisible(o) {
+  var v = o.visibilidad || "auto";
+  if (v === "oculta") return false;
+  if (v === "visible") return true;
+  return eventosDeObra(o).length > 0;
+}
+function obraOcultaTxt(o) {
+  if (obraVisible(o)) return "";
+  return (o.visibilidad === "oculta") ? "Oculta a los músicos" : "Oculta: no está en ningún ensayo ni evento";
+}
+function cambiarVisibilidad(o, v, btn) {
+  if (btn) btn.disabled = true;
+  var datos = Object.assign({}, o); delete datos.id; datos.visibilidad = v;
+  SB.from("interno").upsert({ coleccion: "obras", id: o.id, datos: datos }).then(check).then(function () { o.visibilidad = v; render(); }, function (e) { if (btn) btn.disabled = false; alert2(btn, errMsg(e)); });
+}
+var VISIB_OPC = [["auto", "Automático", "La ven solo si está en algún ensayo o evento"], ["visible", "Siempre", "La ven aunque no esté programada"], ["oculta", "Oculta", "No la ve ningún músico"]];
 function getEvento(id) { return DATA.eventos.filter(function (e) { return e.id === id; })[0] || null; }
 
 /* ---------- Iconos ---------- */
@@ -2053,7 +2087,7 @@ function novedades() {
   PRIV.partes.forEach(function (p) {
     if (!p.creado || p.creado < hace) return;
     if (!IS_ADMIN && !parteParaMusico(p, me)) return;
-    var o = getObra(p.obra_id); if (!o || (me && !obraParaMi(o, me))) return;
+    var o = getObra(p.obra_id); if (!o || (me && !obraParaMi(o, me)) || (!IS_ADMIN && !obraVisible(o))) return;
     if (!porObra[p.obra_id] || porObra[p.obra_id].fecha < p.creado) porObra[p.obra_id] = { tipo: "partitura", fecha: p.creado, o: o };
   });
   Object.keys(porObra).forEach(function (k) { out.push(porObra[k]); });
@@ -2069,6 +2103,7 @@ function pendientes() {
 
 /* ---------- Estructura de la página ---------- */
 function areaTabs() {
+  if (vistaProfesor()) return [["agenda", "Agenda"], ["avisos", "Avisos"], ["sugerencias", "Sugerencias"], ["rri", "Reglamento", "RRI"], ["perfil", "Perfil"]];
   var t = [["agenda", "Agenda"], ["repertorio", "Repertorio"], ["avisos", "Avisos"], ["sugerencias", "Sugerencias"], ["rri", "Reglamento", "RRI"], ["perfil", "Perfil"]];
   if (can("musica")) t.splice(2, 0, ["gestion", "Partituras"]);
   return t;
@@ -2089,6 +2124,7 @@ function musicosPage(sub) {
   if (tab === "partituras") tab = "repertorio";
   if (tab === "anuncios") tab = "avisos";
   if (tab === "cuenta") tab = "perfil";
+  if (vistaProfesor() && ["repertorio", "obra", "editar", "gestion"].indexOf(tab) >= 0) tab = "agenda";
   if (!SB) return [pageHead("Área de músicos", "Acceso para músicos", null, "verde"), h("section", { class: "block" }, h("div", { class: "wrap" }, h("div", { class: "notice" }, h("h3", { text: "El área de músicos no está disponible" }))))];
   if (!SESSION) return [pageHead("Área de músicos", "Acceso para músicos", "Convocatorias, asistencia, partituras y avisos de la Banda y el Bandín.", "verde"),
     h("section", { class: "block" }, h("div", { class: "wrap" }, loginForm("Entrar al Área de músicos"),
@@ -2105,7 +2141,7 @@ function musicosPage(sub) {
   }
   var body, crumbs = [];
   if (tab === "evento") { var ev = getEvento(parts[1]); body = ev ? areaEvento(ev, parts[2] || "detalles") : notFound("Este evento ya no existe."); crumbs = [["agenda", "Agenda"], [null, ev ? ev.titulo : "Evento"]]; tab = "agenda"; }
-  else if (tab === "obra") { var ob = getObra(parts[1]); body = ob ? areaObra(ob) : notFound("Esta obra ya no existe."); crumbs = [["repertorio", "Repertorio"], [null, ob ? ob.titulo : "Obra"]]; tab = "repertorio"; }
+  else if (tab === "obra") { var ob = getObra(parts[1]), obOculta = ob && !IS_ADMIN && !obraVisible(ob); if (obOculta) ob = null; body = ob ? areaObra(ob) : notFound(obOculta ? "Esta obra no está disponible ahora mismo." : "Esta obra ya no existe."); crumbs = [["repertorio", "Repertorio"], [null, ob ? ob.titulo : "Obra"]]; tab = "repertorio"; }
   else if (tab === "editar" && can("musica")) { var eo = parts[1] === "nueva" ? null : getObra(parts[1]); body = obraEditor(eo); crumbs = [["gestion", "Partituras"], [null, eo ? eo.titulo : "Nueva obra"]]; tab = "gestion"; }
   else if (tab === "repertorio") { body = areaRepertorio(); crumbs = [[null, "Repertorio"]]; }
   else if (tab === "avisos") { body = areaAvisos(); crumbs = [[null, "Avisos"]]; }
@@ -2129,7 +2165,7 @@ function areaShell(tab, body, crumbs) {
     h("div", { class: "top-right" }, verBtn,
       AREA_REAL_ADMIN && !simulando() ? h("a", { class: "adm-btn", href: "#admin", title: "Panel de administración" }, icon("ajustes"), h("span", { text: "Administración" })) : null,
       h("a", { class: "area-user", href: "#musicos-perfil", title: "Tu perfil" },
-        h("span", { class: "u-txt" }, h("b", { text: displayName() }), h("small", { text: me ? [me.instrumento + (me.voz ? " " + vocesTxt([INST.normVoz(me.voz)]) : ""), me.formacion].filter(Boolean).join(" · ") : "Administración" })),
+        h("span", { class: "u-txt" }, h("b", { text: displayName() }), h("small", { text: me ? fichaTxt(me) : "Administración" })),
         miAvatar(me, "u-av"))));
   var slot = document.getElementById("top-area"); if (slot) slot.replaceChildren(top);
   return h("section", { class: "area-app" + (simulando() ? " simulating" : "") },
@@ -2522,6 +2558,7 @@ function eventoForm() {
     el.addEventListener(opts ? "change" : "input", function () {
       F[k] = el.value;
       if (k === "tipo") { F.publico = el.value === "Ensayo" ? "no" : "si"; if (!F.titulo || /^(Ensayo|Concierto|Actuación|Pasacalles)$/.test(F.titulo)) F.titulo = el.value; render(); }
+      if (k === "formacion" && el.value === "Profesorado") { F.publico = "no"; render(); }
       if (k === "repetir" || k === "fecha" || k === "hasta") render();
     });
     return h("div", { class: "field" }, h("label", { for: id, text: label }), el);
@@ -2538,9 +2575,9 @@ function eventoForm() {
   var form = h("form", { class: "ev-form", novalidate: true },
     h("h2", { text: "Nuevo evento" }),
     h("div", { class: "grid3" },
-      field("nf-tipo", "tipo", "Tipo", null, null, [["Ensayo", "Ensayo"], ["Concierto", "Concierto"], ["Actuación", "Actuación"], ["Pasacalles", "Pasacalles"], ["Otro", "Otro"]]),
+      field("nf-tipo", "tipo", "Tipo", null, null, [["Ensayo", "Ensayo"], ["Concierto", "Concierto"], ["Actuación", "Actuación"], ["Pasacalles", "Pasacalles"], ["Reunión", "Reunión"], ["Otro", "Otro"]]),
       field("nf-titulo", "titulo", "Título *", "text", "Ensayo general"),
-      field("nf-form", "formacion", "Convocatoria", null, null, [["Banda", "Banda"], ["Bandín", "Bandín"], ["Banda y Bandín", "Banda y Bandín"], ["Escuela", "Escuela"], ["Asociación", "Toda la asociación"]])),
+      field("nf-form", "formacion", "Convocatoria", null, null, [["Banda", "Banda"], ["Bandín", "Bandín"], ["Banda y Bandín", "Banda y Bandín"], ["Profesorado", "Profesorado"], ["Escuela", "Escuela"], ["Asociación", "Toda la asociación"]])),
     h("div", { class: "grid3" },
       field("nf-fecha", "fecha", F.repetir === "no" ? "Fecha *" : "Primer día *", "date"),
       field("nf-hora", "hora", "Hora", "time"),
@@ -2923,11 +2960,12 @@ function enDias(fecha) {
 function eventosFuturos(o) { var t = todayStr(); return eventosDeObra(o).filter(function (e) { return e.fecha >= t; }); }
 function areaRepertorio() {
   var me = myMusico(), prox = proximoEventoConObras();
-  var obras = PRIV.obras.filter(function (o) { return IS_ADMIN || obraParaMi(o, me); });
+  var obras = PRIV.obras.filter(function (o) { return IS_ADMIN || (obraParaMi(o, me) && obraVisible(o)); });
   var q = norm(AREA.buscar);
   var list = obras.filter(function (o) { return !q || norm(o.titulo + " " + (o.compositor || "") + " " + (o.arreglista || "")).indexOf(q) >= 0; });
   if (AREA.filtro === "mias") list = list.filter(function (o) { return misPartes(o.id, me).length; });
   if (AREA.filtro === "programadas") list = list.filter(function (o) { return eventosFuturos(o).length; });
+  if (AREA.filtro === "ocultas") list = list.filter(function (o) { return !obraVisible(o); });
   if (AREA.filtro === "Banda" || AREA.filtro === "Bandín") list = list.filter(function (o) { var f = o.formacion || "Banda y Bandín"; return f === AREA.filtro || f === "Banda y Bandín"; });
   list.sort(function (a, b) {
     if (AREA.orden === "titulo") return String(a.titulo).localeCompare(String(b.titulo), "es");
@@ -2946,12 +2984,12 @@ function areaRepertorio() {
     h("section", { class: "rep-all" },
       h("div", { class: "rep-title" }, h("h2", { text: "Todas las obras" }), h("span", { class: "role-badge" }, icon("perfil"), can("musica") ? "DIRECCIÓN" : "MIEMBRO"),
         can("musica") ? h("a", { class: "btn primary small", href: "#musicos-editar~nueva", style: "margin-left:auto" }, "+ Nueva obra") : null),
-      h("p", { class: "muted", text: IS_ADMIN ? "Ves todas las obras y todas las particellas." : "Ves el repertorio de tu formación. En cada obra aparecen solo las partituras de tu instrumento" + (me && me.voz ? " y tu voz." : ".") }),
+      h("p", { class: "muted", text: IS_ADMIN ? "Ves todas las obras y todas las particellas. Los músicos solo ven las que están en algún ensayo o evento (o las que marques como «Siempre» al editar la obra)." : "Ves el repertorio de tu formación. En cada obra aparecen solo las partituras de tu instrumento" + (me && me.voz ? " y tu voz." : ".") }),
       h("div", { class: "rep-tools" },
         h("label", { class: "search" }, icon("buscar"), search),
         h("select", { "aria-label": "Ordenar", onchange: function (ev) { AREA.orden = ev.target.value; render(); } },
           [["recientes", "Más recientes"], ["titulo", "Título (A-Z)"], ["compositor", "Compositor"], ["valoracion", "Mejor valoradas"]].map(function (o) { return h("option", { value: o[0], text: o[1], selected: AREA.orden === o[0] || null }); }))),
-      h("div", { class: "chips" }, [["todas", "Todas"], ["mias", "Con mis partituras"], ["programadas", "Programadas"], ["Banda", "Banda"], ["Bandín", "Bandín"]].map(function (f) {
+      h("div", { class: "chips" }, [["todas", "Todas"], ["mias", "Con mis partituras"], ["programadas", "Programadas"], ["Banda", "Banda"], ["Bandín", "Bandín"]].concat(IS_ADMIN ? [["ocultas", "Ocultas a los músicos (" + PRIV.obras.filter(function (o) { return !obraVisible(o); }).length + ")"]] : []).map(function (f) {
         return h("button", { type: "button", class: "chip", "aria-pressed": AREA.filtro === f[0] ? "true" : "false", text: f[1], onclick: function () { AREA.filtro = f[0]; render(); } });
       })),
       list.length ? h("div", { class: "obra-list" }, list.map(function (o) { return obraRow(o, me); }))
@@ -2968,9 +3006,18 @@ function obraRow(o, me) {
       h("div", { class: "or-tags" },
         fut.length ? h("span", { class: "pill-soft", text: "Disponible en " + fut.length + (fut.length === 1 ? " evento" : " eventos") }) : null,
         me ? (mine.length ? h("span", { class: "pill-ok" }, icon("pdf"), mine.map(parteNombre).join(", ")) : h("span", { class: "pill-warn", text: "Sin partitura para ti" })) : null,
-        IS_ADMIN ? h("span", { class: "pill-soft", text: nPartes + (nPartes === 1 ? " particella" : " particellas") }) : null)));
+        IS_ADMIN ? h("span", { class: "pill-soft", text: nPartes + (nPartes === 1 ? " particella" : " particellas") }) : null,
+        IS_ADMIN && !obraVisible(o) ? h("span", { class: "pill-oculta", text: "🙈 " + obraOcultaTxt(o) }) : null)));
 }
 
+function visibilidadBox(o) {
+  var v = o.visibilidad || "auto";
+  return h("div", { class: "visib" }, h("span", { class: "visib-l", text: "¿La ven los músicos?" }),
+    h("div", { class: "seg", role: "group", "aria-label": "¿La ven los músicos?" }, VISIB_OPC.map(function (x) {
+      return h("button", { type: "button", "aria-pressed": v === x[0] ? "true" : "false", title: x[2], text: x[1], onclick: function (ev) { if (v !== x[0]) cambiarVisibilidad(o, x[0], ev.currentTarget); } });
+    })),
+    h("small", { class: obraVisible(o) ? "muted" : "visib-no", text: obraVisible(o) ? "✓ Los músicos la ven." : "🙈 " + obraOcultaTxt(o) + "." }));
+}
 /* ---------- Ficha de la obra ---------- */
 function areaObra(o) {
   var me = myMusico(), evs = eventosDeObra(o), t = todayStr(), next = evs.filter(function (e) { return e.fecha >= t; })[0];
@@ -2988,7 +3035,8 @@ function areaObra(o) {
         o.arreglista ? h("p", { class: "muted", text: "Arreglo: " + o.arreglista }) : null,
         h("div", { class: "op-tags" }, h("span", { class: "pill-soft", text: o.formacion || "Banda y Bandín" }), o.duracion ? h("span", { class: "pill-soft", text: "⏱ " + o.duracion }) : null),
         h("div", { class: "op-rate" }, h("span", { class: "muted small", text: "¿Quieres valorar esta obra?" }), starsWidget(o)),
-        can("musica") ? h("a", { class: "btn ghost small", href: "#musicos-editar~" + o.id, text: "✎ Editar obra y partituras" }) : null)),
+        can("musica") ? h("a", { class: "btn ghost small", href: "#musicos-editar~" + o.id, text: "✎ Editar obra y partituras" }) : null,
+        can("musica") ? visibilidadBox(o) : null)),
     yt ? h("section", { class: "op-sec" }, videoEmbed(yt, o.titulo)) : (safeUrl(o.youtube) ? h("p", null, h("a", { href: o.youtube, target: "_blank", rel: "noopener", text: "↗ Escuchar una grabación de referencia" })) : null),
     o.notas ? h("section", { class: "op-sec det-notes" }, h("h3", null, icon("nota"), "Notas de la dirección"), h("p", { text: o.notas })) : null,
     h("section", { class: "op-sec" },
@@ -3297,8 +3345,8 @@ function obraEditor(o) {
   var key = o ? o.id : "nueva";
   if (!AREA.stage || AREA.stage.key !== key) {
     AREA.stage = { key: key, items: [], form: o ? { titulo: o.titulo || "", compositor: o.compositor || "", arreglista: o.arreglista || "", formacion: o.formacion || "Banda y Bandín",
-      duracion: o.duracion || "", youtube: o.youtube || "", notas: o.notas || "", color: o.color || "", eventos: (o.eventos || []).slice() }
-      : { titulo: "", compositor: "", arreglista: "", formacion: "Banda y Bandín", duracion: "", youtube: "", notas: "", color: "", eventos: [] } };
+      duracion: o.duracion || "", youtube: o.youtube || "", notas: o.notas || "", color: o.color || "", eventos: (o.eventos || []).slice(), visibilidad: o.visibilidad || "auto" }
+      : { titulo: "", compositor: "", arreglista: "", formacion: "Banda y Bandín", duracion: "", youtube: "", notas: "", color: "", eventos: [], visibilidad: "auto" } };
   }
   var st = AREA.stage, F = st.form;
   function inp(id, k, label, ph, type, help) {
@@ -3325,6 +3373,11 @@ function obraEditor(o) {
     h("div", { class: "field" }, h("span", { class: "flabel", text: "Color de la portada" }), colors),
     inp("ed-yt", "youtube", "Vídeo o grabación de referencia", "https://www.youtube.com/watch?v=…", "url", "Si es de YouTube se verá dentro de la obra."),
     inp("ed-notas", "notas", "Notas de la dirección", "Tempo, repeticiones, cortes…", "textarea"),
+    h("div", { class: "field" }, h("span", { class: "flabel", text: "¿La ven los músicos?" }),
+      h("div", { class: "seg", role: "group", "aria-label": "¿La ven los músicos?" }, VISIB_OPC.map(function (x) {
+        return h("button", { type: "button", "aria-pressed": (F.visibilidad || "auto") === x[0] ? "true" : "false", text: x[1], onclick: function () { F.visibilidad = x[0]; render(); } });
+      })),
+      h("small", { text: (VISIB_OPC.filter(function (x) { return x[0] === (F.visibilidad || "auto"); })[0] || VISIB_OPC[0])[2] + "." })),
     h("div", { class: "field" }, h("span", { class: "flabel", text: "Se toca en" }),
       evs.length ? h("div", { class: "ev-checks" }, evs.map(function (e) {
         var cb = h("input", { type: "checkbox", id: "ed-ev-" + e.id, checked: F.eventos.indexOf(e.id) >= 0 || null });
@@ -3483,7 +3536,7 @@ function saveObra(o, btn, stBox) {
   if (falta.length) { setStatus(stBox, "Elige el instrumento de: " + falta.map(function (p) { return p.item.file.name + (p.seg >= 0 ? " (pág. " + p.desde + ")" : ""); }).join(", ") + ".", false); return; }
   var id = o ? o.id : newId(), now = new Date().toISOString();
   var datos = { titulo: F.titulo.trim(), compositor: (F.compositor || "").trim(), arreglista: (F.arreglista || "").trim(), formacion: F.formacion, duracion: (F.duracion || "").trim(),
-    youtube: (F.youtube || "").trim(), notas: (F.notas || "").trim(), color: F.color || "", eventos: F.eventos.slice(), creado: (o && o.creado) || now, actualizado: now };
+    youtube: (F.youtube || "").trim(), notas: (F.notas || "").trim(), color: F.color || "", eventos: F.eventos.slice(), visibilidad: F.visibilidad || "auto", creado: (o && o.creado) || now, actualizado: now };
   btn.disabled = true; btn.textContent = "Guardando la obra…";
   var subidas = 0;
   SB.from("interno").upsert({ coleccion: "obras", id: id, datos: datos }).then(check).then(function () {
@@ -3602,7 +3655,7 @@ function anuncioForm() {
   var st = statusEl();
   var titulo = h("input", { id: "an-titulo", type: "text", value: (cur && cur.titulo) || "" });
   var texto = h("textarea", { id: "an-texto" }); texto.value = (cur && cur.texto) || "";
-  var dest = h("select", { id: "an-dest" }, ["Todos", "Banda", "Bandín"].map(function (d) { return h("option", { value: d, text: d === "Todos" ? "Todos los músicos" : "Solo " + d, selected: cur && cur.destinatarios === d || null }); }));
+  var dest = h("select", { id: "an-dest" }, ["Todos", "Banda", "Bandín", "Profesorado"].map(function (d) { return h("option", { value: d, text: d === "Todos" ? "Todos (músicos y profesores)" : d === "Profesorado" ? "Solo profesores" : "Solo " + d, selected: cur && cur.destinatarios === d || null }); }));
   var avisarCb = h("input", { type: "checkbox", id: "an-avisar", checked: true });
   var btn = h("button", { class: "btn primary", type: "submit", text: cur ? "Guardar cambios" : "Publicar anuncio" });
   var form = h("form", { class: "aform", novalidate: true }, h("h3", { text: cur ? "Editar anuncio" : "Nuevo anuncio" }),
@@ -3791,25 +3844,26 @@ function areaPerfil() {
     var marc = past.filter(function (e) { var v = (PRIV.pase[e.id] || {})[SESSION.user.id]; return v === true || v === false; });
     var pres = marc.filter(function (e) { return (PRIV.pase[e.id] || {})[SESSION.user.id] === true; }).length;
     var resp = up.filter(function (e) { return myAnswer(e.id); }).length;
-    var nObras = PRIV.obras.filter(function (o) { return misPartes(o.id, me).length; }).length;
+    var nObras = PRIV.obras.filter(function (o) { return obraVisible(o) && misPartes(o.id, me).length; }).length;
     stats = h("div", { class: "stats" },
       h("div", { class: "stat" }, h("b", { text: marc.length ? Math.round(100 * pres / marc.length) + "%" : "—" }), h("span", { text: "Asistencia" }), h("small", { text: marc.length ? pres + " de " + marc.length + " eventos con lista" : "Todavía sin datos" })),
       h("div", { class: "stat" }, h("b", { text: resp + "/" + up.length }), h("span", { text: "Respondidas" }), h("small", { text: "Próximas convocatorias" })),
-      h("div", { class: "stat" }, h("b", { text: String(nObras) }), h("span", { text: "Obras" }), h("small", { text: "con tu partitura" })));
+      soloProfesor(me) ? null : h("div", { class: "stat" }, h("b", { text: String(nObras) }), h("span", { text: "Obras" }), h("small", { text: "con tu partitura" })));
   }
   function kv(k, v) { return v ? h("div", { class: "kv" }, h("span", { class: "k", text: k }), h("span", { class: "v", text: v })) : null; }
   var musForm = IS_ADMIN ? perfilMusicoForm(me) : null;
   return h("div", { class: "perfil" },
     h("div", { class: "pf-head" }, fotoPerfilBox(me),
       h("div", null, h("h1", { text: me ? me.nombre : displayName() }),
-        h("p", { class: "muted", text: me ? [INST.canonical(me.instrumento) + (me.voz ? " " + vocesTxt([INST.normVoz(me.voz)]) : ""), me.formacion, isJefe(me) ? "Jefe de sección" : isDirectorM(me) ? "Dirección" : ""].filter(Boolean).join(" · ") : "Administración: ves todas las convocatorias y partituras" })),
+        h("p", { class: "muted", text: me ? (soloProfesor(me) ? fichaTxt(me) : [INST.canonical(me.instrumento) + (me.voz ? " " + vocesTxt([INST.normVoz(me.voz)]) : ""), me.formacion, isJefe(me) ? "Jefe de sección" : isDirectorM(me) ? "Dirección" : "", esProfesor(me) ? "Profesor/a" : ""].filter(Boolean).join(" · ")) : "Administración: ves todas las convocatorias y partituras" })),
       h("button", { class: "btn ghost small", type: "button", style: "margin-left:auto", text: "Cerrar sesión", onclick: function () { cerrarSesion(); } })),
     stats,
     h("div", { class: "admin-grid" },
       h("div", { class: "cbox" },
-        kv("Usuario", me && me.usuario), kv("Correo", SESSION.user && SESSION.user.email), kv("Formación", me && me.formacion),
-        kv("Instrumento", me && me.instrumento), kv("Voz", me && me.voz ? vocesTxt([INST.normVoz(me.voz)]) : (me ? "Todas las de tu instrumento" : "")),
-        IS_ADMIN ? null : h("p", { class: "muted small", text: "Tu instrumento y tu voz deciden qué partituras ves. Si algo no es correcto, pídeselo a la junta." }),
+        kv("Usuario", me && me.usuario), kv("Correo", SESSION.user && SESSION.user.email),
+        soloProfesor(me) ? kv("Puesto", fichaTxt(me)) : [kv("Formación", me && me.formacion),
+        kv("Instrumento", me && me.instrumento), kv("Voz", me && me.voz ? vocesTxt([INST.normVoz(me.voz)]) : (me ? "Todas las de tu instrumento" : "")), esProfesor(me) ? kv("Profesor/a", me.especialidad || "Sí") : null],
+        IS_ADMIN || soloProfesor(me) ? null : h("p", { class: "muted small", text: "Tu instrumento y tu voz deciden qué partituras ves. Si algo no es correcto, pídeselo a la junta." }),
         musForm),
       h("div", { class: "pf-side" }, pushSetupCard(), pushCard(false), form)));
 }
@@ -4054,29 +4108,32 @@ function cuentaForm(c) {
   function showPerms() { var cg = CUENTAS.cargos.filter(function (x) { return x.id === csel.value; })[0]; permBox.replaceChildren(h("span", { class: "muted small", text: "Puede: " }), permChips(cg ? cg.permisos : [])); }
   csel.addEventListener("change", showPerms); showPerms();
   var rMus = roleToggle(pre + "-esmus", ["🎷 Músico", "Entra en el Área de músicos, responde a las convocatorias y recibe sus partituras."], nuevo ? true : !!c.musico, mf.el);
+  var espe = h("input", { id: pre + "-espe", type: "text", list: pre + "-m-insts", autocomplete: "off", placeholder: "Lenguaje musical, clarinete… (opcional)", value: c && c.profesor ? (c.profesor.especialidad || "") : "" });
+  var rProf = roleToggle(pre + "-esprof", ["🎓 Profesor/a", "Entra en el Área de músicos (agenda, avisos, sugerencias, reglamento y perfil) y recibe las convocatorias del profesorado. Si además toca, marca también Músico."], nuevo ? false : !!c.profesor,
+    h("div", { class: "role-fields" }, h("div", { class: "field" }, h("label", { for: pre + "-espe", text: "Qué enseña" }), espe)));
   var rDir = roleToggle(pre + "-esdir", ["🏛️ Directiva", "Tareas, reuniones y sugerencias, y lo que permita su cargo."], nuevo ? false : !!c.directiva,
     h("div", { class: "role-fields" }, h("div", { class: "field" }, h("label", { for: pre + "-cargo", text: "Cargo en la directiva" }), csel), permBox));
   var enviarCb = nuevo ? h("input", { type: "checkbox", id: "pn-enviar", checked: true }) : null;
   var btn = h("button", { class: "btn primary", type: "submit", text: nuevo ? "Crear cuenta" : "Guardar cambios" });
   var form = h("form", { class: "aform cuenta-form", novalidate: true }, h("h3", { text: nuevo ? "Nueva cuenta" : "Editar a " + (c.nombre || c.email) }),
-    nuevo ? h("p", { class: "muted small", text: "Una sola cuenta por persona. Marca lo que es: músico, miembro de la directiva o las dos cosas." }) : null,
+    nuevo ? h("p", { class: "muted small", text: "Una sola cuenta por persona. Marca todo lo que es: músico, profesor/a y/o miembro de la directiva." }) : null,
     h("div", { class: "field" }, h("label", { for: pre + "-nombre", text: "Nombre y apellidos *" }), nombre),
     h("div", { class: "two" },
       h("div", { class: "field" }, h("label", { for: pre + "-usuario", text: "Usuario *" }), usuario, h("small", { text: "Con esto (o con el correo) entra en la web." })),
       nuevo ? h("div", { class: "field" }, h("label", { for: pre + "-email", text: "Correo *" }), email) : h("div", { class: "field" }, h("span", { class: "flabel", text: "Correo" }), h("p", { class: "plain", text: c.email || "—" }))),
     nuevo ? h("div", { class: "field" }, h("label", { for: pre + "-pass", text: "Contraseña inicial *" }), pass,
       h("button", { class: "btn ghost small", type: "button", style: "justify-self:start", text: "Generar otra", onclick: function () { pass.value = randomPass(); } })) : null,
-    h("span", { class: "flabel", text: "Accesos" }), rMus.el, rDir.el,
+    h("span", { class: "flabel", text: "Accesos" }), rMus.el, rProf.el, rDir.el,
     nuevo ? h("label", { class: "perm-check send-check", for: "pn-enviar" }, enviarCb, h("span", null, h("b", { text: "✉️ Enviarle por correo su usuario y contraseña" }), h("small", { text: "Le llegan los datos para entrar y, la primera vez, la web le pide que elija una contraseña suya." }))) : null,
     h("div", { class: "form-acts" }, btn, nuevo ? null : h("button", { class: "btn ghost", type: "button", text: "Cancelar", onclick: function () { CUENTAS.edit = null; render(); } })), st);
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
     var body = { action: nuevo ? "create" : "update", nombre: nombre.value.trim(), usuario: usuario.value.trim().toLowerCase(),
-      musico: rMus.checked() ? mf.value() : null, directiva: rDir.checked() ? { cargo_id: csel.value } : null };
+      musico: rMus.checked() ? mf.value() : null, profesor: rProf.checked() ? { especialidad: espe.value.trim() } : null, directiva: rDir.checked() ? { cargo_id: csel.value } : null };
     if (nuevo) { body.email = email.value.trim(); body.password = pass.value; body.enviar = enviarCb.checked; } else body.user_id = c.user_id;
     if (body.musico) Object.assign(body, { formacion: body.musico.formacion, instrumento: body.musico.instrumento, voz: body.musico.voz, cargo: body.musico.cargo }); // función antigua
     if (!body.nombre || !body.usuario || (nuevo && !body.email)) { setStatus(st, "Rellena el nombre, el usuario" + (nuevo ? " y el correo." : "."), false); return; }
-    if (!body.musico && !body.directiva) { setStatus(st, "Marca al menos un acceso: músico o directiva.", false); return; }
+    if (!body.musico && !body.directiva && !body.profesor) { setStatus(st, "Marca al menos un acceso: músico, profesor o directiva.", false); return; }
     if (body.musico && !body.musico.instrumento) { setStatus(st, "Escribe el instrumento (o elige el puesto Director si no toca).", false); return; }
     btn.disabled = true; btn.textContent = nuevo ? "Creando…" : "Guardando…"; CUENTAS.aviso = null;
     musicosFn(body).then(function (d) {
@@ -4109,6 +4166,7 @@ function cuentaRow(c) {
         h("small", { text: [c.usuario, c.email].filter(Boolean).join(" · ") }),
         h("div", { class: "p-roles" },
           m ? h("span", { class: "role r-mus", text: "🎷 " + [m.instrumento === "Dirección" ? "Dirección musical" : m.instrumento, m.voz ? vocesTxt([INST.normVoz(m.voz)]) : "", m.formacion].filter(Boolean).join(" · ") + (m.cargo && m.cargo !== "Músico" ? " · " + m.cargo : "") }) : null,
+          c.profesor ? h("span", { class: "role r-prof", text: "🎓 Profesor/a" + (c.profesor.especialidad ? " · " + c.profesor.especialidad : "") }) : null,
           d ? h("span", { class: "role r-dir", text: "🏛️ " + (cg ? cg.nombre : d.cargo_id) }) : null,
           d && cg ? permChips(cg.permisos) : null),
         h("small", { class: "muted", text: c.ultimo_acceso ? "Último acceso: " + fmtLong(String(c.ultimo_acceso).slice(0, 10)) : "Todavía no ha entrado" }))),
@@ -4149,14 +4207,15 @@ function adminPersonas() {
     var items = CUENTAS.list.filter(function (c) {
       if (CUENTAS.filtro === "musicos" && !c.musico) return false;
       if (CUENTAS.filtro === "directiva" && !c.directiva) return false;
+      if (CUENTAS.filtro === "profesores" && !c.profesor) return false;
       return !q || norm([c.nombre, c.usuario, c.email, c.musico && c.musico.instrumento].join(" ")).indexOf(q) >= 0;
     }).sort(function (a, b) { return (b.directiva ? 1 : 0) - (a.directiva ? 1 : 0) || String(a.nombre).localeCompare(String(b.nombre)); });
-    var nM = CUENTAS.list.filter(function (c) { return c.musico; }).length, nD = CUENTAS.list.filter(function (c) { return c.directiva; }).length;
+    var nM = CUENTAS.list.filter(function (c) { return c.musico; }).length, nD = CUENTAS.list.filter(function (c) { return c.directiva; }).length, nP = CUENTAS.list.filter(function (c) { return c.profesor; }).length;
     var search = h("input", { type: "search", id: "pp-buscar", placeholder: "Buscar por nombre, usuario o instrumento", value: CUENTAS.buscar || "", "aria-label": "Buscar cuentas" });
     search.addEventListener("input", function () { CUENTAS.buscar = search.value; var pos = search.selectionStart; render(); var s = document.getElementById("pp-buscar"); if (s) { s.focus(); try { s.setSelectionRange(pos, pos); } catch (e) {} } });
     list = h("div", null,
       h("div", { class: "pp-tools" },
-        h("div", { class: "seg", role: "group", "aria-label": "Filtrar" }, [["todos", "Todas (" + CUENTAS.list.length + ")"], ["musicos", "Músicos (" + nM + ")"], ["directiva", "Directiva (" + nD + ")"]].map(function (f) {
+        h("div", { class: "seg", role: "group", "aria-label": "Filtrar" }, [["todos", "Todas (" + CUENTAS.list.length + ")"], ["musicos", "Músicos (" + nM + ")"], ["profesores", "Profesores (" + nP + ")"], ["directiva", "Directiva (" + nD + ")"]].map(function (f) {
           return h("button", { type: "button", "aria-pressed": CUENTAS.filtro === f[0] ? "true" : "false", text: f[1], onclick: function () { CUENTAS.filtro = f[0]; render(); } });
         })), search),
       items.length ? h("div", { class: "personas" }, items.map(cuentaRow)) : h("div", { class: "empty" }, h("p", { text: "No hay cuentas con ese filtro." })));
