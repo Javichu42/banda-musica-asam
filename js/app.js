@@ -1156,6 +1156,67 @@ SCHEMAS.profesores = { label: "Profesorado", singular: "profesor", fields: [
   title: function (d) { return d.nombre; }, sub: function (d) { return d.especialidad || ""; }, sort: byOrden };
 var LIST_FILTER = {};
 
+/* ---------- Actualizaciones de la web/app ----------
+   Se compara la «firma» (ETag) de app.js y estilos.css con la del arranque. Si cambia, hay versión nueva:
+   al volver a abrir la app (si llevaba un rato en segundo plano y no hay nada escrito) se recarga sola;
+   si no, aparece un aviso con el botón «Actualizar ahora». */
+var ACT = { firma: null, nueva: false, oculta: 0 };
+function firmaApp() {
+  return Promise.all(["js/app.js", "css/estilos.css"].map(function (u) {
+    return fetch(u, { method: "HEAD", cache: "no-store" }).then(function (r) { return r.ok ? (r.headers.get("etag") || r.headers.get("last-modified") || "") : ""; }, function () { return ""; });
+  })).then(function (a) { return a.join("|"); });
+}
+function comprobarActualizacion() {
+  return firmaApp().then(function (f) {
+    if (!f.replace(/\|/g, "")) return ACT.nueva;
+    if (ACT.firma === null) { ACT.firma = f; return false; }
+    if (f !== ACT.firma) ACT.nueva = true;
+    if (ACT.nueva) avisoActualizacion();
+    return ACT.nueva;
+  });
+}
+function hayAlgoEscrito() {
+  return Array.prototype.some.call(document.querySelectorAll("form textarea, form input[type=text], form input[type=email], form input:not([type])"), function (el) { return el.value && el.value !== el.defaultValue; });
+}
+function actualizarApp(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = "Actualizando…"; }
+  var p = [];
+  if ("serviceWorker" in navigator) p.push(navigator.serviceWorker.getRegistration().then(function (r) { return r && r.update(); }).catch(function () {}));
+  if (window.caches && caches.keys) p.push(caches.keys().then(function (k) { return Promise.all(k.map(function (x) { return caches.delete(x); })); }).catch(function () {}));
+  Promise.all(p).then(function () { location.reload(); }, function () { location.reload(); });
+}
+function avisoActualizacion() {
+  if (document.getElementById("upd-bar")) return;
+  var bar = h("div", { id: "upd-bar", class: "upd-bar", role: "status" }, h("span", { text: "🔄 Hay una versión nueva" }),
+    h("button", { class: "btn small", type: "button", text: "Actualizar ahora", onclick: function (ev) { actualizarApp(ev.currentTarget); } }),
+    h("button", { class: "ico-btn", type: "button", "aria-label": "Más tarde", text: "×", onclick: function () { bar.remove(); } }));
+  document.body.appendChild(bar);
+}
+function vigilarActualizaciones() {
+  comprobarActualizacion();
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") { ACT.oculta = Date.now(); return; }
+    var fuera = ACT.oculta ? Date.now() - ACT.oculta : 0;
+    comprobarActualizacion().then(function (nueva) { if (nueva && fuera > 60000 && !hayAlgoEscrito()) actualizarApp(); });
+  });
+  setInterval(function () { if (document.visibilityState === "visible") comprobarActualizacion(); }, 5 * 60 * 1000);
+}
+// Tarjeta del perfil: actualizar a mano
+function appVersionCard() {
+  var st = h("small", { class: "status" });
+  var buscar = h("button", { class: "btn ghost small", type: "button", text: "Buscar actualización", onclick: function () {
+    buscar.disabled = true; st.className = "status"; st.textContent = "Comprobando…";
+    comprobarActualizacion().then(function (nueva) {
+      buscar.disabled = false;
+      if (nueva) { st.className = "status ok"; st.textContent = "Hay una versión nueva."; }
+      else { st.className = "status ok"; st.textContent = "Ya tienes la última versión."; }
+    });
+  } });
+  return h("div", { class: "cbox app-version" }, h("h3", { text: "🔄 Actualizar la app" }),
+    h("p", { class: "muted small", text: "La app se actualiza sola al volver a abrirla. Si notas que algo no ha cambiado, pulsa «Actualizar ahora»." }),
+    h("div", { class: "form-acts" }, h("button", { class: "btn primary small", type: "button", text: "Actualizar ahora", onclick: function (ev) { actualizarApp(ev.currentTarget); } }), buscar), st);
+}
+
 /* App del móvil: quien es de la directiva y además músico elige al entrar con qué vista empieza */
 var ELEGIR_KEY = "asam-vista-elegida";
 function quizaElegirVista() {
@@ -4037,7 +4098,7 @@ function areaPerfil() {
         kv("Instrumento", me && me.instrumento), kv("Voz", me && me.voz ? vocesTxt([INST.normVoz(me.voz)]) : (me ? "Todas las de tu instrumento" : "")), esProfesor(me) ? kv("Profesor/a", me.especialidad || "Sí") : null],
         IS_ADMIN || soloProfesor(me) ? null : h("p", { class: "muted small", text: "Tu instrumento y tu voz deciden qué partituras ves. Si algo no es correcto, pídeselo a la junta." }),
         musForm),
-      h("div", { class: "pf-side" }, pushSetupCard(), pushCard(false), form)));
+      h("div", { class: "pf-side" }, pushSetupCard(), pushCard(false), appVersionCard(), form)));
 }
 /* Un administrador también es músico: puede crear o cambiar su propia ficha */
 function perfilMusicoForm(me) {
@@ -5319,6 +5380,7 @@ if (configured() && window.supabase && window.supabase.createClient) {
   DB = DB_ADAPTER;
   // 1) Se pinta al momento con lo guardado de la última visita; 2) sesión y contenido en paralelo; 3) zona privada
   if (cacheContenido()) { try { render(); } catch (e) {} }
+  vigilarActualizaciones();
   var sesionP = SB.auth.getSession().then(function (r) { SESSION = (r && r.data && r.data.session) || null; return refreshAdmin(); });
   Promise.all([sesionP, loadAll().catch(function (e) { console.error("No se han podido cargar los datos:", e); })])
     .then(function () { render(); return loadPrivate(); })
