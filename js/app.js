@@ -1155,6 +1155,15 @@ SCHEMAS.profesores = { label: "Profesorado", singular: "profesor", fields: [
   title: function (d) { return d.nombre; }, sub: function (d) { return d.especialidad || ""; }, sort: byOrden };
 var LIST_FILTER = {};
 
+/* Protección de datos: el texto va tal cual (sin traducir ni cambiar nada) */
+var PROTECCION_DATOS = { titulo: "INFORMACION BASICA SOBRE PROTECCION DE DATOS", puntos: ["ACTIVIDAD DE TRATAMIENTO: GESTION DE SOCIOS/AMIGOS/MECENAS DE LA ASAM", "RESPONSABLE: ASAM (Asociación Sierense de Amigos de la Música)", "FINALIDAD: Los datos personales recabados a través del presente formulario, así como los generados en el transcurso de la relación administrativa serán tratados con la única finalidad y contexto de gestionar los socios, amigos y mecenas de la asociciación.", "LEGITIMACIÓN: Gestión de afiliados", "DESTINATARIOS: Afiliados de la ASAM", "DERECHOS: Puede ejercer los derechos de acceso, rectificación, supresión, oposición, limitación del tratamiento y portabilidad, contactando la ASAM: Calle Alcalde Parrondo, nº 32, Pola de Siero, Spain, 33510 - Tlf: 985 72 60 28 - banda_asam@hotmail.com"], texto: "De acuerdo con el Reglamento (UE) 2016/679 relativo a la protección de los datos personales de las personas físicas, se informa que los datos de carácter personal que se faciliten mediante el siguiente formulario quedarán debidamente registrados e incorporados a los sistemas de tratamiento de datos responsabilidad de la ASAM y ello, con la finalidad de gestionar esta solicitud. Igualmente, su información personal no será comunicada a ningún destinatario salvo en aquellos casos en los que así venga exigido por una ley o usted nos autorice expresamente. Su información personal no será destinada a ninguna otra finalidad distinta a la aquí informada, o que resulte incompatible con la misma. Usted podrá ejercer los derechos de acceso, rectificación, supresión, limitación de tratamiento, portabilidad y oposición ante la ASAM." };
+function textoLiteral(tag, cls, txt) { var el = document.createElement(tag); if (cls) el.className = cls; el.textContent = txt; return el; }
+PAGES.privacidad = function () {
+  var d = PROTECCION_DATOS, ul = document.createElement("ul");
+  d.puntos.forEach(function (t) { ul.appendChild(textoLiteral("li", null, t)); });
+  return [pageHead("Legal", "Protección de datos", null, "negra"),
+    h("section", { class: "block" }, h("div", { class: "wrap" }, h("article", { class: "legal" }, textoLiteral("h2", null, d.titulo), ul, textoLiteral("p", null, d.texto))))];
+};
 /* Acceso privado: un único botón para músicos y administradores */
 PAGES.privado = function () {
   if (debeCambiarClave()) return cambiarClavePage();
@@ -1772,7 +1781,7 @@ function renderFooter() {
         socials.length ? h("div", { class: "socials" }, socials.map(function (l) { var b = socialBrand(l); return h("a", { class: b ? "soc soc-" + b : "", href: l.url, target: "_blank", rel: "noopener", text: l.nombre }); })) : null,
         h("div", { class: "foot-contact" }, c.direccion ? h("span", { text: c.direccion }) : null, c.telefono ? h("span", { text: "Tel. " + c.telefono + " (WhatsApp)" }) : null, c.email ? h("span", { text: c.email }) : null))),
     h("div", { class: "foot-bottom" }, h("span", { text: p.copyright || "" }),
-      h("a", { href: "#privado", text: "Acceso privado" })));
+      h("span", { class: "foot-links" }, h("a", { href: "#privacidad", text: "Protección de datos" }), h("a", { href: "#privado", text: "Acceso privado" }))));
 }
 
 /* ---------- Lightbox y copiar ---------- */
