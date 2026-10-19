@@ -1300,49 +1300,17 @@ function adminInicio() {
   if (!SOL.loaded && !SOL.loading) loadSolicitudes().then(render);
   if (SESSION && !PRIV.loaded && !PRIV.loading) reloadPrivate();
   if (can("cuentas") && !CUENTAS.loaded && !CUENTAS.loading) loadCuentas();
-  var hoy = todayStr(), yo = norm(displayName());
-  var pend = TAREAS.list.filter(function (t) { return t.estado !== "hecha"; });
-  var mias = pend.filter(function (t) { return t.responsable && norm(t.responsable) === yo; });
-  var urg = pend.filter(function (t) { return t.prioridad === "urgente" || (t.fecha_limite && t.fecha_limite < hoy); });
-  var prox = REUN.list.filter(function (r) { return r.fecha >= hoy && r.estado !== "cancelada"; })[0];
-  var altas = SOL.list.filter(function (x) { return x.estado === "nueva"; }).length;
-  var sug = (PRIV.sugerencias || []).filter(function (x) { return !x.leida; }).length;
-  var sanc = (PRIV.sanciones || []).filter(function (x) { return !x.visto; }).length;
-  var evProx = DATA.eventos.filter(function (e) { return e.fecha >= hoy; }).sort(function (a, b) { return (a.fecha + (a.hora || "")) < (b.fecha + (b.hora || "")) ? -1 : 1; })[0];
-  function cargando(o) { return !o.loaded; }
-  function card(emoji, titulo, numero, texto, href, accion, cls) {
-    return h("div", { class: "dash-card" + (cls ? " " + cls : "") },
-      h("a", { class: "dash-link", href: href },
-        h("span", { class: "dash-ico", "aria-hidden": "true", text: emoji }),
-        h("span", { class: "dash-txt" }, h("b", { text: titulo }), numero != null ? h("span", { class: "dash-num", text: String(numero) }) : null, h("small", { text: texto }))),
-      accion ? h("button", { class: "btn ghost small dash-act", type: "button", text: accion[0], onclick: accion[1] }) : null);
-  }
   var nombre = String(displayName()).split(" ")[0];
-  var cards = [
-    card("📋", "Tareas", cargando(TAREAS) ? "…" : pend.length, cargando(TAREAS) ? "Cargando…" : (pend.length ? (mias.length ? mias.length + " a tu cargo" : "Ninguna a tu cargo") + (urg.length ? " · " + urg.length + (urg.length === 1 ? " urgente o atrasada" : " urgentes o atrasadas") : "") : "No hay tareas pendientes"),
-      "#admin-inicio~tareas", ["+ Nueva tarea", function () { TAREAS.nueva = true; location.hash = "#admin-inicio~tareas"; }], urg.length ? "warn" : ""),
-    card("🗓️", "Próxima reunión", null, cargando(REUN) ? "Cargando…" : prox ? prox.titulo + " · " + fmtLong(prox.fecha) + (prox.hora ? " a las " + prox.hora : "") : "No hay ninguna convocada",
-      "#admin-inicio~reuniones", ["+ Convocar reunión", function () { REUN.nueva = true; location.hash = "#admin-inicio~reuniones"; }]),
-    card("📣", "Aviso a los músicos", null, "Publica un anuncio en el Área de músicos y les llega al móvil", "#admin-inicio~avisos", null),
-    can("musica") ? card("📅", "Agenda y eventos", null, evProx ? "Próximo: " + evProx.titulo + " · " + fmtLong(evProx.fecha) : "No hay eventos próximos", "#musicos-agenda",
-      ["+ Nuevo evento", function () { AREA.nuevoEvento = true; location.hash = "#musicos-agenda"; }]) : null,
-    card("📝", "Altas de socio", cargando(SOL) ? "…" : altas, altas === 1 ? "hoja nueva por tramitar" : "hojas nuevas por tramitar", "#admin-inicio~altas", null, altas ? "warn" : ""),
-    card("💡", "Sugerencias", sug, sug === 1 ? "sin leer" : "sin leer de los músicos", "#admin-inicio~sugerencias", null, sug ? "warn" : ""),
-    can("sanciones") ? card("⚖️", "Sanciones", null, sanc ? sanc + " sin ver por el interesado" : "Poner y revisar sanciones", "#admin-sanciones", ["+ Nueva sanción", function () { SANC.nueva = true; location.hash = "#admin-sanciones"; }]) : null,
-    can("cuentas") ? card("👥", "Personas y accesos", null, "Crear cuentas, dar accesos y cambiar claves", "#admin-personas", null) : null,
-    card("📘", "Reglamento (RRI)", null, "Consultar el reglamento de régimen interno", "#musicos-rri", null)
-  ].filter(Boolean);
   return h("div", { class: "dash" },
     h("div", { class: "dash-hello" },
-      h("div", null, h("h2", { text: "Hola, " + nombre }), h("p", { class: "muted", text: (MI_CARGO ? MI_CARGO + " · " : "") + "Esto es lo más habitual de la directiva. Para todo lo demás, entra en Edición." })),
+      h("div", null, h("h2", { text: "Hola, " + nombre }), h("p", { class: "muted", text: (MI_CARGO ? MI_CARGO + " · " : "") + "Usa el menú para el día a día, o entra en Edición para todo lo demás." })),
       h("button", { class: "btn ghost small", type: "button", text: "Cerrar sesión", onclick: function () { cerrarSesion(); } })),
     h("div", { class: "dash-main" },
       h("a", { class: "dash-big edit", href: "#admin-edicion" }, h("span", { class: "dash-big-ico", "aria-hidden": "true", text: "✏️" }),
         h("span", null, h("b", { text: "Edición" }), h("small", { text: can("web") ? "Todos los datos: textos de la web, eventos, noticias, fotos, cuentas, cargos…" : "Todas las secciones de la directiva a las que tienes acceso" }))),
       h("a", { class: "dash-big area", href: "#musicos-agenda" }, h("span", { class: "dash-big-ico", "aria-hidden": "true", text: "🎼" }),
         h("span", null, h("b", { text: "Área de músicos" }), h("small", { text: "Agenda, partituras, avisos y sugerencias" })))),
-    h("h3", { class: "dash-h", text: "Tareas rápidas" }),
-    h("div", { class: "dash-grid" }, cards));
+    null);
 }
 
 /* ---------- Gestión de administradores (función de Supabase "administradores") ---------- */
