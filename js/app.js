@@ -1211,7 +1211,8 @@ PAGES.admin = function (tab) {
     return [head, h("section", { class: "block" }, h("div", { class: "wrap" }, h("div", { class: "notice" },
       h("h3", { text: "Cargando datos…" }), h("p", { class: "muted", text: "Si este mensaje no desaparece, recarga la página." }))))];
   }
-  tab = tab || (can("web") ? "directiva" : "tareas");
+  if (!tab || tab === "inicio") return [pageHead("Administración", "Panel de la directiva", "Lo más habitual, a mano. Para editar la web y todos los datos, entra en Edición.", "negra"), h("section", { class: "block" }, h("div", { class: "wrap" }, adminInicio()))];
+  if (tab === "edicion") tab = can("web") ? "directiva" : "tareas";
   if (can("cuentas") && !CUENTAS.loaded && !CUENTAS.loading) loadCuentas().then(function () { if (location.hash.indexOf("#admin-personas") === 0) render(); });
   var webTabs = TABS.filter(function (t) { return !TABS_JUNTA.some(function (j) { return j[0] === t[0]; }); });
   var juntaTabs = TABS_JUNTA.filter(function (t) { return !t[2] || can(t[2]); });
@@ -1242,6 +1243,8 @@ PAGES.admin = function (tab) {
   return [head, h("section", { class: "block" }, h("div", { class: "wrap" },
     h("div", { class: "row-head" }, h("p", { class: "muted" }, "Sesión iniciada como " + ((SESSION.user && SESSION.user.email) || ""),
       MI_CARGO ? h("span", { class: "mi-cargo", text: " · " + MI_CARGO + (permsTxt.length ? " (" + permsTxt.join(", ") + ")" : " (directiva)") }) : null), logout),
+    h("div", { class: "edit-bar" }, h("a", { class: "btn ghost small", href: "#admin" }, "← Inicio de la directiva"), h("span", { class: "edit-tag", text: "✏️ Edición" }),
+      h("a", { class: "btn ghost small", href: "#musicos-agenda", style: "margin-left:auto" }, "🎼 Área de músicos")),
     h("div", { class: "admin-navs" },
       can("web") ? h("div", { class: "admin-nav-group" }, h("span", { class: "ang-label", text: "Contenido de la web" }),
         h("nav", { class: "admin-tabs", "aria-label": "Contenido de la web" }, webTabs.map(function (t) {
@@ -1253,6 +1256,58 @@ PAGES.admin = function (tab) {
         }), h("a", { href: "#musicos-agenda", class: "tab-area", text: "🎼 Ir al Área de músicos" })))),
     body))];
 };
+
+/* ---------- Inicio de la directiva: lo básico a mano ---------- */
+function adminInicio() {
+  if (!TAREAS.loaded && !TAREAS.loading) loadTareas().then(render);
+  if (!REUN.loaded && !REUN.loading) loadReuniones().then(render);
+  if (!SOL.loaded && !SOL.loading) loadSolicitudes().then(render);
+  if (SESSION && !PRIV.loaded && !PRIV.loading) reloadPrivate();
+  if (can("cuentas") && !CUENTAS.loaded && !CUENTAS.loading) loadCuentas();
+  var hoy = todayStr(), yo = norm(displayName());
+  var pend = TAREAS.list.filter(function (t) { return t.estado !== "hecha"; });
+  var mias = pend.filter(function (t) { return t.responsable && norm(t.responsable) === yo; });
+  var urg = pend.filter(function (t) { return t.prioridad === "urgente" || (t.fecha_limite && t.fecha_limite < hoy); });
+  var prox = REUN.list.filter(function (r) { return r.fecha >= hoy && r.estado !== "cancelada"; })[0];
+  var altas = SOL.list.filter(function (x) { return x.estado === "nueva"; }).length;
+  var sug = (PRIV.sugerencias || []).filter(function (x) { return !x.leida; }).length;
+  var sanc = (PRIV.sanciones || []).filter(function (x) { return !x.visto; }).length;
+  var evProx = DATA.eventos.filter(function (e) { return e.fecha >= hoy; }).sort(function (a, b) { return (a.fecha + (a.hora || "")) < (b.fecha + (b.hora || "")) ? -1 : 1; })[0];
+  function cargando(o) { return !o.loaded; }
+  function card(emoji, titulo, numero, texto, href, accion, cls) {
+    return h("div", { class: "dash-card" + (cls ? " " + cls : "") },
+      h("a", { class: "dash-link", href: href },
+        h("span", { class: "dash-ico", "aria-hidden": "true", text: emoji }),
+        h("span", { class: "dash-txt" }, h("b", { text: titulo }), numero != null ? h("span", { class: "dash-num", text: String(numero) }) : null, h("small", { text: texto }))),
+      accion ? h("button", { class: "btn ghost small dash-act", type: "button", text: accion[0], onclick: accion[1] }) : null);
+  }
+  var nombre = String(displayName()).split(" ")[0];
+  var cards = [
+    card("📋", "Tareas", cargando(TAREAS) ? "…" : pend.length, cargando(TAREAS) ? "Cargando…" : (pend.length ? (mias.length ? mias.length + " a tu cargo" : "Ninguna a tu cargo") + (urg.length ? " · " + urg.length + (urg.length === 1 ? " urgente o atrasada" : " urgentes o atrasadas") : "") : "No hay tareas pendientes"),
+      "#admin-tareas", ["+ Nueva tarea", function () { TAREAS.nueva = true; location.hash = "#admin-tareas"; }], urg.length ? "warn" : ""),
+    card("🗓️", "Próxima reunión", null, cargando(REUN) ? "Cargando…" : prox ? prox.titulo + " · " + fmtLong(prox.fecha) + (prox.hora ? " a las " + prox.hora : "") : "No hay ninguna convocada",
+      prox ? "#admin-reuniones" : "#admin-reuniones", ["+ Convocar reunión", function () { REUN.nueva = true; location.hash = "#admin-reuniones"; }]),
+    card("📣", "Aviso a los músicos", null, "Publica un anuncio en el Área de músicos y les llega al móvil", "#musicos-avisos", null),
+    can("musica") ? card("📅", "Agenda y eventos", null, evProx ? "Próximo: " + evProx.titulo + " · " + fmtLong(evProx.fecha) : "No hay eventos próximos", "#musicos-agenda",
+      ["+ Nuevo evento", function () { AREA.nuevoEvento = true; location.hash = "#musicos-agenda"; }]) : null,
+    card("📝", "Altas de socio", cargando(SOL) ? "…" : altas, altas === 1 ? "hoja nueva por tramitar" : "hojas nuevas por tramitar", "#admin-solicitudes", null, altas ? "warn" : ""),
+    card("💡", "Sugerencias", sug, sug === 1 ? "sin leer" : "sin leer de los músicos", "#musicos-sugerencias", null, sug ? "warn" : ""),
+    can("sanciones") ? card("⚖️", "Sanciones", null, sanc ? sanc + " sin ver por el interesado" : "Poner y revisar sanciones", "#admin-sanciones", ["+ Nueva sanción", function () { SANC.nueva = true; location.hash = "#admin-sanciones"; }]) : null,
+    can("cuentas") ? card("👥", "Personas y accesos", null, "Crear cuentas, dar accesos y cambiar claves", "#admin-personas", null) : null,
+    card("📘", "Reglamento (RRI)", null, "Consultar el reglamento de régimen interno", "#musicos-rri", null)
+  ].filter(Boolean);
+  return h("div", { class: "dash" },
+    h("div", { class: "dash-hello" },
+      h("div", null, h("h2", { text: "Hola, " + nombre }), h("p", { class: "muted", text: (MI_CARGO ? MI_CARGO + " · " : "") + "Esto es lo más habitual de la directiva. Para todo lo demás, entra en Edición." })),
+      h("button", { class: "btn ghost small", type: "button", text: "Cerrar sesión", onclick: function () { cerrarSesion(); } })),
+    h("div", { class: "dash-main" },
+      h("a", { class: "dash-big edit", href: "#admin-edicion" }, h("span", { class: "dash-big-ico", "aria-hidden": "true", text: "✏️" }),
+        h("span", null, h("b", { text: "Edición" }), h("small", { text: can("web") ? "Todos los datos: textos de la web, eventos, noticias, fotos, cuentas, cargos…" : "Todas las secciones de la directiva a las que tienes acceso" }))),
+      h("a", { class: "dash-big area", href: "#musicos-agenda" }, h("span", { class: "dash-big-ico", "aria-hidden": "true", text: "🎼" }),
+        h("span", null, h("b", { text: "Área de músicos" }), h("small", { text: "Agenda, partituras, avisos y sugerencias" })))),
+    h("h3", { class: "dash-h", text: "Tareas rápidas" }),
+    h("div", { class: "dash-grid" }, cards));
+}
 
 /* ---------- Gestión de administradores (función de Supabase "administradores") ---------- */
 var ADMINS = { loaded: false, loading: false, list: [], me: null, error: "" };
@@ -4163,14 +4218,6 @@ function cuentaForm(c) {
 }
 function cuentaRow(c) {
   var isMe = c.user_id === CUENTAS.me;
-  var pw = h("input", { type: "text", id: "npw-" + c.user_id, placeholder: "Nueva contraseña", "aria-label": "Nueva contraseña para " + c.nombre });
-  var pwBtn = h("button", { class: "btn ghost small", type: "button", text: "Cambiar" });
-  pwBtn.addEventListener("click", function () {
-    if (pw.value.length < 8) { alert2(pwBtn, "Mínimo 8 caracteres."); return; }
-    pwBtn.disabled = true;
-    musicosFn({ action: "password", user_id: c.user_id, password: pw.value }).then(function () { pwBtn.disabled = false; pwBtn.textContent = "Cambiada ✓"; },
-      function (e) { pwBtn.disabled = false; alert2(pwBtn, e.message); });
-  });
   var m = c.musico, d = c.directiva, cg = d ? CUENTAS.cargos.filter(function (x) { return x.id === d.cargo_id; })[0] : null;
   return h("article", { class: "persona" + (CUENTAS.edit === c.user_id ? " editing" : "") },
     h("div", { class: "p-main" },
@@ -4185,22 +4232,46 @@ function cuentaRow(c) {
           d && cg ? permChips(cg.permisos) : null),
         h("small", { class: "muted", text: c.ultimo_acceso ? "Último acceso: " + fmtLong(String(c.ultimo_acceso).slice(0, 10)) : "Todavía no ha entrado" }))),
     h("div", { class: "p-acts" },
-      h("button", { class: "btn ghost small", type: "button", text: "Editar accesos", onclick: function () { CUENTAS.edit = c.user_id; CUENTAS.aviso = null; render(); } }),
-      h("button", { class: "btn ghost small", type: "button", text: "✉️ Enviar acceso nuevo", title: "Le pone una contraseña provisional nueva y se la manda por correo", onclick: function (ev) {
-        var b = ev.currentTarget, np = randomPass(); b.disabled = true; b.textContent = "Enviando…";
-        musicosFn({ action: "password", user_id: c.user_id, password: np, enviar: true }).then(function (d) {
-          FLASH = { col: "personas", msg: "Contraseña provisional nueva para " + (c.nombre || c.email) + ".", acceso: { a: { nombre: c.nombre, usuario: c.usuario || c.email, email: c.email, password: np }, correo: (d && d.correo) || { enviado: false, error: "no-configurado" }, nueva: false } };
-          render(); var fl = document.querySelector(".pp-flash"); if (fl && fl.scrollIntoView) fl.scrollIntoView({ block: "center" });
-        }, function (e) { b.disabled = false; b.textContent = "✉️ Enviar acceso nuevo"; alert2(b, e.message); });
-      } }),
-      h("span", { class: "pw-mini" }, pw, pwBtn),
+      h("button", { class: "btn ghost small", type: "button", text: "Editar accesos", onclick: function () { CUENTAS.edit = c.user_id; CUENTAS.claves = null; CUENTAS.aviso = null; render(); } }),
+      h("button", { class: "btn ghost small", type: "button", text: "🔑 Enviar claves nuevas", "aria-expanded": CUENTAS.claves === c.user_id ? "true" : "false", title: "Le pone una contraseña provisional nueva (hay que confirmarlo)", onclick: function () { CUENTAS.claves = CUENTAS.claves === c.user_id ? null : c.user_id; render(); } }),
       isMe ? null : deleteButton(function (b) {
         musicosFn({ action: "remove", user_id: c.user_id }).then(function () {
           FLASH = { col: "personas", msg: "Cuenta de " + (c.nombre || c.email) + " borrada." };
           return Promise.all([loadCuentas(), loadAll(), loadDirectiva()]);
         }).then(render, function (e) { b.disabled = false; b.textContent = "Borrar"; alert2(b, e.message); });
       })),
+    CUENTAS.claves === c.user_id ? clavesConfirm(c) : null,
     CUENTAS.edit === c.user_id ? cuentaForm(c) : null);
+}
+// Cambiar las claves de alguien: hay que confirmarlo escribiendo su usuario (doble verificación)
+function clavesConfirm(c) {
+  var quien = c.usuario || c.email || "", id = "cl-" + String(c.user_id).replace(/[^a-zA-Z0-9]/g, "").slice(0, 12);
+  var conf = h("input", { id: id + "-u", type: "text", autocomplete: "off", autocapitalize: "none", spellcheck: "false", placeholder: quien });
+  var manual = h("input", { id: id + "-p", type: "text", autocomplete: "off", placeholder: "Déjalo vacío y se genera una segura" });
+  var enviar = h("input", { type: "checkbox", id: id + "-e", checked: true });
+  var st = statusEl();
+  var ok = h("button", { class: "btn danger small", type: "button", text: "Sí, cambiar sus claves", disabled: true });
+  function revisar() { ok.disabled = conf.value.trim().toLowerCase() !== quien.toLowerCase(); }
+  conf.addEventListener("input", revisar);
+  ok.addEventListener("click", function () {
+    if (conf.value.trim().toLowerCase() !== quien.toLowerCase()) return;
+    var np = manual.value.trim() || randomPass();
+    if (np.length < 8) { setStatus(st, "La contraseña debe tener al menos 8 caracteres.", false); return; }
+    ok.disabled = true; ok.textContent = "Cambiando…";
+    musicosFn({ action: "password", user_id: c.user_id, password: np, enviar: enviar.checked }).then(function (d) {
+      CUENTAS.claves = null;
+      FLASH = { col: "personas", msg: "Claves nuevas para " + (c.nombre || c.email) + ". Su contraseña anterior ya no sirve.", acceso: { a: { nombre: c.nombre, usuario: c.usuario || c.email, email: c.email, password: np }, correo: (d && d.correo) || (enviar.checked ? { enviado: false, error: "no-configurado" } : { enviado: false, error: "no-pedido" }), nueva: false } };
+      render(); var fl = document.querySelector(".pp-flash"); if (fl && fl.scrollIntoView) fl.scrollIntoView({ block: "center" });
+    }, function (e) { ok.disabled = false; ok.textContent = "Sí, cambiar sus claves"; setStatus(st, e.message, false); });
+  });
+  setTimeout(function () { conf.focus(); }, 30);
+  return h("div", { class: "claves-confirm", role: "group", "aria-label": "Confirmar claves nuevas" },
+    h("p", null, h("b", { text: "¿Cambiar las claves de " + (c.nombre || c.email) + "?" }), " Se le pone una contraseña provisional nueva y la que usa ahora deja de funcionar en todos sus dispositivos."),
+    h("div", { class: "two" },
+      h("div", { class: "field" }, h("label", { for: id + "-u" }, "Para confirmar, escribe su usuario: ", h("b", { text: quien })), conf),
+      h("div", { class: "field" }, h("label", { for: id + "-p", text: "Contraseña nueva (opcional)" }), manual)),
+    h("label", { class: "check", for: id + "-e" }, enviar, h("span", { text: "Enviársela por correo" })),
+    h("div", { class: "form-acts" }, ok, h("button", { class: "btn ghost small", type: "button", text: "Cancelar", onclick: function () { CUENTAS.claves = null; render(); } })), st);
 }
 function adminPersonas() {
   if (!CUENTAS.loaded && !CUENTAS.loading) loadCuentas().then(render);
