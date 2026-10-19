@@ -1279,7 +1279,7 @@ function paginaDirectiva(sec) {
     : necesitaPriv && !PRIV.loaded ? h("div", { class: "empty" }, h("p", { text: "Cargando…" }))
     : sec === "avisos" ? areaAvisos() : sec === "sugerencias" ? areaSugerencias() : adminInicio();
   var titulo = sec === "inicio" ? "Panel de la directiva" : (DIR_TABS.filter(function (t) { return t[0] === sec; })[0] || [0, ""])[1];
-  return [pageHead("Directiva", titulo, sec === "inicio" ? "Lo más habitual, a mano. Para editar la web y todos los datos, entra en Edición." : null, "negra"),
+  return [headSize(pageHead("Directiva", titulo, null, "negra"), "head-compact"),
     h("section", { class: "area-app dir-app" },
       h("nav", { class: "area-tabs", "aria-label": "Secciones de la directiva" }, h("div", { class: "wrap" }, DIR_TABS.map(function (t) {
         var n = dirBadge(t[0]);
