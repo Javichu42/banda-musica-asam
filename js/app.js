@@ -1301,7 +1301,8 @@ function adminInicio() {
   if (SESSION && !PRIV.loaded && !PRIV.loading) reloadPrivate();
   if (can("cuentas") && !CUENTAS.loaded && !CUENTAS.loading) loadCuentas();
   var nombre = String(displayName()).split(" ")[0];
-  return h("div", { class: "dash" },
+  if (!DIRECTIVA.loaded && !DIRECTIVA.loading) loadDirectiva().then(render);
+  var izq = h("div", { class: "dash" },
     h("div", { class: "dash-hello" },
       h("div", null, h("h2", { text: "Hola, " + nombre }), h("p", { class: "muted", text: (MI_CARGO ? MI_CARGO + " · " : "") + "Usa el menú para el día a día, o entra en Edición para todo lo demás." })),
       h("button", { class: "btn ghost small", type: "button", text: "Cerrar sesión", onclick: function () { cerrarSesion(); } })),
@@ -1309,8 +1310,38 @@ function adminInicio() {
       h("a", { class: "dash-big edit", href: "#admin-edicion" }, h("span", { class: "dash-big-ico", "aria-hidden": "true", text: "✏️" }),
         h("span", null, h("b", { text: "Edición" }), h("small", { text: can("web") ? "Todos los datos: textos de la web, eventos, noticias, fotos, cuentas, cargos…" : "Todas las secciones de la directiva a las que tienes acceso" }))),
       h("a", { class: "dash-big area", href: "#musicos-agenda" }, h("span", { class: "dash-big-ico", "aria-hidden": "true", text: "🎼" }),
-        h("span", null, h("b", { text: "Área de músicos" }), h("small", { text: "Agenda, partituras, avisos y sugerencias" })))),
-    null);
+        h("span", null, h("b", { text: "Área de músicos" }), h("small", { text: "Agenda, partituras, avisos y sugerencias" })))));
+  return h("div", { class: "dash-cols" }, izq, proximaReunionBox());
+}
+// Tarjeta con la próxima reunión (columna derecha del inicio de la directiva)
+function proximaReunionBox() {
+  var hoy = todayStr();
+  var r = REUN.list.filter(function (x) { return x.fecha >= hoy && x.estado === "convocada"; })
+    .sort(function (a, b) { return (a.fecha + (a.hora || "")) < (b.fecha + (b.hora || "")) ? -1 : 1; })[0];
+  var cab = h("div", { class: "pr-cab" }, h("span", { class: "eyebrow-s", text: "Próxima reunión" }));
+  if (!REUN.loaded) return h("aside", { class: "prox-reunion" }, cab, h("p", { class: "muted", text: "Cargando…" }));
+  if (REUN.error) return h("aside", { class: "prox-reunion" }, cab, h("p", { class: "muted", text: REUN.error }));
+  if (!r) return h("aside", { class: "prox-reunion vacia" }, cab, h("p", { class: "muted", text: "No hay ninguna reunión convocada." }),
+    h("button", { class: "btn primary small", type: "button", text: "+ Convocar reunión", onclick: function () { REUN.nueva = true; location.hash = "#admin-inicio~reuniones"; } }));
+  var as = reunionAsist(r), si = as.filter(function (a) { return a.estado === "si"; }).length, no = as.filter(function (a) { return a.estado === "no"; }).length;
+  var total = DIRECTIVA.list.length;
+  var d = dateOf(r.fecha), dias = Math.round((d - dateOf(hoy)) / 864e5);
+  var cuando = dias === 0 ? "Hoy" : dias === 1 ? "Mañana" : "Dentro de " + dias + " días";
+  var puntos = String(r.orden_dia || "").split("\n").map(function (x) { return x.replace(/^\s*\d+[.)-]?\s*/, "").trim(); }).filter(Boolean);
+  function abrir() { REUN.open = r.id; location.hash = "#admin-inicio~reuniones"; }
+  return h("aside", { class: "prox-reunion" }, cab,
+    h("div", { class: "pr-top" },
+      h("div", { class: "pr-fecha", "aria-hidden": "true" }, h("b", { text: String(d.getDate()) }), h("span", { text: MES_CORTO[d.getMonth()] })),
+      h("div", null, h("h3", null, h("a", { href: "#admin-inicio~reuniones", text: r.titulo, onclick: function (ev) { ev.preventDefault(); abrir(); } })),
+        h("p", { class: "muted small", text: [DIAS_LARGO[d.getDay()] + " " + fmtLong(r.fecha), r.hora ? "a las " + r.hora : null].filter(Boolean).join(" ") }),
+        h("span", { class: "pr-cuando" + (dias <= 1 ? " pronto" : ""), text: cuando }))),
+    r.lugar ? h("p", { class: "pr-lugar" }, icon("pin"), h("span", { text: r.lugar })) : null,
+    puntos.length ? h("div", { class: "pr-orden" }, h("b", { text: "Orden del día" }),
+      h("ol", null, puntos.slice(0, 5).map(function (p) { return h("li", { text: p }); })),
+      puntos.length > 5 ? h("small", { class: "muted", text: "…y " + (puntos.length - 5) + " puntos más" }) : null) : null,
+    h("p", { class: "small pr-asist", text: si + (total ? " de " + total : "") + " confirman que van" + (no ? " · " + no + " no pueden" : "") }),
+    h("div", { class: "pr-rsvp" }, h("span", { class: "small", text: "¿Vas a ir?" }), rsvpReunion(r)),
+    h("button", { class: "btn ghost small", type: "button", text: "Ver la reunión →", onclick: abrir }));
 }
 
 /* ---------- Gestión de administradores (función de Supabase "administradores") ---------- */
