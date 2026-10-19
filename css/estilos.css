@@ -1869,3 +1869,7 @@ body.in-dir > footer, body.in-dir #footer { display: none; }
 .elegir-ops .dash-big { border: 0; text-align: left; font: inherit; cursor: pointer; width: 100%; }
 .elegir-nota { margin: 0; }
 @media (max-width: 700px) { section.block.elegir { padding-block: 24px; } }
+.rec-box { grid-column: 1 / -1; width: 100%; display: grid; gap: 8px; background: color-mix(in srgb, var(--azul) 7%, var(--surface)); border: 1px solid color-mix(in srgb, var(--azul) 25%, var(--line)); border-radius: 14px; padding: 12px 14px; }
+.rec-box .btn { justify-self: start; }
+.rec-quien { margin: 0; }
+.ev-admin .rec-box { flex-basis: 100%; }

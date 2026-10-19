@@ -28,6 +28,7 @@ supabase/perfil.sql            Fotos de perfil que sube cada persona
 supabase/socios.sql            Hojas de alta de socio enviadas desde la web
 supabase/sanciones.sql         Reglamento de Régimen Interno (RRI) y sanciones
 supabase/junta-publica.sql     La página Dirección muestra a quien tiene un cargo
+supabase/recordatorios.sql     Tarea diaria del recordatorio «el mismo día» de los eventos
 docs/alta-socio.pdf            Plantilla oficial de la hoja de socio (la web escribe encima)
 sw.js, manifest.webmanifest    La web como app instalable y receptor de notificaciones
 vercel.json                    Ajustes de Vercel

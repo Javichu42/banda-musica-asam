@@ -1097,6 +1097,7 @@ var SCHEMAS = {
     { k: "tipo", l: "Tipo", type: "select", options: [["Concierto", "Concierto"], ["Ensayo", "Ensayo"], ["Actuación", "Actuación"], ["Pasacalles", "Pasacalles"], ["Reunión", "Reunión"], ["Otro", "Otro"]] },
     { k: "formacion", l: "Convocatoria", type: "select", options: [["Banda", "Banda"], ["Bandín", "Bandín"], ["Banda y Bandín", "Banda y Bandín"], ["Profesorado", "Profesorado"], ["Escuela", "Escuela"], ["Asociación", "Toda la asociación"]], help: "Quién está convocado. En el Área de músicos solo lo verán ellos." },
     { k: "publico", l: "¿Dónde se ve?", type: "select", options: [["si", "En la web pública y en el Área de músicos"], ["no", "Solo en el Área de músicos (ensayos, avisos internos…)"]] },
+    { k: "recordatorio", l: "Recordatorio el mismo día", type: "select", options: [["no", "No"], ["si", "Sí: notificación a los convocados ese día por la mañana"]] },
     { k: "descripcion", l: "Descripción", type: "textarea" },
     { k: "cartel", l: "Cartel del concierto", type: "images", single: true, help: "Opcional. El cartel con el programa o repertorio; se muestra en Próximas actuaciones y se amplía al pulsarlo." },
     { k: "repertorio", l: "Repertorio", type: "textarea", ph: "Una obra por línea, por ejemplo:\nEl Gato Montés — M. Penella\nAsturias, patria querida", help: "Opcional. Una obra por línea. Se muestra en la web junto al evento." },
@@ -2737,6 +2738,8 @@ function eventoForm() {
       F.obras.length ? h("small", { text: F.obras.length + (F.obras.length === 1 ? " obra elegida" : " obras elegidas") + (fechas.length > 1 ? " (se añaden a los " + fechas.length + " eventos)" : "") + ". El orden se cambia luego en la pestaña Repertorio del evento." }) : null),
     h("label", { class: "check notif-check", for: "nf-avisar" }, (function () { var cb = h("input", { type: "checkbox", id: "nf-avisar", checked: F.avisar !== false || null }); cb.addEventListener("change", function () { F.avisar = cb.checked; }); return cb; })(),
       h("span", null, h("b", { text: "🔔 Avisar al móvil a los convocados" }), h("small", { text: " Les llega una notificación a quienes tengan los avisos activados." }))),
+    h("label", { class: "check notif-check", for: "nf-recordar" }, (function () { var cb = h("input", { type: "checkbox", id: "nf-recordar", checked: F.recordatorio || null }); cb.addEventListener("change", function () { F.recordatorio = cb.checked; }); return cb; })(),
+      h("span", null, h("b", { text: "⏰ Recordatorio el mismo día" }), h("small", { text: " El día del " + (F.tipo === "Ensayo" ? "ensayo" : "evento") + ", por la mañana, les llega una notificación para recordárselo (menos a quienes dijeron que no van)." }))),
     h("div", { class: "form-acts" }, btn, h("button", { class: "btn ghost", type: "button", text: "Cancelar", onclick: function () { AREA.nuevoEvento = false; AREA.evForm = null; render(); } })), st);
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
@@ -2744,7 +2747,7 @@ function eventoForm() {
     if (!fechas.length) { setStatus(st, "Revisa las fechas: no sale ningún día.", false); return; }
     btn.disabled = true; btn.textContent = "Creando…";
     var serie = fechas.length > 1 ? newId() : null;
-    var base = { titulo: F.titulo.trim(), tipo: F.tipo, hora: F.hora, hora_fin: F.hora_fin, lugar: F.lugar.trim(), direccion: F.direccion.trim(), formacion: F.formacion, publico: F.publico, indumentaria: F.indumentaria.trim(), notas: F.notas.trim(), descripcion: "" };
+    var base = { titulo: F.titulo.trim(), tipo: F.tipo, hora: F.hora, hora_fin: F.hora_fin, lugar: F.lugar.trim(), direccion: F.direccion.trim(), formacion: F.formacion, publico: F.publico, indumentaria: F.indumentaria.trim(), notas: F.notas.trim(), descripcion: "" , recordatorio: F.recordatorio ? "si" : "no" };
     var rows = fechas.map(function (d) { var o = Object.assign({}, base, { fecha: d }); if (serie) o.serie = serie; return { coleccion: "eventos", id: newId(), datos: o }; });
     var newIds = rows.map(function (r) { return r.id; });
     SB.from("contenido").insert(rows).then(check).then(function () {
@@ -2938,6 +2941,40 @@ function eventoDetalles(e) {
     e.descripcion ? h("div", { class: "det-notes" }, h("h3", { text: "Descripción" }), h("p", { text: e.descripcion })) : null,
     can("musica") ? eventoAdminBox(e) : null);
 }
+// Recordatorios: a quien no ha respondido (a mano) y el del mismo día (automático)
+function sinResponder(e) {
+  var me = SESSION && SESSION.user.id, a = PRIV.asist[e.id] || {};
+  return convocadosDe(e).filter(function (m) { return m.user_id !== me && !a[m.user_id]; });
+}
+function recordatorioBox(e) {
+  var futuro = e.fecha >= todayStr(), pend = futuro ? sinResponder(e) : [];
+  var st = h("small", { class: "status" });
+  var activo = e.recordatorio === "si";
+  var btn = futuro ? h("button", { class: "btn primary small", type: "button", disabled: pend.length ? null : true,
+    text: pend.length ? "🔔 Recordar a quien no ha respondido (" + pend.length + ")" : "✓ Todos los convocados han respondido", onclick: function () {
+      btn.disabled = true; btn.textContent = "Enviando…";
+      avisosFn({ action: "recordatorio", id: e.id }).then(function (d) {
+        btn.textContent = "🔔 Recordatorio enviado";
+        st.className = "status " + (d && d.enviados ? "ok" : "err");
+        st.textContent = d && d.enviados ? "Les ha llegado a " + d.personas + (d.personas === 1 ? " persona" : " personas") + " de " + (d.pendientes || pend.length) + " sin responder." + (d.sinMovil ? " " + d.sinMovil + " no tienen los avisos activados." : "")
+          : "Ninguno de los que faltan por responder tiene los avisos del móvil activados.";
+      }, function (er) { btn.disabled = false; btn.textContent = "🔔 Recordar a quien no ha respondido (" + pend.length + ")"; st.className = "status err"; st.textContent = er.message; });
+    } }) : null;
+  var toggle = futuro ? h("label", { class: "check rec-dia" }, (function () {
+    var cb = h("input", { type: "checkbox", checked: activo || null });
+    cb.addEventListener("change", function () {
+      cb.disabled = true;
+      var datos = Object.assign({}, e); delete datos.id; datos.recordatorio = cb.checked ? "si" : "no";
+      SB.from("contenido").update({ datos: datos }).eq("coleccion", "eventos").eq("id", e.id).then(check).then(function () { e.recordatorio = datos.recordatorio; cb.disabled = false; st.className = "status ok"; st.textContent = cb.checked ? "Se les recordará el mismo día por la mañana." : "Recordatorio del día quitado."; },
+        function (er) { cb.disabled = false; cb.checked = !cb.checked; st.className = "status err"; st.textContent = errMsg(er); });
+    });
+    return cb;
+  })(), h("span", { text: "⏰ Recordatorio automático el mismo día por la mañana" })) : null;
+  if (!futuro) return null;
+  return h("div", { class: "rec-box" }, h("b", { text: "Recordatorios" }), btn,
+    pend.length ? h("p", { class: "muted small rec-quien", text: "Sin responder: " + pend.map(function (m) { return m.nombre; }).slice(0, 12).join(", ") + (pend.length > 12 ? "…" : "") }) : null,
+    toggle, st);
+}
 function eventoAdminBox(e) {
   var serie = e.serie ? DATA.eventos.filter(function (x) { return x.serie === e.serie && x.fecha >= e.fecha; }) : [];
   function borrar(ids, b) {
@@ -2948,7 +2985,7 @@ function eventoAdminBox(e) {
   var b1 = deleteButton(function (b) { borrar([e.id], b); }); b1.textContent = "Borrar este evento";
   var b2 = serie.length > 1 ? deleteButton(function (b) { borrar(serie.map(function (x) { return x.id; }), b); }) : null;
   if (b2) b2.textContent = "Borrar este y los " + (serie.length - 1) + " siguientes de la serie";
-  return h("div", { class: "ev-admin" }, h("a", { class: "btn ghost small", href: "#admin-eventos", text: "✎ Editar en Administración" }), b1, b2,
+  return h("div", { class: "ev-admin" }, recordatorioBox(e), h("a", { class: "btn ghost small", href: "#admin-eventos", text: "✎ Editar en Administración" }), b1, b2,
     e.serie ? h("p", { class: "muted small", text: "Este evento forma parte de una serie que se repite." }) : null);
 }
 function myAnswerBar(e, ans) {
