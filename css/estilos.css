@@ -1833,7 +1833,7 @@ img.av-mini.photo, img.av-mid.photo { object-fit: cover; }
 /* Cabecera baja (Panel de la directiva) */
 .page-head.head-compact > .wrap { padding-block: 22px 46px; gap: 6px; }
 .page-head.head-compact h1 { font-size: clamp(1.6rem, 3.6vw, 2.3rem); }
-.page-head.head-compact .staff-lines { height: 24px; bottom: 8px; background: repeating-linear-gradient(to bottom, var(--line) 0 1.2px, transparent 1.2px 6px); }
+.page-head.head-compact .staff-lines { height: 25.2px; bottom: 8px; background: repeating-linear-gradient(to bottom, var(--line) 0 1.2px, transparent 1.2px 6px); }
 @media (max-width: 700px) { .page-head.head-compact > .wrap { padding-block: 14px 42px; } }
 /* Inicio de la directiva en dos columnas: próxima reunión a la derecha */
 .dash-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: 20px; align-items: start; }

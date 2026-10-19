@@ -1176,8 +1176,8 @@ PAGES.elegir = function () {
         h("button", { type: "button", class: "dash-big area", onclick: function () { ir("#musicos-agenda"); } }, h("span", { class: "dash-big-ico", "aria-hidden": "true", text: "🎼" }),
           h("span", null, h("b", { text: "Vista de músico" }), h("small", { text: "Agenda, partituras, avisos y tus convocatorias" }))),
         h("button", { type: "button", class: "dash-big edit", onclick: function () { ir("#admin"); } }, h("span", { class: "dash-big-ico", "aria-hidden": "true", text: "🏛️" }),
-          h("span", null, h("b", { text: "Administración" }), h("small", { text: (MI_CARGO ? MI_CARGO + " · " : "") + "Panel de la directiva" })))),
-      h("p", { class: "small muted elegir-nota", text: "Puedes cambiar de una a otra cuando quieras con el botón «Administración» del Área de músicos o «Área de músicos» del panel." })))];
+          h("span", null, h("b", { text: "Directiva" }), h("small", { text: (MI_CARGO ? MI_CARGO + " · " : "") + "Panel de la directiva" })))),
+      h("p", { class: "small muted elegir-nota", text: "Puedes cambiar de una a otra cuando quieras con el botón «Directiva» del Área de músicos o «Área de músicos» del panel." })))];
 };
 
 /* Protección de datos: el texto va tal cual (sin traducir ni cambiar nada) */
@@ -1207,7 +1207,7 @@ PAGES.privado = function () {
   if (IS_ADMIN || esMusico) cards.push(h("a", { class: "priv-card", href: "#musicos" }, h("i", { style: "background:var(--azul)" }),
     h("b", { text: "Área de músicos" }), h("span", { text: "Convocatorias, asistencia, partituras y anuncios." })));
   if (IS_ADMIN) cards.push(h("a", { class: "priv-card", href: "#admin" }, h("i", { style: "background:var(--naranja)" }),
-    h("b", { text: "Administración" }), h("span", { text: "Edita los contenidos de la web, las cuentas y los administradores." })));
+    h("b", { text: "Directiva" }), h("span", { text: "Panel de la directiva: tareas, reuniones, avisos y edición de la web." })));
   return [head, h("section", { class: "block" }, h("div", { class: "wrap" },
     cards.length ? h("div", { class: "priv-cards" }, cards) : h("div", { class: "notice" },
       h("h3", { text: "Tu usuario no tiene acceso" }),
@@ -2014,7 +2014,7 @@ function displayName() {
   var m = myMusico();
   if (m && m.nombre) return m.nombre;
   var e = (SESSION && SESSION.user && SESSION.user.email) || "";
-  return e ? e.split("@")[0] : "Administración";
+  return e ? e.split("@")[0] : "Directiva";
 }
 function norm(t) { return String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim(); }
 function isDirectorM(m) { return !!m && /director/i.test(m.cargo || ""); }
@@ -2292,15 +2292,15 @@ function areaShell(tab, body, crumbs) {
   var me = myMusico(), nov = PRIV.loaded ? novedades().filter(function (n) { return n.nuevo; }).length : 0;
   var pend = PRIV.loaded ? pendientes().length : 0;
   var verBtn = AREA_REAL_ADMIN ? h("button", { type: "button", class: "ver-como" + (simulando() ? " on" : ""), "aria-pressed": simulando() ? "true" : "false",
-    title: simulando() ? "Volver a la vista de administración" : "Ver el área tal como la ve un músico", onclick: function () { AREA.verComo = simulando() ? null : true; AREA.stage = null; render(); } },
+    title: simulando() ? "Volver a la vista de la directiva" : "Ver el área tal como la ve un músico", onclick: function () { AREA.verComo = simulando() ? null : true; AREA.stage = null; render(); } },
     icon("ojo"), h("span", { text: simulando() ? "Salir de la vista de músico" : "Ver como músico" })) : null;
   var top = h("div", { class: "top-area-in" },
     h("nav", { class: "crumbs", "aria-label": "Estás en" }, h("a", { class: "crumb-root", href: "#musicos-agenda", text: "Área de músicos" }),
       crumbs.map(function (c) { return [h("span", { class: "sep", "aria-hidden": "true", text: "›" }), c[0] ? h("a", { href: "#musicos-" + c[0], text: c[1] }) : h("span", { class: "here", text: c[1] })]; })),
     h("div", { class: "top-right" }, verBtn,
-      AREA_REAL_ADMIN && !simulando() ? h("a", { class: "adm-btn", href: "#admin", title: "Panel de administración" }, icon("ajustes"), h("span", { text: "Administración" })) : null,
+      AREA_REAL_ADMIN && !simulando() ? h("a", { class: "adm-btn", href: "#admin", title: "Panel de la directiva" }, icon("ajustes"), h("span", { text: "Directiva" })) : null,
       h("a", { class: "area-user", href: "#musicos-perfil", title: "Tu perfil" },
-        h("span", { class: "u-txt" }, h("b", { text: displayName() }), h("small", { text: me ? fichaTxt(me) : "Administración" })),
+        h("span", { class: "u-txt" }, h("b", { text: displayName() }), h("small", { text: me ? fichaTxt(me) : "Directiva" })),
         miAvatar(me, "u-av"))));
   var slot = document.getElementById("top-area"); if (slot) slot.replaceChildren(top);
   return h("section", { class: "area-app" + (simulando() ? " simulating" : "") },
