@@ -1451,7 +1451,7 @@ function adminCrud(col) {
   if (editId && !current) { editId = null; EDITING[col] = null; }
   var st = statusEl();
   var form = h("form", { class: "aform", novalidate: true });
-  add(form, h("h3", { text: current ? "Editar " + S.singular : "Añadir " + S.singular }));
+  add(form, h("h3", { text: current ? "Editar " + S.singular : "Añadir " + S.singular + (col === "musicos" ? " (sin cuenta)" : "") }));
   var widgets = {};
   S.fields.forEach(function (f) {
     var val = current ? current[f.k] : null;
