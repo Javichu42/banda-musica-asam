@@ -893,7 +893,7 @@ PAGES.direccion = function () {
           tray.length ? h("details", null, h("summary", { text: "Trayectoria" }), h("ul", null, tray.map(function (t) { return h("li", { text: t }); }))) : null);
       })) : emptyBox("Todavía no hay directores añadidos.", "directores"))),
     h("section", { class: "block alt" }, h("div", { class: "wrap" },
-      h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Junta Directiva" }), h("p", { class: "muted", text: "Trabajo voluntario y altruista" })), jp.auto ? (can("cuentas") ? h("a", { class: "admin-hint", href: "#admin-personas", text: "✎ Cambiar cargos" }) : null) : adminLink("directiva", "Editar directiva")),
+      h("div", { class: "row-head" }, h("div", null, h("h2", { text: "Junta Directiva" }), h("p", { class: "muted", text: "Trabajo voluntario y altruista" })), adminLink("directiva", jp.auto ? "Cambiar cargos" : "Editar directiva")),
       (function () {
         var isPres = function (m) { return /presiden/i.test(m.cargo || "") && !/vice/i.test(m.cargo || ""); };
         var pres = junta.filter(isPres)[0];
@@ -902,7 +902,7 @@ PAGES.direccion = function () {
           h("div", { class: "pres-text" }, h("span", { class: "eyebrow", text: pres.cargo }), h("h3", { text: pres.nombre }),
             pres.bio ? h("p", { text: pres.bio }) : null)) : null;
       })(),
-      junta.length ? h("div", { class: "junta" }, junta.filter(function (m) { return !(/presiden/i.test(m.cargo || "") && !/vice/i.test(m.cargo || "")); }).map(function (m) {
+      junta.length ? h("div", { class: "junta" }, junta.filter(function (m) { return m !== junta.filter(function (x) { return /presiden/i.test(x.cargo || "") && !/vice/i.test(x.cargo || ""); })[0]; }).map(function (m) {
         var lead = false;
         return h("div", { class: "member" + (lead ? " lead-m" : "") + (m.foto ? " has-photo" : "") },
           m.foto ? h("img", { class: "mphoto", src: blobUrl(m.foto), alt: "Foto de " + m.nombre, loading: "lazy" }) : null,
@@ -1451,7 +1451,7 @@ function adminCrud(col) {
   if (editId && !current) { editId = null; EDITING[col] = null; }
   var st = statusEl();
   var form = h("form", { class: "aform", novalidate: true });
-  add(form, h("h3", { text: current ? "Editar " + S.singular : "Añadir " + S.singular + (col === "musicos" ? " (sin cuenta)" : "") }));
+  add(form, h("h3", { text: current ? "Editar " + S.singular : "Añadir " + S.singular + (col === "musicos" || col === "directiva" ? " (sin cuenta)" : "") }));
   var widgets = {};
   S.fields.forEach(function (f) {
     var val = current ? current[f.k] : null;
@@ -1529,7 +1529,7 @@ function adminCrud(col) {
   });
   var list = h("div", null, filterEl, rows.length ? h("div", { class: "alist" }, rows)
     : h("div", { class: "empty" }, h("p", { text: "Todavía no hay nada aquí. Usa el formulario para añadir el primero." })));
-  var avisoJunta = col === "directiva" && JUNTA_CARGOS && JUNTA_CARGOS.length ? h("p", { class: "sg-priv junta-auto" }, "La página Dirección ya muestra automáticamente a quien tiene un cargo en ", h("a", { href: "#admin-personas", text: "Personas y accesos" }), " (menos el Administrador general). Aquí solo hace falta añadir una presentación (bio) o una foto: se aplican a la persona con el mismo nombre.") : null;
+  var avisoJunta = col === "directiva" && JUNTA_CARGOS && JUNTA_CARGOS.length ? h("p", { class: "sg-priv junta-auto" }, "La página Dirección muestra automáticamente a quien tiene un cargo en ", h("a", { href: "#admin-personas", text: "Personas y accesos" }), " (menos el Administrador general). Aquí puedes añadir miembros sin cuenta. Si pones el mismo nombre que alguien con cuenta, se usan tu cargo, foto y presentación para esa persona.") : null;
   return avisoJunta ? h("div", null, avisoJunta, h("div", { class: "admin-grid" }, list, form)) : h("div", { class: "admin-grid" }, list, form);
 }
 var FLASH = null;
@@ -4956,12 +4956,27 @@ function loadAll() {
   });
 }
 // Lista de la Junta para la página Dirección: la de los cargos si existe; si no, la que se escribió a mano
+// Orden de un cargo escrito a mano: el de un cargo igual de la lista, o el típico de la junta
+function ordenCargo(c) {
+  var n = norm(c), igual = (JUNTA_CARGOS || []).filter(function (p) { return norm(p.cargo) === n; })[0];
+  if (igual) return igual.orden;
+  if (/vicepresiden/.test(n)) return 20;
+  if (/presiden/.test(n)) return 10;
+  if (/secretari/.test(n)) return 30;
+  if (/tesorer/.test(n)) return 40;
+  if (/vocal/.test(n)) return 60;
+  return 50;
+}
 function juntaPublica() {
   if (!JUNTA_CARGOS || !JUNTA_CARGOS.length) return { auto: false, list: DATA.directiva.slice().sort(byOrden) };
-  return { auto: true, list: JUNTA_CARGOS.map(function (p) {
+  var auto = JUNTA_CARGOS.map(function (p) {
     var manual = DATA.directiva.filter(function (d) { return norm(d.nombre) === norm(p.nombre); })[0] || {};
-    return { nombre: p.nombre, cargo: p.cargo, orden: p.orden, foto: p.foto || manual.foto || "", bio: manual.bio || "" };
-  }) };
+    return { nombre: p.nombre, cargo: manual.cargo || p.cargo, orden: p.orden, foto: p.foto || manual.foto || "", bio: manual.bio || "" };
+  });
+  // Miembros añadidos a mano (sin cuenta) que no coinciden con nadie con cuenta
+  var sinCuenta = DATA.directiva.filter(function (d) { return !JUNTA_CARGOS.some(function (p) { return norm(p.nombre) === norm(d.nombre); }); })
+    .map(function (d) { return { nombre: d.nombre, cargo: d.cargo, orden: ordenCargo(d.cargo), foto: d.foto || "", bio: d.bio || "" }; });
+  return { auto: true, list: auto.concat(sinCuenta).sort(function (a, b) { return a.orden - b.orden || String(a.nombre).localeCompare(String(b.nombre), "es"); }) };
 }
 function aplicarContenido(rows) {
   (function (res) {
